@@ -1,0 +1,684 @@
+import { createContext, useContext, useState, ReactNode } from 'react';
+import { startOfMonth, addDays, format, getDay } from 'date-fns';
+
+const DAY_MAP: Record<string, number> = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+
+// ── Core Types ────────────────────────────────────────────────
+export type Instructor = {
+  id: string; name: string; nickname: string;
+  maxCapacity: number; type: '정규' | '파트'; color: string;
+  jobType: '강사' | '데스크' | '원장' | '관리';
+  phone: string; officePhone: string; extNumber: string;
+  hireDate: string; position: string; department: string;
+  workDays: string[]; workTimeStart: string; workTimeEnd: string;
+  dutyNote: string; vehicleNumber: string; address: string; memo: string;
+  status: 'active' | 'resigned';
+};
+export type LessonClass = { id: string; name: string; description: string; };
+
+// 보강은 같은 구분(division) 내에서만 가능 — 유치부/정규반/성인반은 서로 섞이지 않음
+export type Division = '유치부' | '정규반' | '성인반';
+
+// 한 학생이 여러 반에 동시 등록될 수 있음 — 학생의 "기본(대표) 수강정보"는 Student 최상위 필드가 그대로 하나의
+// enrollment 역할을 하고(id: 'primary'), 그 외 추가로 듣는 반은 additionalEnrollments 배열에 들어감.
+export type EnrollmentStatus = 'active' | 'paused' | 'ended';
+export type Enrollment = {
+  id: string;
+  lessonClassId: string;
+  instructorId: string;
+  regularDays: string[];
+  regularTime: string;
+  startDate: string;
+  endDate: string; // '' = 종료일 미정(진행중)
+  status: EnrollmentStatus;
+  passType: string;
+  paymentPlanId: string;
+  monthlyPrice: number; // 0이면 paymentPlanId의 금액을 사용
+};
+
+export type Student = {
+  id: string; studentNumber: string; studentName: string; nickname: string;
+  birthDate: string; registrationDate: string; gender: '남' | '여';
+  lessonClassId: string; regularDays: string[]; regularTime: string;
+  phone: string; motherPhone: string; fatherPhone: string;
+  smsRecipients: ('self' | 'mother' | 'father')[];
+  level: string; status: 'active' | 'deferred' | 'inactive';
+  instructorId: string; paymentAmount: number; paymentDate: string;
+  paymentRenewalDate: string; paymentCompleted: boolean; studentPhoto: string;
+  parentName: string; age: number; region: string; passType: string;
+  totalClasses: number; rescheduleLimit: number; usedReschedules: number;
+  notes: string; progress: string;
+  // Extended fields
+  address: string;
+  vehicleId: string;
+  category: 'adult' | 'child';
+  paymentPlanId: string;
+  division: Division;
+  additionalEnrollments: Enrollment[];
+};
+
+export const getPrimaryEnrollment = (s: Student): Enrollment => ({
+  id: 'primary',
+  lessonClassId: s.lessonClassId, instructorId: s.instructorId,
+  regularDays: s.regularDays, regularTime: s.regularTime,
+  startDate: s.registrationDate, endDate: '', status: s.status === 'inactive' ? 'ended' : s.status === 'deferred' ? 'paused' : 'active',
+  passType: s.passType, paymentPlanId: s.paymentPlanId, monthlyPrice: 0,
+});
+
+export const getAllEnrollments = (s: Student): Enrollment[] => [getPrimaryEnrollment(s), ...s.additionalEnrollments];
+
+// 연락 시 우선적으로 사용할 번호 — 모(어머니) > 부(아버지) > 원생 본인 순
+export const getPrimaryContactPhone = (s: Student): string => s.motherPhone || s.fatherPhone || s.phone;
+
+export type ClassSession = {
+  id: string; date: string; time: string; instructorId: string;
+  studentIds: string[]; makeupStudentIds: string[]; absentStudentIds: string[];
+  status: string;
+};
+
+// 정규 수강생(studentIds) 중 첫 학생의 구분을 그 시간대(클래스)의 구분으로 간주 — 보강 자리 매칭에 사용
+export const getClassDivision = (cls: ClassSession, students: Student[]): Division | null => {
+  for (const id of cls.studentIds) {
+    const s = students.find(st => st.id === id);
+    if (s) return s.division;
+  }
+  return null;
+};
+
+export type AcademyEvent = { id: string; date: string; title: string; type: 'event' | 'notice' | 'memo' };
+
+export type MakeupPolicyRule = { sessionsPerWeek: number; maxMakeups: number };
+
+export type MakeupSettings = {
+  childRequiresDocument: boolean;
+  adultRequiresDocument: boolean;
+  makeupPolicies: MakeupPolicyRule[];
+};
+
+export type AcademySettings = {
+  academyName: string;
+  branchName: string;
+  designatedTimes: string[];
+  makeupSettings: MakeupSettings;
+};
+
+export type MakeupRequestStatus = 'pending' | 'approved_makeup' | 'approved_carryover' | 'rejected';
+
+// 진단서/장기 결석 등 서류 기반 보강 요청 — 강사/학원이 검토 후 보강 슬롯 배정 또는 다음 달 결제 차감(이월) 처리
+export type MakeupRequest = {
+  id: string; studentId: string; fromClassId: string;
+  docPhoto: string; reason: string;
+  preferredResolution: 'makeup' | 'carryover';
+  status: MakeupRequestStatus;
+  requestedAt: string; resolvedAt: string;
+  toClassId: string; carryoverAmount: number;
+};
+
+// ── New Types ─────────────────────────────────────────────────
+export type Driver = {
+  id: string; name: string; phone: string; vehicleNumber: string;
+};
+
+export type Vehicle = {
+  id: string; vehicleNumber: string; driverId: string;
+  route: string; capacity: number; departureTime: string;
+  studentIds: string[];
+};
+
+export type PaymentPlan = {
+  id: string; name: string; category: 'adult' | 'child';
+  hasFreeSwim: boolean; sessionsPerWeek: number;
+  monthlyPrice: number; description: string;
+};
+
+// 학생별 월별 수납 이력(원장) — 어떤 반(enrollment)에 대해, 언제, 얼마를, 어떻게 수납했는지 추적
+export type PaymentRecord = {
+  id: string; studentId: string; enrollmentId: string; // 'primary' 또는 additionalEnrollments의 id
+  billingMonth: string; // 'yyyy-MM'
+  targetAmount: number; paidAmount: number;
+  paidAt: string; // '' = 미납
+  method: 'card' | 'cash' | 'transfer' | '';
+  status: 'paid' | 'unpaid' | 'partial';
+  note: string;
+};
+
+export type NotificationRecord = {
+  id: string; createdAt: string;
+  type: 'event' | 'payment' | 'holiday' | 'custom';
+  title: string; content: string;
+  recipientIds: string[]; sentAt: string | null;
+};
+
+// ── Initial Data ──────────────────────────────────────────────
+const INITIAL_INSTRUCTORS: Instructor[] = [
+  { id: 'i1', name: '김수영', nickname: '', maxCapacity: 5, type: '정규', color: '#0891b2', jobType: '강사',
+    phone: '010-2222-3333', officePhone: '02-555-1234', extNumber: '101', hireDate: '2023-03-01',
+    position: '팀장', department: '강습팀', workDays: ['월', '화', '수', '목', '금'], workTimeStart: '13:00', workTimeEnd: '21:00',
+    dutyNote: '초급반 총괄', vehicleNumber: '', address: '', memo: '', status: 'active' },
+  { id: 'i2', name: '이바다', nickname: '', maxCapacity: 4, type: '파트', color: '#059669', jobType: '강사',
+    phone: '010-3333-4444', officePhone: '', extNumber: '', hireDate: '2024-06-01',
+    position: '강사', department: '강습팀', workDays: ['화', '목', '토'], workTimeStart: '14:00', workTimeEnd: '18:00',
+    dutyNote: '', vehicleNumber: '', address: '', memo: '', status: 'active' },
+  { id: 'i3', name: '박돌고래', nickname: '', maxCapacity: 6, type: '정규', color: '#d97706', jobType: '강사',
+    phone: '010-4444-5555', officePhone: '02-555-1234', extNumber: '102', hireDate: '2022-01-15',
+    position: '수석강사', department: '강습팀', workDays: ['월', '수', '금', '토'], workTimeStart: '13:00', workTimeEnd: '20:00',
+    dutyNote: '고급반/경기반 담당', vehicleNumber: '', address: '', memo: '', status: 'active' },
+];
+
+export const INITIAL_LESSON_CLASSES: LessonClass[] = [
+  { id: 'lc1', name: '초급반 A', description: '수영 기초 과정 (오전)' },
+  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)' },
+  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전' },
+  { id: 'lc4', name: '고급반', description: '경기 준비 및 고급 영법' },
+];
+
+const INITIAL_DRIVERS: Driver[] = [
+  { id: 'd1', name: '최기사', phone: '010-7777-8888', vehicleNumber: '서울 12가 3456' },
+  { id: 'd2', name: '한드라이버', phone: '010-9999-0000', vehicleNumber: '서울 98나 7654' },
+];
+
+const INITIAL_VEHICLES: Vehicle[] = [
+  { id: 'v1', vehicleNumber: '서울 12가 3456', driverId: 'd1', route: 'A노선 (강남→서초)', capacity: 15, departureTime: '14:30', studentIds: ['s1', 's2'] },
+  { id: 'v2', vehicleNumber: '서울 98나 7654', driverId: 'd2', route: 'B노선 (송파→강동)', capacity: 12, departureTime: '14:45', studentIds: ['s3'] },
+];
+
+const INITIAL_PAYMENT_PLANS: PaymentPlan[] = [
+  { id: 'pp1', name: '아동 주2회', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 120000, description: '아동 기본 수영 강습 (주 2회)' },
+  { id: 'pp2', name: '아동 주3회', category: 'child', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 150000, description: '아동 집중 수영 강습 (주 3회)' },
+  { id: 'pp3', name: '아동 주2회+자유수영', category: 'child', hasFreeSwim: true, sessionsPerWeek: 2, monthlyPrice: 145000, description: '아동 강습 + 자유수영 포함' },
+  { id: 'pp4', name: '성인 주3회', category: 'adult', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 130000, description: '성인 기초 수영 (주 3회)' },
+  { id: 'pp5', name: '성인 주5회+자유수영', category: 'adult', hasFreeSwim: true, sessionsPerWeek: 5, monthlyPrice: 180000, description: '성인 집중 + 자유수영 포함' },
+];
+
+const INITIAL_SETTINGS: AcademySettings = {
+  academyName: '푸른바다 수영장',
+  branchName: '강남점',
+  designatedTimes: ['14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
+  makeupSettings: {
+    childRequiresDocument: false,
+    adultRequiresDocument: true,
+    makeupPolicies: [
+      { sessionsPerWeek: 2, maxMakeups: 2 },
+      { sessionsPerWeek: 3, maxMakeups: 3 },
+      { sessionsPerWeek: 5, maxMakeups: 4 },
+    ],
+  },
+};
+
+export const getMakeupLimitForSessions = (policies: MakeupPolicyRule[], sessionsPerWeek: number): number =>
+  policies.find(p => p.sessionsPerWeek === sessionsPerWeek)?.maxMakeups ?? 2;
+
+const INITIAL_STUDENTS: Student[] = [
+  {
+    id: 's1', studentNumber: '2025-001', nickname: '',
+    parentName: '김어머니', studentName: '김민준',
+    age: 8, birthDate: '2016-03-15', registrationDate: '2025-01-10', gender: '남',
+    lessonClassId: 'lc1', level: '초급', region: '서울시 강남구',
+    phone: '', motherPhone: '010-1111-2222', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i1', regularDays: ['월', '수'], regularTime: '15:00',
+    notes: '물을 조금 무서워함', progress: '자유형 발차기', status: 'active',
+    paymentAmount: 120000, paymentDate: '2025-01-10', paymentRenewalDate: '2025-02-10',
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 강남구 역삼동 123-45', vehicleId: 'v1',
+    category: 'child', paymentPlanId: 'pp1', division: '정규반',
+    additionalEnrollments: [],
+  },
+  {
+    id: 's2', studentNumber: '2025-002', nickname: '',
+    parentName: '이아버지', studentName: '이서연',
+    age: 10, birthDate: '2014-07-22', registrationDate: '2025-01-15', gender: '여',
+    lessonClassId: 'lc3', level: '중급', region: '서울시 서초구',
+    phone: '', motherPhone: '', fatherPhone: '010-3333-4444', smsRecipients: ['father'],
+    passType: '주 3회', totalClasses: 12, rescheduleLimit: 2, usedReschedules: 1,
+    instructorId: 'i1', regularDays: ['월', '수', '금'], regularTime: '16:00',
+    notes: '자유형 호흡 교정 필요', progress: '배영 50m 완주', status: 'active',
+    paymentAmount: 150000, paymentDate: '2025-01-15', paymentRenewalDate: '2025-02-15',
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 서초구 방배동 67-89', vehicleId: 'v1',
+    category: 'child', paymentPlanId: 'pp2', division: '정규반',
+    additionalEnrollments: [
+      {
+        id: 'enr_s2_1', lessonClassId: 'lc4', instructorId: 'i3',
+        regularDays: ['화'], regularTime: '17:00', startDate: '2025-06-01', endDate: '',
+        status: 'active', passType: '주 1회', paymentPlanId: '', monthlyPrice: 60000,
+      },
+    ],
+  },
+  {
+    id: 's3', studentNumber: '2025-003', nickname: '',
+    parentName: '박어머니', studentName: '박지호',
+    age: 7, birthDate: '2017-11-05', registrationDate: '2025-02-01', gender: '남',
+    lessonClassId: 'lc2', level: '초급', region: '서울시 송파구',
+    phone: '', motherPhone: '010-5555-6666', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i2', regularDays: ['화', '목'], regularTime: '15:00',
+    notes: '활발함', progress: '음파 호흡법', status: 'active',
+    paymentAmount: 120000, paymentDate: '2025-02-01', paymentRenewalDate: '2025-03-01',
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 송파구 잠실동 456-78', vehicleId: 'v2',
+    category: 'child', paymentPlanId: 'pp1', division: '유치부',
+    additionalEnrollments: [],
+  },
+];
+
+// 학생의 모든 등록반(primary + 추가)에 대해 지정한 날짜 범위만큼 ClassSession을 생성/병합한다.
+const buildClassesForStudent = (studentId: string, enrollments: Enrollment[], rangeStart: Date, rangeDays: number, existing: ClassSession[]): ClassSession[] => {
+  const result = [...existing];
+  let counter = 0;
+  for (let i = 0; i < rangeDays; i++) {
+    const currentDate = addDays(rangeStart, i);
+    const dateStr = format(currentDate, 'yyyy-MM-dd');
+    const dow = getDay(currentDate);
+    enrollments.forEach(enr => {
+      if (enr.status !== 'active') return;
+      if (enr.startDate && dateStr < enr.startDate) return;
+      if (enr.endDate && dateStr > enr.endDate) return;
+      enr.regularDays.forEach(dayStr => {
+        if (DAY_MAP[dayStr] !== dow) return;
+        const existingClass = result.find(c => c.date === dateStr && c.time === enr.regularTime && c.instructorId === enr.instructorId);
+        if (existingClass) {
+          if (!existingClass.studentIds.includes(studentId)) existingClass.studentIds.push(studentId);
+        } else {
+          result.push({
+            id: `c_${studentId}_${enr.id}_${dateStr}_${counter++}`,
+            date: dateStr, time: enr.regularTime, instructorId: enr.instructorId,
+            studentIds: [studentId], makeupStudentIds: [], absentStudentIds: [], status: 'scheduled',
+          });
+        }
+      });
+    });
+  }
+  return result;
+};
+
+// 특정 학생을, 특정 enrollment가 만들어낸 미래 수업에서만 제거 (휴학/종강/전반/등록취소 시 사용)
+const removeStudentFromFutureEnrollmentClasses = (studentId: string, enr: Enrollment, classes: ClassSession[], fromDate: string): ClassSession[] =>
+  classes.map(cls => {
+    if (cls.date < fromDate) return cls;
+    if (cls.instructorId !== enr.instructorId || cls.time !== enr.regularTime) return cls;
+    if (!cls.studentIds.includes(studentId)) return cls;
+    return { ...cls, studentIds: cls.studentIds.filter(id => id !== studentId) };
+  });
+
+const generateMockClasses = () => {
+  const start = startOfMonth(addDays(new Date(), -15));
+  let classes: ClassSession[] = [];
+  INITIAL_STUDENTS.forEach(student => {
+    classes = buildClassesForStudent(student.id, getAllEnrollments(student), start, 90, classes);
+  });
+  return classes;
+};
+
+const INITIAL_CLASSES = generateMockClasses();
+const INITIAL_EVENTS: AcademyEvent[] = [
+  { id: 'e1', date: format(new Date(), 'yyyy-MM-dd'), title: '수영장 정기 소독', type: 'notice' },
+  { id: 'e2', date: format(addDays(new Date(), 2), 'yyyy-MM-dd'), title: '여름방학 특강 접수', type: 'event' },
+];
+const INITIAL_NOTIFICATIONS: NotificationRecord[] = [
+  { id: 'n1', createdAt: format(new Date(), 'yyyy-MM-dd HH:mm'), type: 'holiday', title: '수영장 정기 소독 안내', content: '이번 주 토요일 수영장 정기 소독이 있습니다. 해당 일자 강습은 휴무입니다.', recipientIds: ['s1', 's2', 's3'], sentAt: format(new Date(), 'yyyy-MM-dd HH:mm') },
+];
+
+const monthsAgo = (n: number) => format(addDays(startOfMonth(new Date()), -30 * n), 'yyyy-MM');
+const INITIAL_PAYMENT_RECORDS: PaymentRecord[] = [
+  { id: 'pr1', studentId: 's1', enrollmentId: 'primary', billingMonth: monthsAgo(1), targetAmount: 120000, paidAmount: 120000, paidAt: format(addDays(new Date(), -35), 'yyyy-MM-dd'), method: 'card', status: 'paid', note: '' },
+  { id: 'pr2', studentId: 's1', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 120000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '' },
+  { id: 'pr3', studentId: 's2', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 150000, paidAmount: 150000, paidAt: format(addDays(new Date(), -10), 'yyyy-MM-dd'), method: 'transfer', status: 'paid', note: '' },
+  { id: 'pr4', studentId: 's2', enrollmentId: 'enr_s2_1', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 60000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '고급반 추가 수강' },
+  { id: 'pr5', studentId: 's3', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 120000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '' },
+];
+
+// ── Context Type ──────────────────────────────────────────────
+type StoreContextType = {
+  instructors: Instructor[];
+  students: Student[];
+  classes: ClassSession[];
+  events: AcademyEvent[];
+  settings: AcademySettings;
+  lessonClasses: LessonClass[];
+  drivers: Driver[];
+  vehicles: Vehicle[];
+  paymentPlans: PaymentPlan[];
+  paymentRecords: PaymentRecord[];
+  notifications: NotificationRecord[];
+  makeupRequests: MakeupRequest[];
+  // Student ops
+  addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => void;
+  updateStudent: (id: string, updates: Partial<Student>) => void;
+  deleteStudent: (id: string) => void;
+  extendStudentClasses: (id: string, months: number) => void;
+  deferStudentClasses: (id: string, months: number) => void;
+  // Enrollment ops (다중 반)
+  addEnrollment: (studentId: string, enrollment: Omit<Enrollment, 'id'>) => void;
+  updateEnrollment: (studentId: string, enrollmentId: string, updates: Partial<Enrollment>) => void;
+  cancelEnrollment: (studentId: string, enrollmentId: string) => void;
+  // Class ops
+  rescheduleClass: (studentId: string, fromClassId: string, toClassId: string) => boolean;
+  markAbsent: (studentId: string, classId: string) => void;
+  // Event ops
+  addEvent: (e: Omit<AcademyEvent, 'id'>) => void;
+  // Instructor / Staff
+  addInstructor: (i: Omit<Instructor, 'id'>) => void;
+  updateInstructor: (id: string, updates: Partial<Instructor>) => void;
+  deleteInstructor: (id: string) => void;
+  updateInstructorColor: (id: string, color: string) => void;
+  // Settings
+  updateSettings: (s: Partial<AcademySettings>) => void;
+  updateMakeupSettings: (s: Partial<MakeupSettings>) => void;
+  // LessonClass
+  addLessonClass: (lc: Omit<LessonClass, 'id'>) => void;
+  deleteLessonClass: (id: string) => void;
+  updateLessonClass: (id: string, updates: Partial<LessonClass>) => void;
+  // Driver & Vehicle
+  addDriver: (d: Omit<Driver, 'id'>) => void;
+  updateDriver: (id: string, updates: Partial<Driver>) => void;
+  deleteDriver: (id: string) => void;
+  addVehicle: (v: Omit<Vehicle, 'id'>) => void;
+  updateVehicle: (id: string, updates: Partial<Vehicle>) => void;
+  deleteVehicle: (id: string) => void;
+  assignStudentToVehicle: (studentId: string, vehicleId: string) => void;
+  // PaymentPlan
+  addPaymentPlan: (p: Omit<PaymentPlan, 'id'>) => void;
+  updatePaymentPlan: (id: string, updates: Partial<PaymentPlan>) => void;
+  deletePaymentPlan: (id: string) => void;
+  // PaymentRecord (수납 이력)
+  addPaymentRecord: (p: Omit<PaymentRecord, 'id'>) => void;
+  markPaymentPaid: (recordId: string, method: PaymentRecord['method'], paidAmount?: number) => void;
+  // Notification
+  addNotification: (n: Omit<NotificationRecord, 'id' | 'createdAt' | 'sentAt'>) => string;
+  sendNotification: (id: string) => void;
+  deleteNotification: (id: string) => void;
+  // Makeup request (서류 기반 보강/이월)
+  submitMakeupRequest: (studentId: string, fromClassId: string, docPhoto: string, reason: string, preferredResolution: 'makeup' | 'carryover') => void;
+  approveMakeupRequestAsSlot: (requestId: string, toClassId: string) => void;
+  approveMakeupRequestAsCarryover: (requestId: string) => void;
+  rejectMakeupRequest: (requestId: string) => void;
+};
+
+const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+export const StoreProvider = ({ children }: { children: ReactNode }) => {
+  const [instructors, setInstructors] = useState<Instructor[]>(INITIAL_INSTRUCTORS);
+  const [students, setStudents] = useState<Student[]>(INITIAL_STUDENTS);
+  const [classes, setClasses] = useState<ClassSession[]>(INITIAL_CLASSES);
+  const [events, setEvents] = useState<AcademyEvent[]>(INITIAL_EVENTS);
+  const [settings, setSettings] = useState<AcademySettings>(INITIAL_SETTINGS);
+  const [lessonClasses, setLessonClasses] = useState<LessonClass[]>(INITIAL_LESSON_CLASSES);
+  const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
+  const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>(INITIAL_PAYMENT_PLANS);
+  const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(INITIAL_PAYMENT_RECORDS);
+  const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
+  const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
+
+  // 학생의 vehicleId 변경을 vehicles.studentIds에도 함께 반영 (강습생 등록/수정 폼과 차량관리 배정 화면 간 데이터 동기화)
+  const syncVehicleAssignment = (studentId: string, vehicleId: string) => {
+    setVehicles(prev => prev.map(v => {
+      if (v.id === vehicleId) return v.studentIds.includes(studentId) ? v : { ...v, studentIds: [...v.studentIds, studentId] };
+      return v.studentIds.includes(studentId) ? { ...v, studentIds: v.studentIds.filter(id => id !== studentId) } : v;
+    }));
+  };
+
+  // ── Student ──────────────────────────────────────────────────
+  const addStudent = (studentData: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => {
+    const year = new Date().getFullYear();
+    const nextNum = students.length + 1;
+    const newStudent: Student = { ...studentData, id: `s${Date.now()}`, studentNumber: `${year}-${String(nextNum).padStart(3, '0')}`, usedReschedules: 0, additionalEnrollments: [] };
+    setStudents(prev => [...prev, newStudent]);
+    if (newStudent.vehicleId) syncVehicleAssignment(newStudent.id, newStudent.vehicleId);
+    setClasses(prev => buildClassesForStudent(newStudent.id, getAllEnrollments(newStudent), startOfMonth(addDays(new Date(), -15)), 90, prev));
+  };
+
+  const updateStudent = (studentId: string, updates: Partial<Student>) => {
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, ...updates } : s));
+    if (updates.vehicleId !== undefined) syncVehicleAssignment(studentId, updates.vehicleId);
+    if (updates.instructorId || updates.regularDays || updates.regularTime) {
+      const student = students.find(s => s.id === studentId);
+      if (!student) return;
+      const updatedStudent = { ...student, ...updates };
+      const today = format(new Date(), 'yyyy-MM-dd');
+      setClasses(prev => {
+        const oldPrimary = getPrimaryEnrollment(student);
+        const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldPrimary, prev, today);
+        return buildClassesForStudent(studentId, [getPrimaryEnrollment(updatedStudent)], new Date(), 60, cleared);
+      });
+    }
+  };
+
+  const deleteStudent = (studentId: string) => {
+    setStudents(prev => prev.filter(s => s.id !== studentId));
+    setClasses(prev => prev.map(cls => ({ ...cls, studentIds: cls.studentIds.filter(id => id !== studentId), makeupStudentIds: cls.makeupStudentIds.filter(id => id !== studentId), absentStudentIds: cls.absentStudentIds.filter(id => id !== studentId) })));
+    setVehicles(prev => prev.map(v => ({ ...v, studentIds: v.studentIds.filter(id => id !== studentId) })));
+    setPaymentRecords(prev => prev.filter(p => p.studentId !== studentId));
+  };
+
+  const extendStudentClasses = (studentId: string, months: number) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    setClasses(prev => {
+      const studentClasses = prev.filter(c => c.studentIds.includes(studentId)).sort((a, b) => b.date.localeCompare(a.date));
+      const lastDate = studentClasses.length > 0 ? new Date(studentClasses[0].date) : new Date();
+      return buildClassesForStudent(studentId, [getPrimaryEnrollment(student)], addDays(lastDate, 1), 30 * months, prev);
+    });
+  };
+
+  const deferStudentClasses = (studentId: string, months: number) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, status: 'deferred' } : s));
+    setClasses(prev => {
+      const cleared = removeStudentFromFutureEnrollmentClasses(studentId, getPrimaryEnrollment(student), prev, today);
+      const startDate = addDays(new Date(), 30 * months);
+      return buildClassesForStudent(studentId, [{ ...getPrimaryEnrollment(student), status: 'active' }], startDate, 60, cleared);
+    });
+  };
+
+  // ── Enrollment (다중 반 등록) ────────────────────────────────────
+  const addEnrollment = (studentId: string, enrollment: Omit<Enrollment, 'id'>) => {
+    const id = `enr_${Date.now()}`;
+    const newEnrollment: Enrollment = { ...enrollment, id };
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, additionalEnrollments: [...s.additionalEnrollments, newEnrollment] } : s));
+    setClasses(prev => buildClassesForStudent(studentId, [newEnrollment], new Date(), 90, prev));
+  };
+
+  const updateEnrollment = (studentId: string, enrollmentId: string, updates: Partial<Enrollment>) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+
+    if (enrollmentId === 'primary') {
+      const oldPrimary = getPrimaryEnrollment(student);
+      const primaryUpdates: Partial<Student> = {};
+      if (updates.lessonClassId !== undefined) primaryUpdates.lessonClassId = updates.lessonClassId;
+      if (updates.instructorId !== undefined) primaryUpdates.instructorId = updates.instructorId;
+      if (updates.regularDays !== undefined) primaryUpdates.regularDays = updates.regularDays;
+      if (updates.regularTime !== undefined) primaryUpdates.regularTime = updates.regularTime;
+      if (updates.passType !== undefined) primaryUpdates.passType = updates.passType;
+      if (updates.paymentPlanId !== undefined) primaryUpdates.paymentPlanId = updates.paymentPlanId;
+      if (updates.status === 'paused') primaryUpdates.status = 'deferred';
+      if (updates.status === 'ended') primaryUpdates.status = 'inactive';
+      if (updates.status === 'active') primaryUpdates.status = 'active';
+      const updatedStudent = { ...student, ...primaryUpdates };
+      setStudents(prev => prev.map(s => s.id === studentId ? updatedStudent : s));
+      setClasses(prev => {
+        const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldPrimary, prev, today);
+        const newPrimary = getPrimaryEnrollment(updatedStudent);
+        return newPrimary.status === 'active' ? buildClassesForStudent(studentId, [newPrimary], new Date(), 90, cleared) : cleared;
+      });
+      return;
+    }
+
+    const oldEnrollment = student.additionalEnrollments.find(e => e.id === enrollmentId);
+    if (!oldEnrollment) return;
+    const newEnrollment: Enrollment = { ...oldEnrollment, ...updates };
+    setStudents(prev => prev.map(s => s.id === studentId
+      ? { ...s, additionalEnrollments: s.additionalEnrollments.map(e => e.id === enrollmentId ? newEnrollment : e) }
+      : s));
+    setClasses(prev => {
+      const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldEnrollment, prev, today);
+      return newEnrollment.status === 'active' ? buildClassesForStudent(studentId, [newEnrollment], new Date(), 90, cleared) : cleared;
+    });
+  };
+
+  const cancelEnrollment = (studentId: string, enrollmentId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    const today = format(new Date(), 'yyyy-MM-dd');
+    if (enrollmentId === 'primary') return; // 기본 등록은 취소 대신 종강/휴학으로 처리
+    const enrollment = student.additionalEnrollments.find(e => e.id === enrollmentId);
+    if (!enrollment) return;
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, additionalEnrollments: s.additionalEnrollments.filter(e => e.id !== enrollmentId) } : s));
+    setClasses(prev => removeStudentFromFutureEnrollmentClasses(studentId, enrollment, prev, today));
+    setPaymentRecords(prev => prev.filter(p => !(p.studentId === studentId && p.enrollmentId === enrollmentId)));
+  };
+
+  // ── Class ────────────────────────────────────────────────────
+  const rescheduleClass = (studentId: string, fromClassId: string, toClassId: string) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student || student.usedReschedules >= student.rescheduleLimit) return false;
+    const toClass = classes.find(c => c.id === toClassId);
+    if (!toClass) return false;
+    const toDivision = getClassDivision(toClass, students);
+    if (toDivision !== null && toDivision !== student.division) return false;
+    setClasses(prev => prev.map(cls => {
+      if (cls.id === fromClassId) return { ...cls, absentStudentIds: [...cls.absentStudentIds, studentId] };
+      if (cls.id === toClassId) return { ...cls, makeupStudentIds: [...cls.makeupStudentIds, studentId] };
+      return cls;
+    }));
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, usedReschedules: s.usedReschedules + 1 } : s));
+    return true;
+  };
+
+  const markAbsent = (studentId: string, classId: string) => {
+    setClasses(prev => prev.map(cls => cls.id === classId && !cls.absentStudentIds.includes(studentId) ? { ...cls, absentStudentIds: [...cls.absentStudentIds, studentId] } : cls));
+  };
+
+  // ── Event ─────────────────────────────────────────────────────
+  const addEvent = (eventData: Omit<AcademyEvent, 'id'>) => {
+    setEvents(prev => [...prev, { ...eventData, id: `e${prev.length + 1}` }]);
+  };
+
+  // ── Instructor / Staff ──────────────────────────────────────────
+  const addInstructor = (i: Omit<Instructor, 'id'>) => setInstructors(prev => [...prev, { ...i, id: `i_${Date.now()}` }]);
+  const updateInstructor = (id: string, updates: Partial<Instructor>) => setInstructors(prev => prev.map(inst => inst.id === id ? { ...inst, ...updates } : inst));
+  const deleteInstructor = (id: string) => setInstructors(prev => prev.filter(inst => inst.id !== id));
+  const updateInstructorColor = (id: string, color: string) => setInstructors(prev => prev.map(inst => inst.id === id ? { ...inst, color } : inst));
+
+  // ── Settings ─────────────────────────────────────────────────
+  const updateSettings = (newSettings: Partial<AcademySettings>) => setSettings(prev => ({ ...prev, ...newSettings }));
+  const updateMakeupSettings = (ms: Partial<MakeupSettings>) => setSettings(prev => ({ ...prev, makeupSettings: { ...prev.makeupSettings, ...ms } }));
+
+  // ── LessonClass ───────────────────────────────────────────────
+  const addLessonClass = (lcData: Omit<LessonClass, 'id'>) => setLessonClasses(prev => [...prev, { ...lcData, id: `lc_${Date.now()}` }]);
+  const deleteLessonClass = (id: string) => setLessonClasses(prev => prev.filter(lc => lc.id !== id));
+  const updateLessonClass = (id: string, updates: Partial<LessonClass>) => setLessonClasses(prev => prev.map(lc => lc.id === id ? { ...lc, ...updates } : lc));
+
+  // ── Driver & Vehicle ──────────────────────────────────────────
+  const addDriver = (d: Omit<Driver, 'id'>) => setDrivers(prev => [...prev, { ...d, id: `d${Date.now()}` }]);
+  const updateDriver = (id: string, updates: Partial<Driver>) => setDrivers(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
+  const deleteDriver = (id: string) => setDrivers(prev => prev.filter(d => d.id !== id));
+  const addVehicle = (v: Omit<Vehicle, 'id'>) => setVehicles(prev => [...prev, { ...v, id: `v${Date.now()}` }]);
+  const updateVehicle = (id: string, updates: Partial<Vehicle>) => setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+  const deleteVehicle = (id: string) => setVehicles(prev => prev.filter(v => v.id !== id));
+  const assignStudentToVehicle = (studentId: string, vehicleId: string) => {
+    setVehicles(prev => prev.map(v => ({ ...v, studentIds: v.studentIds.filter(id => id !== studentId) })));
+    if (vehicleId) setVehicles(prev => prev.map(v => v.id === vehicleId && !v.studentIds.includes(studentId) ? { ...v, studentIds: [...v.studentIds, studentId] } : v));
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, vehicleId } : s));
+  };
+
+  // ── PaymentPlan ───────────────────────────────────────────────
+  const addPaymentPlan = (p: Omit<PaymentPlan, 'id'>) => setPaymentPlans(prev => [...prev, { ...p, id: `pp${Date.now()}` }]);
+  const updatePaymentPlan = (id: string, updates: Partial<PaymentPlan>) => setPaymentPlans(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  const deletePaymentPlan = (id: string) => setPaymentPlans(prev => prev.filter(p => p.id !== id));
+
+  // ── PaymentRecord (수납 이력) ────────────────────────────────────
+  const addPaymentRecord = (p: Omit<PaymentRecord, 'id'>) => setPaymentRecords(prev => [...prev, { ...p, id: `pr_${Date.now()}` }]);
+  const markPaymentPaid = (recordId: string, method: PaymentRecord['method'], paidAmount?: number) => {
+    setPaymentRecords(prev => prev.map(p => p.id === recordId
+      ? { ...p, status: 'paid', method, paidAt: format(new Date(), 'yyyy-MM-dd'), paidAmount: paidAmount ?? p.targetAmount }
+      : p));
+  };
+
+  // ── Notification ──────────────────────────────────────────────
+  const addNotification = (n: Omit<NotificationRecord, 'id' | 'createdAt' | 'sentAt'>) => {
+    const id = `n${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    setNotifications(prev => [...prev, { ...n, id, createdAt: format(new Date(), 'yyyy-MM-dd HH:mm'), sentAt: null }]);
+    return id;
+  };
+  const sendNotification = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, sentAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : n));
+  };
+  const deleteNotification = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
+
+  // ── Makeup Request (서류 기반 보강/이월) ─────────────────────────
+  const submitMakeupRequest = (studentId: string, fromClassId: string, docPhoto: string, reason: string, preferredResolution: 'makeup' | 'carryover') => {
+    setMakeupRequests(prev => [...prev, {
+      id: `mr${Date.now()}`, studentId, fromClassId, docPhoto, reason, preferredResolution,
+      status: 'pending', requestedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
+      toClassId: '', carryoverAmount: 0,
+    }]);
+    markAbsent(studentId, fromClassId);
+  };
+
+  const approveMakeupRequestAsSlot = (requestId: string, toClassId: string) => {
+    const req = makeupRequests.find(r => r.id === requestId);
+    if (!req || req.status !== 'pending') return;
+    const student = students.find(s => s.id === req.studentId);
+    const toClass = classes.find(c => c.id === toClassId);
+    if (!student || !toClass) return;
+    const toDivision = getClassDivision(toClass, students);
+    if (toDivision !== null && toDivision !== student.division) return;
+    setClasses(prev => prev.map(cls =>
+      cls.id === toClassId && !cls.makeupStudentIds.includes(req.studentId)
+        ? { ...cls, makeupStudentIds: [...cls.makeupStudentIds, req.studentId] } : cls
+    ));
+    setMakeupRequests(prev => prev.map(r => r.id === requestId
+      ? { ...r, status: 'approved_makeup', toClassId, resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+
+  const approveMakeupRequestAsCarryover = (requestId: string) => {
+    const req = makeupRequests.find(r => r.id === requestId);
+    if (!req || req.status !== 'pending') return;
+    const student = students.find(s => s.id === req.studentId);
+    const plan = student ? paymentPlans.find(p => p.id === student.paymentPlanId) : undefined;
+    const perSession = plan && plan.sessionsPerWeek > 0 ? Math.round(plan.monthlyPrice / (plan.sessionsPerWeek * 4)) : 0;
+    if (student) {
+      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, paymentAmount: Math.max(0, s.paymentAmount - perSession) } : s));
+    }
+    setMakeupRequests(prev => prev.map(r => r.id === requestId
+      ? { ...r, status: 'approved_carryover', carryoverAmount: perSession, resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+
+  const rejectMakeupRequest = (requestId: string) => {
+    setMakeupRequests(prev => prev.map(r => r.id === requestId
+      ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+
+  return (
+    <StoreContext.Provider value={{
+      instructors, students, classes, events, settings, lessonClasses,
+      drivers, vehicles, paymentPlans, paymentRecords, notifications, makeupRequests,
+      addStudent, updateStudent, deleteStudent, extendStudentClasses, deferStudentClasses,
+      addEnrollment, updateEnrollment, cancelEnrollment,
+      rescheduleClass, markAbsent,
+      addEvent, addInstructor, updateInstructor, deleteInstructor, updateInstructorColor,
+      updateSettings, updateMakeupSettings,
+      addLessonClass, deleteLessonClass, updateLessonClass,
+      addDriver, updateDriver, deleteDriver,
+      addVehicle, updateVehicle, deleteVehicle, assignStudentToVehicle,
+      addPaymentPlan, updatePaymentPlan, deletePaymentPlan,
+      addPaymentRecord, markPaymentPaid,
+      addNotification, sendNotification, deleteNotification,
+      submitMakeupRequest, approveMakeupRequestAsSlot, approveMakeupRequestAsCarryover, rejectMakeupRequest,
+    }}>
+      {children}
+    </StoreContext.Provider>
+  );
+};
+
+export const useStore = () => {
+  const context = useContext(StoreContext);
+  if (!context) throw new Error('useStore must be used within StoreProvider');
+  return context;
+};

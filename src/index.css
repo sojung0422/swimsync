@@ -1,0 +1,43 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+* {
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root { height: 100%; }
+
+body {
+  background: #f8fafc;
+  color: #0f172a;
+}
+
+/* ── Scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(100,116,139,0.18); border-radius: 999px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(100,116,139,0.35); }
+
+/* ── Animations ────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+@keyframes slideUpModal {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes zoomIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1);    }
+}
+
+.animate-fade-up       { animation: fadeUp 0.2s ease-out forwards; }
+.animate-slide-up-modal{ animation: slideUpModal 0.28s cubic-bezier(0.32,0.72,0,1) forwards; }
+.animate-zoom-in       { animation: zoomIn 0.18s cubic-bezier(0.32,0.72,0,1) forwards; }
+
+/* ── Form helpers ──────────────────────────── */
+input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.5; }
+select option { background: #fff; color: #0f172a; }
