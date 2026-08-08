@@ -70,6 +70,12 @@ export const getAllEnrollments = (s: Student): Enrollment[] => [getPrimaryEnroll
 // 연락 시 우선적으로 사용할 번호 — 모(어머니) > 부(아버지) > 원생 본인 순
 export const getPrimaryContactPhone = (s: Student): string => s.motherPhone || s.fatherPhone || s.phone;
 
+// 기본반뿐 아니라 다중 반(추가 등록)에서 이 강사를 담당으로 두고 있는 경우도 포함 — 강사 앱/관리자 상담 페이지에서 공통으로 사용
+export const teachesStudent = (instructorId: string, s: Student): boolean =>
+  getAllEnrollments(s).some(e => e.status === 'active' && e.instructorId === instructorId);
+export const studentsForInstructor = (instructorId: string, students: Student[]): Student[] =>
+  students.filter(s => s.status === 'active' && teachesStudent(instructorId, s));
+
 export type ClassSession = {
   id: string; date: string; time: string; instructorId: string;
   studentIds: string[]; makeupStudentIds: string[]; absentStudentIds: string[];
@@ -100,9 +106,20 @@ export type AcademySettings = {
   branchName: string;
   designatedTimes: string[];
   makeupSettings: MakeupSettings;
+  counselingIntervalMonths: number; // 정기 상담 주기 (몇 개월마다) — 관리자가 설정
+  reRegistrationPeriod: { startDay: number; endDay: number }; // 매월 며칠~며칠이 재등록 기간인지 — 학원마다 다르게 설정
 };
 
-export type MakeupRequestStatus = 'pending' | 'approved_makeup' | 'approved_carryover' | 'rejected';
+// "주 1회" 같은 수강권 문자열에서 주당 횟수를 추출
+export const parseSessionsPerWeek = (passType: string): number => parseInt(passType.replace(/[^0-9]/g, ''), 10) || 0;
+
+// 오늘이 학원이 정한 재등록 기간(매월 startDay~endDay) 안에 있는지
+export const isWithinReRegistrationPeriod = (period: { startDay: number; endDay: number }, date: Date = new Date()): boolean => {
+  const day = date.getDate();
+  return day >= period.startDay && day <= period.endDay;
+};
+
+export type MakeupRequestStatus = 'pending' | 'approved_makeup' | 'approved_carryover' | 'rejected' | 'cancelled_by_academy';
 
 // 진단서/장기 결석 등 서류 기반 보강 요청 — 강사/학원이 검토 후 보강 슬롯 배정 또는 다음 달 결제 차감(이월) 처리
 export type MakeupRequest = {
@@ -112,6 +129,22 @@ export type MakeupRequest = {
   status: MakeupRequestStatus;
   requestedAt: string; resolvedAt: string;
   toClassId: string; carryoverAmount: number;
+};
+
+// 이미 확정된 보강이 학원 사정(신규·체험 문의 등 자리 필요)으로 취소됐다는 알림 —
+// 서류 기반(MakeupRequest 경유) 여부와 무관하게 항상 생성되어, 학부모 앱/강사 앱에서 벨소리로 안내함
+export type MakeupCancellationNotice = {
+  id: string; studentId: string; classId: string; createdAt: string;
+};
+
+// 학부모가 요청하는 정기 요일/시간/수강 횟수 변경 — 학원이 웹에서 확인 후 승인해야 실제 반영됨
+export type ScheduleChangeRequest = {
+  id: string; studentId: string; enrollmentId: string; // 'primary' 또는 additionalEnrollments의 id
+  currentDays: string[]; currentTime: string; currentPassType: string;
+  requestedDays: string[]; requestedTime: string; requestedPassType: string;
+  isFrequencyChange: boolean; // 주당 횟수가 바뀌는 요청인지 (true면 재등록 기간에만 신청 가능)
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string; resolvedAt: string;
 };
 
 // ── New Types ─────────────────────────────────────────────────
@@ -140,6 +173,22 @@ export type PaymentRecord = {
   method: 'card' | 'cash' | 'transfer' | '';
   status: 'paid' | 'unpaid' | 'partial';
   note: string;
+};
+
+// 정기 상담 기록 — 강사가 학생(학부모)과 진행한 상담 내용을 일자별로 남김
+export type CounselingRecord = {
+  id: string; studentId: string; instructorId: string;
+  date: string; // 'yyyy-MM-dd' 상담 진행일
+  content: string; // 상담 내용(일지)
+  createdAt: string;
+};
+
+// 학부모↔강사 1:1 소통 — 학생(자녀) 단위로 스레드가 묶임
+export type ChatMessage = {
+  id: string; studentId: string;
+  senderRole: 'parent' | 'instructor';
+  kind: 'text' | 'call_note'; // call_note = 실제 전화 통화 후 남긴 메모
+  text: string; createdAt: string; // ISO
 };
 
 export type NotificationRecord = {
@@ -203,6 +252,8 @@ const INITIAL_SETTINGS: AcademySettings = {
       { sessionsPerWeek: 5, maxMakeups: 4 },
     ],
   },
+  counselingIntervalMonths: 2,
+  reRegistrationPeriod: { startDay: 20, endDay: 25 },
 };
 
 export const getMakeupLimitForSessions = (policies: MakeupPolicyRule[], sessionsPerWeek: number): number =>
@@ -328,6 +379,17 @@ const INITIAL_PAYMENT_RECORDS: PaymentRecord[] = [
   { id: 'pr5', studentId: 's3', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 120000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '' },
 ];
 
+const INITIAL_COUNSELING_RECORDS: CounselingRecord[] = [
+  { id: 'cs1', studentId: 's1', instructorId: 'i1', date: format(addDays(new Date(), -40), 'yyyy-MM-dd'),
+    content: '물에 대한 두려움이 줄어들고 있음. 발차기 자세 교정 위주로 진행 중이며, 가정에서도 물놀이 노출을 늘려달라고 안내함.',
+    createdAt: format(addDays(new Date(), -40), "yyyy-MM-dd'T'15:30:00") },
+];
+
+const INITIAL_MESSAGES: ChatMessage[] = [
+  { id: 'msg1', studentId: 's1', senderRole: 'instructor', kind: 'text', text: '안녕하세요 어머니! 민준이가 오늘 발차기 연습을 정말 열심히 했어요 :)', createdAt: format(addDays(new Date(), -1), "yyyy-MM-dd'T'09:30:00") },
+  { id: 'msg2', studentId: 's1', senderRole: 'parent', kind: 'text', text: '감사합니다 선생님! 집에서도 연습시킬게요.', createdAt: format(addDays(new Date(), -1), "yyyy-MM-dd'T'10:02:00") },
+];
+
 // ── Context Type ──────────────────────────────────────────────
 type StoreContextType = {
   instructors: Instructor[];
@@ -342,6 +404,16 @@ type StoreContextType = {
   paymentRecords: PaymentRecord[];
   notifications: NotificationRecord[];
   makeupRequests: MakeupRequest[];
+  messages: ChatMessage[];
+  sendMessage: (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind?: ChatMessage['kind']) => void;
+  counselingRecords: CounselingRecord[];
+  addCounselingRecord: (c: Omit<CounselingRecord, 'id' | 'createdAt'>) => void;
+  updateCounselingRecord: (id: string, updates: Partial<CounselingRecord>) => void;
+  deleteCounselingRecord: (id: string) => void;
+  scheduleChangeRequests: ScheduleChangeRequest[];
+  submitScheduleChangeRequest: (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange'>) => void;
+  approveScheduleChangeRequest: (id: string) => void;
+  rejectScheduleChangeRequest: (id: string) => void;
   // Student ops
   addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => void;
   updateStudent: (id: string, updates: Partial<Student>) => void;
@@ -393,6 +465,8 @@ type StoreContextType = {
   approveMakeupRequestAsSlot: (requestId: string, toClassId: string) => void;
   approveMakeupRequestAsCarryover: (requestId: string) => void;
   rejectMakeupRequest: (requestId: string) => void;
+  cancelScheduledMakeup: (classId: string, studentId: string) => void;
+  makeupCancellations: MakeupCancellationNotice[];
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -408,8 +482,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [vehicles, setVehicles] = useState<Vehicle[]>(INITIAL_VEHICLES);
   const [paymentPlans, setPaymentPlans] = useState<PaymentPlan[]>(INITIAL_PAYMENT_PLANS);
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(INITIAL_PAYMENT_RECORDS);
+  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [counselingRecords, setCounselingRecords] = useState<CounselingRecord[]>(INITIAL_COUNSELING_RECORDS);
+  const [scheduleChangeRequests, setScheduleChangeRequests] = useState<ScheduleChangeRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
+  const [makeupCancellations, setMakeupCancellations] = useState<MakeupCancellationNotice[]>([]);
 
   // 학생의 vehicleId 변경을 vehicles.studentIds에도 함께 반영 (강습생 등록/수정 폼과 차량관리 배정 화면 간 데이터 동기화)
   const syncVehicleAssignment = (studentId: string, vehicleId: string) => {
@@ -533,6 +611,28 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setPaymentRecords(prev => prev.filter(p => !(p.studentId === studentId && p.enrollmentId === enrollmentId)));
   };
 
+  // ── ScheduleChangeRequest (학부모 요일·시간·수강횟수 변경 요청) ───────
+  const submitScheduleChangeRequest = (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange'>) => {
+    const isFrequencyChange = parseSessionsPerWeek(r.currentPassType) !== parseSessionsPerWeek(r.requestedPassType);
+    setScheduleChangeRequests(prev => [...prev, {
+      ...r, id: `sc_${Date.now()}`, isFrequencyChange, status: 'pending',
+      requestedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
+    }]);
+  };
+  const approveScheduleChangeRequest = (id: string) => {
+    const req = scheduleChangeRequests.find(r => r.id === id);
+    if (!req) return;
+    updateEnrollment(req.studentId, req.enrollmentId, {
+      regularDays: req.requestedDays, regularTime: req.requestedTime, passType: req.requestedPassType,
+    });
+    setScheduleChangeRequests(prev => prev.map(r => r.id === id
+      ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+  const rejectScheduleChangeRequest = (id: string) => {
+    setScheduleChangeRequests(prev => prev.map(r => r.id === id
+      ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+
   // ── Class ────────────────────────────────────────────────────
   const rescheduleClass = (studentId: string, fromClassId: string, toClassId: string) => {
     const student = students.find(s => s.id === studentId);
@@ -600,6 +700,21 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       : p));
   };
 
+  // ── ChatMessage (학부모↔강사 소통) ────────────────────────────────
+  const sendMessage = (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind: ChatMessage['kind'] = 'text') => {
+    if (!text.trim()) return;
+    setMessages(prev => [...prev, { id: `msg_${Date.now()}`, studentId, senderRole, kind, text: text.trim(), createdAt: new Date().toISOString() }]);
+  };
+
+  // ── CounselingRecord (정기 상담 기록) ────────────────────────────
+  const addCounselingRecord = (c: Omit<CounselingRecord, 'id' | 'createdAt'>) => {
+    setCounselingRecords(prev => [...prev, { ...c, id: `cs_${Date.now()}`, createdAt: new Date().toISOString() }]);
+  };
+  const updateCounselingRecord = (id: string, updates: Partial<CounselingRecord>) => {
+    setCounselingRecords(prev => prev.map(c => c.id === id ? { ...c, ...updates } : c));
+  };
+  const deleteCounselingRecord = (id: string) => setCounselingRecords(prev => prev.filter(c => c.id !== id));
+
   // ── Notification ──────────────────────────────────────────────
   const addNotification = (n: Omit<NotificationRecord, 'id' | 'createdAt' | 'sentAt'>) => {
     const id = `n${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -655,10 +770,25 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
   };
 
+  // 이미 시간표에 배정된 보강 자리를 학원이 취소함 (예: 신규/체험 문의로 그 자리가 필요한 경우) —
+  // 자리를 비우고, 학부모는 다시 신청해야 하는 상태로 되돌림
+  const cancelScheduledMakeup = (classId: string, studentId: string) => {
+    setClasses(prev => prev.map(cls => cls.id === classId
+      ? { ...cls, makeupStudentIds: cls.makeupStudentIds.filter(id => id !== studentId) } : cls));
+    // 서류 기반(MakeupRequest) 경유로 잡힌 보강이면 이력도 남김 — 서류 없이 바로 잡힌 보강은 해당 없음
+    setMakeupRequests(prev => prev.map(r => (r.status === 'approved_makeup' && r.toClassId === classId && r.studentId === studentId)
+      ? { ...r, status: 'cancelled_by_academy', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+    // 경유 방식과 무관하게 항상 알림 기록을 남겨 학부모 앱/강사 앱에서 벨소리로 안내
+    setMakeupCancellations(prev => [...prev, { id: `mc_${Date.now()}`, studentId, classId, createdAt: new Date().toISOString() }]);
+  };
+
   return (
     <StoreContext.Provider value={{
       instructors, students, classes, events, settings, lessonClasses,
       drivers, vehicles, paymentPlans, paymentRecords, notifications, makeupRequests,
+      messages, sendMessage,
+      counselingRecords, addCounselingRecord, updateCounselingRecord, deleteCounselingRecord,
+      scheduleChangeRequests, submitScheduleChangeRequest, approveScheduleChangeRequest, rejectScheduleChangeRequest,
       addStudent, updateStudent, deleteStudent, extendStudentClasses, deferStudentClasses,
       addEnrollment, updateEnrollment, cancelEnrollment,
       rescheduleClass, markAbsent,
@@ -670,7 +800,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addPaymentPlan, updatePaymentPlan, deletePaymentPlan,
       addPaymentRecord, markPaymentPaid,
       addNotification, sendNotification, deleteNotification,
-      submitMakeupRequest, approveMakeupRequestAsSlot, approveMakeupRequestAsCarryover, rejectMakeupRequest,
+      submitMakeupRequest, approveMakeupRequestAsSlot, approveMakeupRequestAsCarryover, rejectMakeupRequest, cancelScheduledMakeup,
+      makeupCancellations,
     }}>
       {children}
     </StoreContext.Provider>

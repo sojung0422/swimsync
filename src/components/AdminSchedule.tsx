@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useStore, ClassSession } from '../store/StoreContext';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
@@ -10,8 +10,8 @@ const modalOverlay = 'fixed inset-0 bg-black/30 backdrop-blur-sm flex items-cent
 
 export default function AdminSchedule() {
   const {
-    classes, instructors, students, events, settings,
-    addEvent, updateInstructorColor, updateSettings,
+    classes, instructors, students, events, settings, vehicles,
+    addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -26,6 +26,7 @@ export default function AdminSchedule() {
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
   const [weekFilterMode, setWeekFilterMode] = useState<'all' | 'individual'>('all');
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>(instructors[0]?.id || '');
+  const [cancelMakeupTarget, setCancelMakeupTarget] = useState<{ classId: string; studentId: string; studentName: string } | null>(null);
 
   const getClassesForDate = (date: Date) => classes.filter(c => c.date === format(date, 'yyyy-MM-dd'));
   const getEventsForDate  = (date: Date) => events.filter(e => e.date === format(date, 'yyyy-MM-dd'));
@@ -467,56 +468,120 @@ export default function AdminSchedule() {
 
 
       {/* Class Detail Modal */}
-      {selectedClass && (
+      {selectedClass && (() => {
+        // classes 배열에서 최신 상태를 다시 찾아옴 — 보강 취소 등으로 classes가 바뀌어도 모달이 바로 반영되도록
+        const liveClass = classes.find(c => c.id === selectedClass.id) ?? selectedClass;
+        return (
         <div className={modalOverlay} style={{ zIndex: 100 }}>
-          <div className="bg-white border border-slate-200 rounded-3xl p-8 w-full max-w-5xl shadow-2xl relative animate-zoom-in">
+          <div className="bg-white border border-slate-200 rounded-3xl p-8 w-full max-w-6xl shadow-2xl relative animate-zoom-in">
             <button onClick={() => setSelectedClass(null)}
               className="absolute top-7 right-7 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-2 rounded-xl transition-colors">
               <X size={18} />
             </button>
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-1.5">
-                <h3 className="text-2xl font-bold text-slate-900">{instructors.find(i => i.id === selectedClass.instructorId)?.name} 강사</h3>
-                <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm font-bold border border-cyan-200">{selectedClass.time} 수업</span>
+                <h3 className="text-2xl font-bold text-slate-900">{instructors.find(i => i.id === liveClass.instructorId)?.name} 강사</h3>
+                <span className="bg-cyan-100 text-cyan-700 px-3 py-1 rounded-full text-sm font-bold border border-cyan-200">{liveClass.time} 수업</span>
+                {(() => {
+                  const cap = instructors.find(i => i.id === liveClass.instructorId)?.maxCapacity ?? 0;
+                  const seated = new Set([...liveClass.studentIds, ...liveClass.makeupStudentIds].filter(id => !liveClass.absentStudentIds.includes(id))).size;
+                  const isFull = cap > 0 && seated >= cap;
+                  return (
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold border ${isFull ? 'bg-red-50 text-red-600 border-red-200' : 'bg-slate-50 text-slate-500 border-slate-200'}`}>
+                      {seated}/{cap}명 {isFull && '(정원 마감)'}
+                    </span>
+                  );
+                })()}
               </div>
-              <p className="text-slate-500 font-medium">{format(new Date(selectedClass.date), 'yyyy년 MM월 dd일 (E)', { locale: ko })}</p>
+              <p className="text-slate-500 font-medium">{format(new Date(liveClass.date), 'yyyy년 MM월 dd일 (E)', { locale: ko })}</p>
             </div>
             <div className="overflow-x-auto rounded-xl border border-slate-200">
-              <table className="w-full text-sm">
+              <table className="min-w-[1360px] w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
-                    {['학생명', '나이/수준', '주소', '수강권', '진도 현황', '구분', '특이사항'].map(h => (
-                      <th key={h} className="px-5 py-3.5 font-bold text-left text-[11px] text-slate-400 uppercase tracking-wide">{h}</th>
+                    {['학생명', '나이/수준', '주소', '수강권', '진도 현황', '구분', '차량', '호차', '타는 곳', '내리는 곳', '특이사항', '작업'].map(h => (
+                      <th key={h} className="px-5 py-3.5 font-bold text-left text-[11px] text-slate-400 uppercase tracking-wide whitespace-nowrap">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {Array.from(new Set([...selectedClass.studentIds, ...selectedClass.makeupStudentIds])).map(id => {
+                  {Array.from(new Set([...liveClass.studentIds, ...liveClass.makeupStudentIds])).map(id => {
                     const student = students.find(s => s.id === id);
                     if (!student) return null;
-                    const isMakeup = selectedClass.makeupStudentIds.includes(id);
-                    const isAbsent = selectedClass.absentStudentIds.includes(id);
+                    const isMakeup = liveClass.makeupStudentIds.includes(id);
+                    const isAbsent = liveClass.absentStudentIds.includes(id);
+                    const vehicle = vehicles.find(v => v.id === student.vehicleId);
                     return (
                       <tr key={id} className={`hover:bg-slate-50 transition-colors ${isAbsent ? 'opacity-40' : ''}`}>
-                        <td className="px-5 py-4 font-bold text-slate-900">{student.studentName}</td>
-                        <td className="px-5 py-4 text-slate-500">{student.age}세 / {student.level}</td>
+                        <td className="px-5 py-4 font-bold text-slate-900 whitespace-nowrap">{student.studentName}</td>
+                        <td className="px-5 py-4 text-slate-500 whitespace-nowrap">{student.age}세 / {student.level}</td>
                         <td className="px-5 py-4 text-slate-500 max-w-[150px] truncate">{student.address || student.region}</td>
-                        <td className="px-5 py-4 text-slate-500">{student.passType}</td>
-                        <td className="px-5 py-4 text-cyan-600 font-semibold">{student.progress}</td>
-                        <td className="px-5 py-4">
+                        <td className="px-5 py-4 text-slate-500 whitespace-nowrap">{student.passType}</td>
+                        <td className="px-5 py-4 text-cyan-600 font-semibold whitespace-nowrap">{student.progress}</td>
+                        <td className="px-5 py-4 whitespace-nowrap">
                           {isAbsent ? <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-100 text-red-600 border border-red-200">결석</span>
                             : isMakeup ? <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-orange-100 text-orange-600 border border-orange-200">보강</span>
                             : <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-600 border border-emerald-200">정규</span>}
                         </td>
+                        <td className="px-5 py-4 text-slate-500 whitespace-nowrap">{vehicle?.route ?? '—'}</td>
+                        <td className="px-5 py-4 text-slate-500 whitespace-nowrap">{vehicle?.vehicleNumber ?? '—'}</td>
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {vehicle ? (
+                            <div className="flex items-center gap-1.5 text-emerald-700">
+                              <LogIn className="w-3.5 h-3.5 shrink-0" />
+                              <span className="text-xs truncate max-w-[130px]">{student.address || '주소 없음'}</span>
+                            </div>
+                          ) : <span className="text-slate-300 text-xs">직접 등원</span>}
+                        </td>
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {vehicle ? (
+                            <div className="flex items-center gap-1.5 text-orange-700">
+                              <LogOut className="w-3.5 h-3.5 shrink-0" />
+                              <span className="text-xs truncate max-w-[130px]">{settings.academyName}</span>
+                            </div>
+                          ) : <span className="text-slate-300 text-xs">직접 하원</span>}
+                        </td>
                         <td className="px-5 py-4 text-slate-500 max-w-[180px] truncate">{student.notes || '—'}</td>
+                        <td className="px-5 py-4 whitespace-nowrap">
+                          {isMakeup ? (
+                            <button onClick={() => setCancelMakeupTarget({ classId: liveClass.id, studentId: id, studentName: student.studentName })}
+                              className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg text-xs font-medium transition-colors">
+                              보강 취소
+                            </button>
+                          ) : <span className="text-slate-300 text-xs">-</span>}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
-              {Array.from(new Set([...selectedClass.studentIds, ...selectedClass.makeupStudentIds])).length === 0 && (
+              {Array.from(new Set([...liveClass.studentIds, ...liveClass.makeupStudentIds])).length === 0 && (
                 <div className="text-center py-16 text-slate-400 italic">해당 수업에 배정된 학생이 없습니다.</div>
               )}
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* Cancel scheduled makeup confirm */}
+      {cancelMakeupTarget && (
+        <div className={modalOverlay} style={{ zIndex: 110 }}>
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 w-full max-w-sm shadow-xl">
+            <h3 className="text-slate-800 font-bold text-base mb-2">보강 취소</h3>
+            <p className="text-slate-500 text-sm leading-relaxed mb-5">
+              <strong className="text-slate-700">{cancelMakeupTarget.studentName}</strong> 학생의 이 시간대 보강을 취소할까요?
+              신규/체험 문의 등으로 자리가 필요할 때 사용해요. 취소하면 학부모 앱·강사 앱에 알림(벨소리)이 가고, 학부모는 보강을 다시 신청해야 해요.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setCancelMakeupTarget(null)}
+                className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">
+                닫기
+              </button>
+              <button onClick={() => { cancelScheduledMakeup(cancelMakeupTarget.classId, cancelMakeupTarget.studentId); setCancelMakeupTarget(null); }}
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-medium transition-colors">
+                보강 취소하기
+              </button>
             </div>
           </div>
         </div>

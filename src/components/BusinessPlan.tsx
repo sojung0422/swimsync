@@ -4,7 +4,9 @@ import {
   Map, BarChart2, AlertTriangle, Users, ChevronRight, Building2,
   Zap, Globe, Star, CheckCircle, XCircle, ArrowRight, Cpu,
   CreditCard, Bell, Calendar, ClipboardList, LayoutGrid,
-  Smartphone, ShieldCheck, Package
+  Smartphone, ShieldCheck, Package, IdCard, HelpCircle,
+  ListChecks, MessageSquareText, CalendarClock, RefreshCw, Car, LayoutDashboard,
+  UserCircle, Truck, FileText,
 } from 'lucide-react';
 
 // ─────────────────────────────────────────────────────────────
@@ -15,6 +17,7 @@ const SECTIONS = [
   { id: 'analysis',     label: '현황 분석',          icon: ClipboardList },
   { id: 'market',       label: '시장 분석',          icon: TrendingUp },
   { id: 'product',      label: '제품 정의',          icon: Layers },
+  { id: 'spec',         label: '기능 명세 (전체)',    icon: ListChecks },
   { id: 'tech',         label: '기술 아키텍처',      icon: Code2 },
   { id: 'revenue',      label: '수익 모델',          icon: DollarSign },
   { id: 'gtm',          label: 'GTM 전략',           icon: Megaphone },
@@ -142,6 +145,7 @@ const SectionAnalysis = () => (
           { label: 'Vite 6', sub: 'Build Tool', color: 'bg-violet-50 border-violet-200' },
           { label: 'Tailwind CSS 4', sub: 'Styling', color: 'bg-cyan-50 border-cyan-200' },
           { label: 'date-fns 4', sub: '날짜 처리 (한국어)', color: 'bg-emerald-50 border-emerald-200' },
+          { label: 'Supabase', sub: 'Postgres + Auth + RLS (백엔드, 연동 진행 중)', color: 'bg-teal-50 border-teal-200' },
           { label: 'Google GenAI SDK', sub: '설치됨 (미연동)', color: 'bg-amber-50 border-amber-200' },
         ].map(item => (
           <div key={item.label} className={`rounded-lg border p-3 ${item.color}`}>
@@ -154,24 +158,35 @@ const SectionAnalysis = () => (
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card>
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><CheckCircle size={16} className="text-emerald-500" /> 재활용 가능한 자산</h3>
+        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><CheckCircle size={16} className="text-emerald-500" /> 구현 완료 기능</h3>
         <ul className="space-y-2">
-          <Check text="월/주/일 3단 캘린더 뷰 (전 종목 스케줄러로)" />
-          <Check text="원생 생애주기 관리 (등록→보강→휴원→탈퇴)" />
-          <Check text="강사 색상 코딩 & 필터링" />
-          <Check text="학부모 앱·강사 앱 목업 (React Native 재구현 기반)" />
-          <Check text="Google GenAI SDK 설치됨 (AI 기능 즉시 연동 가능)" />
+          <Check text="Supabase 기반 인증 (이메일/비밀번호 + Google 로그인)" />
+          <Check text="조직(organizations)·멤버십(organization_members) 멀티테넌시 스키마 + RLS 정책" />
+          <Check text="가입 시 개인 프리랜서 조직 자동 생성 (Postgres 트리거)" />
+          <Check text="학생 다중 반 등록 — 반마다 담당쌤·요일·시간을 개별 관리, 휴학·종강·등록취소" />
+          <Check text="반별 수납 이력 원장 + 학부모 앱 결제 시뮬레이션 플로우" />
+          <Check text="직원 관리 페이지 (인사정보·근무요일·시간, 강사 전용 항목 분기)" />
+          <Check text="보강 승인 시 구분(유치부/정규반/성인반) 일치 강제 매칭" />
+          <Check text="차량 노선별/시간별 등하원 관리 — 다중 반 등록 학생도 정확히 반영" />
+          <Check text="엑셀/CSV 학생 일괄 등록" />
+          <Check text="페이지별 인앱 사용법 가이드 (최초 진입 시 자동 표시)" />
+          <Check text="정기 상담 기록 관리 — 강사 앱 작성 → 관리자 상담 관리 페이지 실시간 연동, 월별 조회, 상담 주기 학원별 설정" />
+          <Check text="학부모↔강사 1:1 채팅 + 전화 연결 + 통화 메모 (같은 세션 내 실시간 동기화)" />
+          <Check text="일정 변경 요청 — 요일/시간/수강 횟수 변경 신청, 재등록 기간(학원별 설정) 규칙 적용, 승인 시 반 등록정보 자동 반영" />
+          <Check text="보강 취소 + 벨소리 알림 — 신규·체험 문의로 정원이 필요할 때 보강 자리 회수, 학부모·강사 앱에 즉시 알림" />
+          <Check text="수업 상세에 차량·호차·픽업/드롭 지점 통합 표시" />
         </ul>
       </Card>
       <Card>
-        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><XCircle size={16} className="text-red-400" /> 한계점 & 필요 개발</h3>
+        <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><XCircle size={16} className="text-red-400" /> 남은 과제</h3>
         <ul className="space-y-2">
-          <Cross text="수영 종목 하드코딩 → Sport Config Layer 필요" />
-          <Cross text="백엔드 없음 (새로고침 시 데이터 소실)" />
-          <Cross text="인증/RBAC 미구현" />
-          <Cross text="단일 학원만 지원 (멀티지점 불가)" />
-          <Cross text="결제 미연동" />
-          <Cross text="알림 시스템 없음" />
+          <Cross text="수영 종목 하드코딩 → Sport Config Layer 아직 미착수" />
+          <Cross text="화면 상태가 아직 React Context in-memory — Supabase 데이터 레이어 실연동 전" />
+          <Cross text="실제 카드결제(PG) 미연동 — 결제는 시뮬레이션 처리" />
+          <Cross text="카카오 알림톡 / SMS 게이트웨이 미연동 — 앱 내 공지만 가능" />
+          <Cross text="강사·학부모·기사 앱이 아직 네이티브 앱이 아닌 반응형 웹 미리보기" />
+          <Cross text="세금계산서·가상계좌·카드단말기·포인트·형제자매 연결 등 미구현" />
+          <Cross text="보강 시 차량 이용 희망 케이스 — 정책/UI 설계 필요 (아래 리스크 관리 참고)" />
         </ul>
       </Card>
     </div>
@@ -330,20 +345,29 @@ const SectionProduct = () => (
     </Card>
 
     <Card>
-      <h3 className="font-semibold text-slate-800 mb-5">핵심 모듈 구성</h3>
+      <h3 className="font-semibold text-slate-800 mb-1">핵심 모듈 구성</h3>
+      <p className="text-xs text-slate-400 mb-5">완료 = 지금 앱에서 실제로 동작 · 부분 = 시뮬레이션/수동으로 동작 중 · 예정 = 아직 미착수</p>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { icon: Users, name: '원생 관리', desc: '생애주기 전 과정', color: 'text-blue-600 bg-blue-50' },
-          { icon: Calendar, name: '스케줄링', desc: '보강 자동화', color: 'text-purple-600 bg-purple-50' },
-          { icon: CheckCircle, name: '출결 관리', desc: 'QR 자동 출결', color: 'text-emerald-600 bg-emerald-50' },
-          { icon: CreditCard, name: '수납 관리', desc: '온라인 결제 연동', color: 'text-amber-600 bg-amber-50' },
-          { icon: Bell, name: '알림 엔진', desc: '카카오·SMS·푸시', color: 'text-red-600 bg-red-50' },
-          { icon: BarChart2, name: '원장 대시보드', desc: '핵심 지표 한눈에', color: 'text-slate-600 bg-slate-50' },
-          { icon: Smartphone, name: '강사/학부모 앱', desc: '모바일 네이티브', color: 'text-cyan-600 bg-cyan-50' },
-          { icon: Cpu, name: 'AI 인사이트', desc: '이탈 예측·레벨 진단', color: 'text-indigo-600 bg-indigo-50' },
+          { icon: Users, name: '원생 관리', desc: '다중 반 등록 포함 생애주기 전 과정', color: 'text-blue-600 bg-blue-50', status: '완료' as const },
+          { icon: Calendar, name: '스케줄링', desc: '보강 자동화 + 구분별 매칭', color: 'text-purple-600 bg-purple-50', status: '완료' as const },
+          { icon: IdCard, name: '직원 관리', desc: '인사정보·근무조건', color: 'text-violet-600 bg-violet-50', status: '완료' as const },
+          { icon: CreditCard, name: '수납 관리', desc: '반별 원장 + 결제 시뮬레이션', color: 'text-amber-600 bg-amber-50', status: '부분' as const },
+          { icon: CheckCircle, name: '출결 관리', desc: '수동 출결 (QR 자동화는 예정)', color: 'text-emerald-600 bg-emerald-50', status: '부분' as const },
+          { icon: Bell, name: '알림 엔진', desc: '앱 내 공지 (카카오·SMS는 예정)', color: 'text-red-600 bg-red-50', status: '부분' as const },
+          { icon: HelpCircle, name: '인앱 가이드', desc: '페이지별 사용법 자동 안내', color: 'text-teal-600 bg-teal-50', status: '완료' as const },
+          { icon: MessageSquareText, name: '상담 관리', desc: '강사 앱 연동 + 월별 조회 + 주기 설정', color: 'text-fuchsia-600 bg-fuchsia-50', status: '완료' as const },
+          { icon: CalendarClock, name: '일정 변경 요청', desc: '재등록 기간 규칙 기반 승인 흐름', color: 'text-orange-600 bg-orange-50', status: '완료' as const },
+          { icon: Users, name: '학부모↔강사 메시징', desc: '채팅 + 전화 + 통화 메모', color: 'text-rose-600 bg-rose-50', status: '완료' as const },
+          { icon: Smartphone, name: '강사/학부모/기사 앱', desc: '현재 웹 미리보기, 네이티브 전환 예정', color: 'text-cyan-600 bg-cyan-50', status: '부분' as const },
+          { icon: BarChart2, name: '원장 대시보드', desc: '핵심 지표 한눈에', color: 'text-slate-600 bg-slate-50', status: '예정' as const },
+          { icon: Cpu, name: 'AI 인사이트', desc: '이탈 예측·레벨 진단', color: 'text-indigo-600 bg-indigo-50', status: '예정' as const },
         ].map(m => (
-          <div key={m.name} className="rounded-lg border border-slate-100 p-3 text-center hover:shadow-sm transition-shadow">
-            <div className={`w-10 h-10 rounded-full ${m.color} flex items-center justify-center mx-auto mb-2`}>
+          <div key={m.name} className="rounded-lg border border-slate-100 p-3 text-center hover:shadow-sm transition-shadow relative">
+            <span className={`absolute top-2 right-2 text-[9px] font-bold px-1.5 py-0.5 rounded-full ${
+              m.status === '완료' ? 'bg-emerald-100 text-emerald-700' : m.status === '부분' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-500'
+            }`}>{m.status}</span>
+            <div className={`w-10 h-10 rounded-full ${m.color} flex items-center justify-center mx-auto mb-2 mt-2`}>
               <m.icon size={18} />
             </div>
             <div className="font-semibold text-slate-800 text-sm">{m.name}</div>
@@ -354,16 +378,17 @@ const SectionProduct = () => (
     </Card>
 
     <Card>
-      <h3 className="font-semibold text-slate-800 mb-4">사용자 역할 & 플랫폼</h3>
+      <h3 className="font-semibold text-slate-800 mb-1">사용자 역할 & 플랫폼</h3>
+      <p className="text-xs text-slate-400 mb-4">Manager 역할과 네이티브 앱은 아직 로드맵 단계 — 현재는 Owner/Instructor 2단 구조 + 웹 미리보기로 동작해요.</p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">역할 정의</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">역할 정의 (구현 상태)</p>
           <div className="space-y-2">
             {[
-              { role: 'Owner (원장)', desc: '전체 학원 데이터 + 설정 + 재무', color: 'bg-indigo-100 text-indigo-700' },
-              { role: 'Manager (부원장)', desc: '원생·스케줄·출결 관리', color: 'bg-blue-100 text-blue-700' },
-              { role: 'Instructor (강사)', desc: '담당 수업·출결·진도 노트', color: 'bg-cyan-100 text-cyan-700' },
-              { role: 'Parent (학부모)', desc: '내 아이 조회·보강·결제', color: 'bg-emerald-100 text-emerald-700' },
+              { role: 'Owner (원장)', desc: '조직 데이터 + 설정 전체 관리 — 구현 완료 (organization_members.role = owner)', color: 'bg-indigo-100 text-indigo-700' },
+              { role: 'Instructor (강사)', desc: '담당 수업·학생·진도 관리, 초대→수락 흐름 — 구현 완료', color: 'bg-cyan-100 text-cyan-700' },
+              { role: 'Manager (부원장)', desc: '원생·스케줄·출결 관리 — 아직 별도 역할로 분리되지 않음 (예정)', color: 'bg-slate-100 text-slate-500' },
+              { role: 'Parent (학부모)', desc: '내 아이 조회·보강·결제 — 웹 미리보기로 구현 완료 (별도 로그인 계정 연동은 예정)', color: 'bg-emerald-100 text-emerald-700' },
             ].map(r => (
               <div key={r.role} className="flex items-center gap-3">
                 <Badge label={r.role} color={r.color} />
@@ -373,13 +398,13 @@ const SectionProduct = () => (
           </div>
         </div>
         <div>
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">플랫폼 구성</p>
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest mb-3">플랫폼 구성 (구현 상태)</p>
           <div className="space-y-2">
             {[
-              { platform: 'Web App (반응형)', who: 'Owner / Manager 주 사용' },
-              { platform: 'iOS App', who: 'Instructor / Parent 주 사용' },
-              { platform: 'Android App', who: 'Instructor / Parent 주 사용' },
-              { platform: 'iPad 전용 모드', who: '수업 중 출결 체크 전용' },
+              { platform: 'Admin Web (반응형)', who: 'Owner 주 사용 — 구현 완료' },
+              { platform: '강사/학부모/기사 웹 미리보기', who: '관리자 화면 내 미리보기로 구현 완료' },
+              { platform: 'iOS / Android 네이티브 앱', who: '강사·학부모·기사용 — 아직 미착수 (예정)' },
+              { platform: 'iPad 전용 출결 모드', who: '수업 중 출결 체크 전용 — 예정' },
             ].map(p => (
               <div key={p.platform} className="flex items-center gap-2 text-sm">
                 <Smartphone size={14} className="text-slate-400" />
@@ -394,19 +419,225 @@ const SectionProduct = () => (
   </div>
 );
 
+// 페이지별 기능 명세 — 이 문서만 보고도 개발자가 전체 시스템 구조와 각 화면의 동작을 파악할 수 있도록
+// 실제 구현된 코드(App.tsx 내비게이션 + 각 컴포넌트) 기준으로 작성함
+const ADMIN_PAGES = [
+  {
+    icon: LayoutDashboard, name: '스케줄 관리', file: 'AdminSchedule.tsx',
+    desc: '전체 강습 스케줄과 수영장 일정을 관리하는 메인 화면.',
+    features: [
+      '월/주/일 3단 캘린더 뷰, 강사 필터(전체/개인)',
+      '일정 추가(특강·휴강·메모), 시스템 설정(학원명·지점명·지정 시간대)',
+      '수업 칸 클릭 → 상세 모달: 학생별 나이/수준/주소/수강권/진도/구분(정규·보강·결석)/차량·호차/타는곳·내리는곳/특이사항, 정원(N/N명) 표시',
+      '보강 취소: 정원이 찼는데 신규·체험 문의가 들어온 경우 보강 학생을 취소해 자리 확보 → 학부모 앱·강사 앱에 벨소리 알림 발송',
+    ],
+  },
+  {
+    icon: Users, name: '강습생 관리', file: 'AdminStudents.tsx',
+    desc: '학생 등록부터 다중 반, 수납까지 학생 데이터의 중심 허브.',
+    features: [
+      '강습반별 보기 / 전체 목록, 검색(이름·번호·전화번호), 강습반 자체 관리(이름·정원)',
+      '엑셀/CSV 일괄 등록, 신규 등록(원생/모/부 연락처 분리 + SMS 수신 대상 지정)',
+      '반 등록정보: 다중 반 등록/수정(담당쌤·요일·시간 변경), 휴학·종강·등록취소, 정원 실시간 확인',
+      '수납 내역: 반별 월별 원장, "이번 달 청구 생성", 개별 수납 처리(카드/현금/계좌이체)',
+    ],
+  },
+  {
+    icon: IdCard, name: '직원 관리', file: 'AdminStaff.tsx',
+    desc: '강사·일반 직원의 인사 정보 관리.',
+    features: [
+      '재직/퇴직/전체 필터, 신규 직원 입력·삭제',
+      '연락처·입사일·직책·부서·업무구분·고용형태·근무요일/시간·비고',
+      '업무구분이 "강사"인 경우만 스케줄 색상·1타임 정원 필드 노출',
+    ],
+  },
+  {
+    icon: MessageSquareText, name: '상담 관리', file: 'AdminCounseling.tsx',
+    desc: '강사별 담당 학생의 정기 상담 현황·일지를 관리. 강사 앱과 실시간 연동.',
+    features: [
+      '정기 상담 주기(1/2/3개월) 관리자 설정 → "다음 상담 예정일" 자동 계산',
+      '강사별 그룹 뷰: 학생별 최근 상담일/다음 예정일/상태(완료·필요) 뱃지',
+      '월별 보기(달력 이동)로 특정 달에 진행된 상담만 필터링, "상담 필요만 보기" 필터',
+      '학생 펼치기 → 상담 일지(일자+내용) 이력 전체, 관리자도 직접 기록 추가 가능',
+    ],
+  },
+  {
+    icon: CreditCard, name: '결제 관리', file: 'AdminPayments.tsx',
+    desc: '수강 플랜 설계와 결제 현황, 보강 정책 관리.',
+    features: [
+      '요약: 이번 달 수납액/미수납액/수강 중 총원',
+      '수강 플랜 CRUD(아동/성인, 주 횟수, 자유수영 포함 여부, 월 수강료)',
+      '보강 가능 횟수 정책(주당 횟수별 최대 보강 횟수), 아동/성인 서류 필요 여부 설정',
+    ],
+  },
+  {
+    icon: RefreshCw, name: '보강 요청 관리', file: 'AdminMakeups.tsx',
+    desc: '서류 기반(진단서 등) 보강·이월 요청의 승인 큐.',
+    features: [
+      '승인 대기/처리 완료 탭, 제출 서류 사진 확인',
+      '보강 배정: 같은 구분(유치부/정규반/성인반)의 빈자리 중 선택해 확정',
+      '이월 처리: 다음 달 결제 금액에서 회당 금액 자동 차감, 거절',
+    ],
+  },
+  {
+    icon: CalendarClock, name: '일정 변경 요청', file: 'AdminScheduleChanges.tsx',
+    desc: '학부모가 신청한 요일·시간·수강 횟수 변경을 검토·승인.',
+    features: [
+      '재등록 기간(매월 며칠~며칠) 학원별 설정 → 수강 횟수가 바뀌는 요청은 이 기간에만 학부모가 신청 가능',
+      '승인 대기/처리 완료 탭, 변경 전→후 비교 카드',
+      '승인 시 해당 학생의 반 등록정보(Enrollment)에 즉시 반영되고 향후 수업이 재생성됨',
+    ],
+  },
+  {
+    icon: Bell, name: '공지 발송', file: 'AdminNotifications.tsx',
+    desc: 'SMS/앱 푸시 공지 작성 및 발송.',
+    features: [
+      '공지 유형 템플릿, 수신 대상 개별/전체 선택',
+      '임시 저장 vs 발송, 발송 내역(전체/발송 완료/임시 저장) 필터',
+    ],
+  },
+  {
+    icon: Car, name: '차량 관리', file: 'AdminVehicles.tsx',
+    desc: '통학 차량·기사·탑승 학생, 일별 노선 관리.',
+    features: [
+      '기사 관리, 차량 노선 관리(차량별 탑승 학생 배정)',
+      '일별 노선 관리: 요일별 실제 등하원 대상(다중 반 반영), 노선별/시간별 보기 전환',
+    ],
+  },
+];
+
+const APP_PAGES = [
+  {
+    icon: Smartphone, name: '강사 앱', file: 'InstructorApp.tsx',
+    desc: '강사가 실제로 쓰게 될 모바일 화면의 미리보기.',
+    features: [
+      '오늘 일정 탭: 주간 날짜 스트립, 수업별 참석/결석 학생, 진도·특이사항 기록',
+      '내 강습생 탭: 담당 학생 전체(다중 반 포함), 학생별 "상담 기록" 작성/이력 확인',
+      '보강·이월 요청 탭: 내 학생의 요청 현황 확인(승인/거절은 관리자 웹에서)',
+      '메시지 탭: 학생(학부모)별 1:1 채팅, 전화 연결, 통화 메모',
+      '알림: 새로 배정된 보강 학생 알림 + 보강 취소 알림(벨소리)',
+    ],
+  },
+  {
+    icon: UserCircle, name: '학부모 앱', file: 'ParentApp.tsx',
+    desc: '학부모가 실제로 쓰게 될 모바일 화면의 미리보기.',
+    features: [
+      '홈 탭: 다음 강습, 이번 달 출석 현황, 나의 진도, 결제 현황(카드/카카오페이/네이버페이 결제 시뮬레이션)',
+      '내 수업 정보: 요일·시간·수강권 확인 + 변경 신청(재등록 기간 규칙 적용)',
+      '결석/보강 신청 탭: 달력 기반 결석 신청, 결석일→보강일→시간 순 보강 신청(서류 필요 시 제출)',
+      '메시지 탭: 담당 강사와 1:1 채팅, 전화 연결, 통화 메모',
+      '알림: 보강 취소 알림(벨소리) + "보강 다시 신청하기" 바로가기',
+    ],
+  },
+  {
+    icon: Truck, name: '기사 앱', file: 'DriverApp.tsx',
+    desc: '통학 차량 기사가 실제로 쓰게 될 모바일 화면의 미리보기.',
+    features: [
+      '오늘 노선 탭: 픽업 순서, 학생 탭하여 실제 전화 연결',
+      '전체 탑승생 탭: 배정 학생과 요일·시간',
+      '보강으로 결석 처리된 학생은 픽업 목록에서 자동 제외(보강은 차량 미운행 정책)',
+    ],
+  },
+  {
+    icon: FileText, name: '사업 기획서', file: 'BusinessPlan.tsx',
+    desc: '지금 보고 있는 이 문서 — 시장 분석부터 기술 아키텍처, 재무 계획까지.',
+    features: ['Executive Summary, 현황 분석, 시장 분석, 제품 정의, 기능 명세, 기술 아키텍처, 수익 모델, GTM 전략, 개발 로드맵, 재무 계획, 리스크 관리, 팀 구성'],
+  },
+];
+
+const SectionSpec = () => (
+  <div className="space-y-6">
+    <SectionTitle icon={ListChecks} title="기능 명세 (전체)" subtitle="이 문서만 보고도 전체 시스템 구조와 각 화면의 동작을 파악할 수 있도록 작성한 상세 명세" />
+
+    <Card className="bg-slate-900 border-0 text-white">
+      <p className="text-sm leading-relaxed text-slate-300">
+        아래는 왼쪽 사이드바 내비게이션 구조를 그대로 따른 페이지별 명세예요. 각 항목은 실제 코드 파일(<code className="text-cyan-300">src/components/*.tsx</code>)과 1:1로 대응하고,
+        기능 목록은 그 화면에서 실제로 클릭·조작 가능한 것만 적었어요 (계획만 있고 미구현인 것은 "현황 분석"/"개발 로드맵" 쪽에 별도 표기).
+      </p>
+    </Card>
+
+    <div>
+      <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><LayoutGrid size={16} className="text-blue-500" /> 관리자 도구 (Admin Web)</h3>
+      <div className="space-y-3">
+        {ADMIN_PAGES.map(p => (
+          <Card key={p.name}>
+            <div className="flex items-start gap-3 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
+                <p.icon size={16} className="text-blue-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-slate-800 text-sm">{p.name}</span>
+                  <code className="text-[11px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{p.file}</code>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{p.desc}</p>
+              </div>
+            </div>
+            <ul className="space-y-1.5 pl-12">
+              {p.features.map(f => <Check key={f} text={f} />)}
+            </ul>
+          </Card>
+        ))}
+      </div>
+    </div>
+
+    <div>
+      <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><Smartphone size={16} className="text-cyan-500" /> 앱 미리보기 (User Apps)</h3>
+      <div className="space-y-3">
+        {APP_PAGES.map(p => (
+          <Card key={p.name}>
+            <div className="flex items-start gap-3 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-cyan-50 flex items-center justify-center flex-shrink-0">
+                <p.icon size={16} className="text-cyan-600" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-semibold text-slate-800 text-sm">{p.name}</span>
+                  <code className="text-[11px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded">{p.file}</code>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">{p.desc}</p>
+              </div>
+            </div>
+            <ul className="space-y-1.5 pl-12">
+              {p.features.map(f => <Check key={f} text={f} />)}
+            </ul>
+          </Card>
+        ))}
+      </div>
+    </div>
+
+    <Card>
+      <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2"><Layers size={16} className="text-violet-500" /> 공유 데이터 모델 (핵심 엔티티)</h3>
+      <p className="text-xs text-slate-500 mb-3">모든 화면은 하나의 <code className="text-slate-700 bg-slate-50 px-1 rounded">StoreContext</code>(현재 React Context, Supabase 전환 예정)를 공유해서 데이터 불일치 없이 동작해요.</p>
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+        {[
+          'Student (+ Enrollment[])', 'Instructor', 'ClassSession', 'PaymentRecord', 'PaymentPlan',
+          'MakeupRequest', 'MakeupCancellationNotice', 'ScheduleChangeRequest', 'CounselingRecord',
+          'ChatMessage', 'NotificationRecord', 'Vehicle / Driver', 'AcademySettings',
+        ].map(t => (
+          <div key={t} className="bg-slate-50 border border-slate-100 rounded-lg px-2.5 py-2 font-mono text-slate-600">{t}</div>
+        ))}
+      </div>
+    </Card>
+  </div>
+);
+
 const SectionTech = () => (
   <div className="space-y-6">
     <SectionTitle icon={Code2} title="기술 아키텍처" subtitle="확장 가능한 멀티테넌시 SaaS 구조" />
 
     <Card>
-      <h3 className="font-semibold text-slate-800 mb-4">전체 시스템 아키텍처</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-slate-800">전체 시스템 아키텍처</h3>
+        <span className="text-xs text-slate-400">NestJS 자체 구축 대신 Supabase(BaaS)로 방향 확정</span>
+      </div>
       <div className="space-y-2">
         {[
-          { layer: 'Client Layer', items: ['Admin Web (React)', 'Instructor App (React Native)', 'Parent App (React Native)'], color: 'bg-blue-50 border-blue-200 text-blue-800' },
-          { layer: 'API Gateway', items: ['REST API + WebSocket (실시간)', 'Rate Limiting | JWT Auth | Logging'], color: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
-          { layer: 'Backend Services', items: ['Core API (NestJS)', 'Scheduler Service', 'Notification Service', 'Payment Service'], color: 'bg-purple-50 border-purple-200 text-purple-800' },
-          { layer: 'Data Layer', items: ['PostgreSQL 16 (주 데이터)', 'Redis 7 (세션/캐시)', 'AWS S3 (파일 스토리지)'], color: 'bg-slate-50 border-slate-200 text-slate-700' },
-          { layer: 'External Services', items: ['카카오 알림톡', 'NHN Cloud SMS', '토스페이먼츠', 'FCM / APNs', 'Claude / OpenAI API'], color: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
+          { layer: 'Client Layer', items: ['Admin Web (React 19 + Vite, 완료)', '강사/학부모/기사 앱 — 반응형 웹 미리보기 (완료)', 'React Native 전환 (예정)'], color: 'bg-blue-50 border-blue-200 text-blue-800' },
+          { layer: 'API / Auth Gateway', items: ['Supabase Auto REST + Realtime (PostgREST)', 'Supabase Auth — 이메일/비밀번호 + Google OAuth (완료)'], color: 'bg-indigo-50 border-indigo-200 text-indigo-800' },
+          { layer: 'Backend Logic', items: ['Postgres 트리거 — 가입 시 개인 조직 자동 생성 (완료)', 'RLS 정책 함수 is_org_member() / is_org_owner() (완료)', '커스텀 서버 로직 없음 — 필요 시 Supabase Edge Functions 검토'], color: 'bg-purple-50 border-purple-200 text-purple-800' },
+          { layer: 'Data Layer', items: ['Supabase Postgres — 조직·멤버십·학생·반·결제 스키마 설계 완료', 'React Context가 아직 in-memory 상태 (실시간 쿼리 연동 전)'], color: 'bg-slate-50 border-slate-200 text-slate-700' },
+          { layer: 'External Services (예정)', items: ['카카오 알림톡', 'SMS 게이트웨이', '토스페이먼츠 등 PG', 'FCM / APNs'], color: 'bg-emerald-50 border-emerald-200 text-emerald-800' },
         ].map((l, i) => (
           <div key={l.layer}>
             <div className={`rounded-lg border p-3 ${l.color}`}>
@@ -425,14 +656,14 @@ const SectionTech = () => (
 
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <Card>
-        <h3 className="font-semibold text-slate-800 mb-4">기술 스택 선정 (확장)</h3>
+        <h3 className="font-semibold text-slate-800 mb-4">기술 스택 선정 (현재 확정)</h3>
         <div className="space-y-3">
           {[
-            { cat: 'Web Frontend', items: 'React 19 · TypeScript · Zustand · TanStack Query · FullCalendar' },
-            { cat: 'Mobile App', items: 'React Native + Expo · React Navigation · Expo Notifications' },
-            { cat: 'Backend', items: 'NestJS · Prisma ORM · BullMQ (큐) · Socket.io' },
-            { cat: 'Database', items: 'PostgreSQL 16 · Redis 7 · AWS S3 + CloudFront' },
-            { cat: 'Infrastructure', items: 'AWS ECS Fargate · Docker · GitHub Actions · Sentry' },
+            { cat: 'Web Frontend', items: 'React 19 · TypeScript 5.8 · Vite 6 · Tailwind CSS 4 (사용 중)' },
+            { cat: 'Backend / Auth', items: 'Supabase — PostgreSQL + Auth + Realtime + Storage (사용 중, NestJS 대신 채택)' },
+            { cat: 'Database', items: 'Supabase Postgres · Row Level Security (RLS) 정책' },
+            { cat: 'Mobile App', items: '현재 React 반응형 웹 미리보기 · React Native 전환은 검토 단계' },
+            { cat: 'Infrastructure', items: 'Vercel (프론트엔드 배포 예정) · GitHub (버전 관리, 연동 완료) · Supabase Cloud' },
           ].map(s => (
             <div key={s.cat}>
               <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">{s.cat}</div>
@@ -445,28 +676,28 @@ const SectionTech = () => (
         <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2"><ShieldCheck size={16} className="text-emerald-500" /> 멀티테넌시 & 보안</h3>
         <div className="space-y-3 text-sm text-slate-600">
           <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-            <div className="font-semibold text-emerald-800 mb-1">Row Level Security (RLS)</div>
-            <p className="text-xs">모든 테이블에 academy_id 컬럼 + PostgreSQL RLS 정책으로 테넌트 간 데이터 완전 격리</p>
+            <div className="font-semibold text-emerald-800 mb-1">Row Level Security (RLS) — 구현 완료</div>
+            <p className="text-xs">organizations(조직) · organization_members(멤버십) 테이블 + is_org_member()/is_org_owner() 함수 기반 RLS 정책으로 조직 간 데이터 완전 격리</p>
           </div>
           <ul className="space-y-2">
-            <Check text="전송 중 TLS 1.3 암호화" />
-            <Check text="저장 시 AES-256 암호화" />
-            <Check text="PIPA(개인정보보호법) 완전 준수" />
-            <Check text="JWT + Refresh Token RBAC" />
-            <Check text="정보보안 책임보험 가입 예정" />
+            <Check text="Supabase Auth 세션 기반 인증 — 이메일/비밀번호 + Google 로그인 (완료)" />
+            <Check text="가입 시 개인 프리랜서 조직 자동 생성 트리거 (완료)" />
+            <Check text="조직 멤버십 역할: 원장(owner) / 강사(instructor), 초대(invited)→수락(active) 흐름 (완료)" />
+            <Cross text="카카오/SMS 등 추가 로그인·알림 수단 — 별도 사업자 등록 후 연동 예정" />
+            <Cross text="정보보안 책임보험, 자체 암호화 감사 — 정식 서비스화 시점에 진행 예정" />
           </ul>
         </div>
         <Divider />
         <h3 className="font-semibold text-slate-800 mb-3">SwimSync → ClassSync 마이그레이션</h3>
         <div className="space-y-2">
           {[
-            { phase: 'Phase 1', desc: '현재 (in-memory 상태)' },
-            { phase: 'Phase 2', desc: 'NestJS + PostgreSQL 백엔드 구축' },
-            { phase: 'Phase 3', desc: '수영 하드코딩 → Sport Config Layer' },
-            { phase: 'Phase 4', desc: 'React Native 강사/학부모 앱' },
+            { phase: 'Phase 1', desc: 'Supabase 인증 + 멀티테넌시 스키마 + RLS 설계 — 완료', done: true },
+            { phase: 'Phase 2', desc: 'StoreContext(in-memory) → Supabase 실시간 쿼리 전환 — 진행 예정', done: false },
+            { phase: 'Phase 3', desc: '수영 하드코딩 → Sport Config Layer — 예정', done: false },
+            { phase: 'Phase 4', desc: 'React Native 강사/학부모/기사 앱 — 예정', done: false },
           ].map(p => (
             <div key={p.phase} className="flex items-center gap-2 text-sm">
-              <Badge label={p.phase} color="bg-blue-100 text-blue-700" />
+              <Badge label={p.phase} color={p.done ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'} />
               <span className="text-slate-600">{p.desc}</span>
             </div>
           ))}
@@ -626,9 +857,9 @@ const SectionRoadmap = () => (
         phase: 'Phase 1: Foundation', period: 'M1~M3', color: 'border-blue-300 bg-blue-50',
         badgeColor: 'bg-blue-600 text-white',
         milestones: [
-          { month: 'M1', title: '백엔드 기반 구축', items: ['NestJS 프로젝트 + 모듈 구조 설계', 'PostgreSQL 스키마 (멀티테넌시 포함)', 'JWT 인증 + RBAC', 'Academy 온보딩 API'] },
-          { month: 'M2', title: '핵심 API + 프론트 연결', items: ['원생·강사·스케줄·출결·보강 CRUD API', 'React Context → API 연동 교체', '로그인/회원가입 UI', '학원 초기 설정 온보딩'] },
-          { month: 'M3', title: 'Sport Config + Free 런칭', items: ['종목 설정 레이어 구현', '수영·필라테스 템플릿 완성', '학부모·강사 앱 React Native MVP', 'Free 플랜 퍼블릭 베타 런칭'] },
+          { month: 'M1', title: '백엔드 기반 구축 (완료)', items: ['Supabase 프로젝트 + 스키마 설계 (완료)', 'organizations/organization_members 멀티테넌시 + RLS (완료)', 'Supabase Auth 이메일·Google 로그인 (완료)', '가입 시 개인 조직 자동 생성 트리거 (완료)'] },
+          { month: 'M2', title: '핵심 기능 + 프론트 연결', items: ['로그인/회원가입 UI + 조직 전환(OrgSwitcher) (완료)', '직원 관리·다중 반 등록·수납 원장·페이지 가이드 (완료, 로드맵보다 선반영)', '원생·강사·스케줄·출결·보강 CRUD를 Supabase 실시간 쿼리로 교체 (진행 예정)', 'React Context → Supabase 데이터 레이어 전환 (진행 예정)'] },
+          { month: 'M3', title: 'Sport Config + Free 런칭', items: ['종목 설정 레이어 구현 (예정)', '수영·필라테스 템플릿 완성 (예정)', '학부모·강사·기사 앱 React Native MVP (예정)', 'Free 플랜 퍼블릭 베타 런칭 (예정)'] },
         ],
       },
       {
@@ -784,6 +1015,13 @@ const SectionRisk = () => (
           mitigations: ['복수 PG사 연동 (토스페이먼츠 + NICE페이먼츠)', '장애 시 수동 수납 기록 모드 유지', 'SLA 99.9% 업타임 목표'],
         },
         {
+          title: '보강 시 차량(셔틀) 이용 희망 케이스',
+          level: '저',
+          levelColor: 'bg-emerald-100 text-emerald-700',
+          risks: ['보강은 원칙상 차량 미운행(보호자 직접 등하원)인데, 학부모가 셔틀 이용을 원하는 경우 정책 예외 처리 필요'],
+          mitigations: ['기본 정책은 유지 (임의 경로 추가는 비효율적)', '보강 신청 시 "차량 이용 희망" 선택지 추가 → 기존 노선이 그 시간대에 이미 지나가는 경우에만 관리자가 해당 날짜 1회성으로 배정', '자동 경로 매칭(지리적 인접도 계산)은 추후 단계 — 지금은 관리자 수동 판단으로 처리'],
+        },
+        {
           title: '종목별 전문성 부족',
           level: '저',
           levelColor: 'bg-emerald-100 text-emerald-700',
@@ -905,6 +1143,7 @@ const SECTION_COMPONENTS: Record<string, React.FC> = {
   analysis: SectionAnalysis,
   market:   SectionMarket,
   product:  SectionProduct,
+  spec:     SectionSpec,
   tech:     SectionTech,
   revenue:  SectionRevenue,
   gtm:      SectionGTM,
@@ -927,8 +1166,8 @@ export default function BusinessPlan() {
       <aside className="w-56 flex-shrink-0 bg-white border-r border-slate-200 overflow-y-auto">
         <div className="p-4 border-b border-slate-100">
           <div className="text-xs font-bold text-blue-600 uppercase tracking-widest">ClassSync</div>
-          <div className="text-sm font-semibold text-slate-800 mt-0.5">사업 기획서 v1.0</div>
-          <div className="text-xs text-slate-400 mt-0.5">2026년 4월</div>
+          <div className="text-sm font-semibold text-slate-800 mt-0.5">사업 기획서 v1.1</div>
+          <div className="text-xs text-slate-400 mt-0.5">2026년 8월 업데이트 — 현재 구현 현황 반영</div>
         </div>
         <nav className="p-2">
           {SECTIONS.map((sec, idx) => {

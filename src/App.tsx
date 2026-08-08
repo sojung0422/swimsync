@@ -7,7 +7,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, Users, Smartphone, UserCircle, LogOut,
   FileText, Waves, Bell, Car, CreditCard, Truck, Sparkles,
-  RefreshCw, IdCard, HelpCircle
+  RefreshCw, IdCard, HelpCircle, MessageSquareText, CalendarClock
 } from 'lucide-react';
 import AdminSchedule from './components/AdminSchedule';
 import AdminStudents from './components/AdminStudents';
@@ -16,6 +16,8 @@ import AdminVehicles from './components/AdminVehicles';
 import AdminPayments from './components/AdminPayments';
 import AdminMakeups from './components/AdminMakeups';
 import AdminStaff from './components/AdminStaff';
+import AdminCounseling from './components/AdminCounseling';
+import AdminScheduleChanges from './components/AdminScheduleChanges';
 import InstructorApp from './components/InstructorApp';
 import ParentApp from './components/ParentApp';
 import DriverApp from './components/DriverApp';
@@ -36,8 +38,10 @@ const navGroups = [
       { id: 'schedule',      icon: LayoutDashboard, text: '스케줄 관리' },
       { id: 'students',      icon: Users,            text: '강습생 관리' },
       { id: 'staff',         icon: IdCard,           text: '직원 관리' },
+      { id: 'counseling',    icon: MessageSquareText, text: '상담 관리' },
       { id: 'payments',      icon: CreditCard,       text: '결제 관리' },
       { id: 'makeups',       icon: RefreshCw,        text: '보강 요청 관리' },
+      { id: 'schedule-changes', icon: CalendarClock, text: '일정 변경 요청' },
       { id: 'notifications', icon: Bell,             text: '공지 발송' },
       { id: 'vehicles',      icon: Car,              text: '차량 관리' },
     ],
@@ -59,7 +63,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'payments' | 'makeups' | 'notifications' | 'vehicles'
+  | 'schedule' | 'students' | 'staff' | 'counseling' | 'payments' | 'makeups' | 'schedule-changes' | 'notifications' | 'vehicles'
   | 'instructor-app' | 'parent-app' | 'driver-app'
   | 'business-plan';
 
@@ -71,7 +75,8 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '주간/월간 보기', description: '상단에서 보기 단위를 바꿔 이번 주 또는 이번 달 일정을 확인해요.' },
       { label: '강사 필터', description: '특정 강사의 수업만 골라서 볼 수 있어요.' },
       { label: '일정 추가', description: '특강·휴강·메모 등 스케줄 외 일정을 등록해요.' },
-      { label: '수업 칸 클릭', description: '해당 시간대에 배정된 학생 목록과 출결(정규/보강/결석) 상태를 확인해요.' },
+      { label: '수업 칸 클릭', description: '해당 시간대에 배정된 학생 목록, 정원(N/N명), 출결(정규/보강/결석) 상태, 차량 등하원 정보를 확인해요.' },
+      { label: '보강 취소', description: '정원이 다 찼는데 신규·체험 문의가 그 시간대에 들어온 경우, 보강 학생 줄의 "보강 취소" 버튼으로 자리를 비울 수 있어요. 취소하면 학부모 앱·강사 앱에 벨소리와 함께 알림이 가고, 학부모는 보강을 다시 신청해야 해요.' },
       { label: '설정(톱니바퀴)', description: '학원명·지점명, 지정 강습 시간대를 변경해요. 강사 등록·수정은 "직원 관리"에서 해요.' },
     ],
   },
@@ -99,6 +104,18 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '삭제', description: '더 이상 소속되지 않은 직원을 목록에서 제거해요.' },
     ],
   },
+  counseling: {
+    title: '상담 관리',
+    description: '강사별 담당 강습생의 정기 상담 현황과 상담 일지를 확인·관리하는 화면이에요. 강사 앱에서 강사가 작성한 상담 기록이 여기에 그대로 연동돼요.',
+    features: [
+      { label: '정기 상담 주기 설정', description: '1개월/2개월/3개월 중 골라서 우리 학원의 정기 상담 주기를 정해요. 이 설정에 따라 "다음 상담 예정일"이 자동 계산돼요.' },
+      { label: '상담 필요만 보기', description: '주기가 지났는데 아직 상담을 안 한 학생만 걸러서 볼 수 있어요.' },
+      { label: '월별 보기', description: '상단 화살표로 달을 넘기면서 그 달에 진행된 상담만 모아 볼 수 있어요. "상담 필요/완료" 상태는 항상 오늘 날짜 기준으로 최신 상태를 보여줘요.' },
+      { label: '강사별 그룹', description: '강사마다 담당 강습생 목록과 각자의 최근 상담일·다음 예정일·상태(상담 완료/상담 필요)를 보여줘요.' },
+      { label: '펼쳐서 이력 보기', description: '학생을 누르면 지금까지의 상담 기록(일자+내용)이 전부 펼쳐져요.' },
+      { label: '상담 기록 추가', description: '관리자도 직접 상담 기록을 추가할 수 있어요 (강사 앱에서 강사가 작성한 기록과 동일하게 저장돼요).' },
+    ],
+  },
   payments: {
     title: '결제 관리',
     description: '수강 플랜(요금제)을 설계하고, 전체 결제 현황과 보강 정책을 관리하는 화면이에요.',
@@ -118,6 +135,17 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '보강 배정', description: '같은 구분(유치부/정규반/성인반)의 빈자리 중에서 골라 보강 일정을 확정해요.' },
       { label: '이월 처리', description: '보강 대신 다음 달 결제 금액에서 차감하는 방식으로 처리해요.' },
       { label: '거절', description: '요청을 승인하지 않고 반려해요.' },
+    ],
+  },
+  'schedule-changes': {
+    title: '일정 변경 요청 관리',
+    description: '학부모 앱에서 신청한 요일·시간·수강 횟수 변경 요청을 검토하고 승인하는 화면이에요. 승인하면 그 학생의 반 등록정보가 실제로 바뀌어요.',
+    features: [
+      { label: '재등록 기간 설정', description: '매월 며칠부터 며칠까지를 "재등록 기간"으로 할지 학원마다 다르게 설정해요. 주 1회→주 2회처럼 수강 횟수가 바뀌는 요청은 이 기간에만 학부모가 신청할 수 있어요 (같은 횟수에서 요일·시간만 바꾸는 건 언제든 신청 가능해요).' },
+      { label: '승인 대기 / 처리 완료 탭', description: '아직 처리 안 한 요청과 처리된 요청을 나눠서 봐요.' },
+      { label: '변경 전 → 변경 후 비교', description: '카드에서 요청 전/후 요일·시간·수강권을 한눈에 비교해요.' },
+      { label: '승인', description: '누르면 그 학생의 반 등록정보(요일/시간/수강권)에 바로 반영돼요.' },
+      { label: '거절', description: '요청을 반려해요. 반영되지 않아요.' },
     ],
   },
   notifications: {
@@ -150,6 +178,8 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '보강·이월 요청 탭', description: '자기 학생의 보강 신청 현황을 확인해요.' },
       { label: '진도 및 특이사항 기록하기', description: '학생별로 오늘 배운 내용이나 특이사항을 기록해요. 학부모 앱 "나의 진도"에 바로 반영돼요.' },
       { label: '새로 배정된 보강 학생 알림', description: '보강으로 새로 내 수업에 들어온 학생이 있으면 상단에 알려줘요.' },
+      { label: '보강 취소 알림', description: '학원이 자리 사정(신규·체험 문의 등)으로 내가 맡을 보강을 취소하면, 오늘 일정 탭 상단에 벨소리와 함께 알림이 떠요.' },
+      { label: '메시지 탭', description: '학생(학부모)별 채팅 목록이에요. 눌러서 1:1로 메시지를 주고받고, 전화 버튼으로 실제 통화도 걸 수 있어요. 통화 후에는 "통화 메모"를 남겨 대화창에 기록할 수 있어요.' },
     ],
   },
   'parent-app': {
@@ -157,9 +187,12 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
     description: '학부모가 실제로 보게 될 모바일 화면을 미리 확인할 수 있어요.',
     features: [
       { label: '홈 탭', description: '다음 강습 일정, 이번 달 출석 현황, 나의 진도(강사 기록)를 확인해요.' },
+      { label: '내 수업 정보', description: '지금 다니는 반의 요일·시간·수강권을 보여줘요. "변경 신청"을 누르면 학원에 요청을 보내고, 학원이 확인 후 승인하면 실제로 반영돼요. 같은 주당 횟수 내 요일·시간 변경은 언제든 가능하지만, 주 1회→주 2회처럼 횟수 자체를 바꾸는 신청은 학원이 정한 재등록 기간에만 할 수 있어요.' },
+      { label: '보강 취소 알림', description: '잡아둔 보강이 학원 사정(신규·체험 문의 등)으로 취소되면 홈 화면 상단에 벨소리와 함께 알림이 뜨고, "보강 다시 신청하기" 버튼으로 바로 재신청 화면으로 이동할 수 있어요.' },
       { label: '결제 현황', description: '미결제 항목을 모아 보여주고, "결제하기" 버튼으로 카드/카카오페이/네이버페이 중 골라 결제해요 (현재는 시뮬레이션이에요).' },
       { label: '결석 탭', description: '달력에서 날짜를 골라 결석을 신청해요.' },
       { label: '보강 신청 탭', description: '결석일 → 보강 희망일 → 시간 순서로 골라 신청해요. 같은 구분(유치부/정규반/성인반)의 자리만 보여줘요.' },
+      { label: '메시지 탭', description: '담당 강사와 1:1로 채팅해요. 전화 버튼으로 실제 통화도 걸 수 있고, 통화 후 "통화 메모"를 남기면 대화창에 함께 기록돼요.' },
     ],
   },
   'driver-app': {
@@ -244,8 +277,10 @@ function AppContent() {
       case 'schedule':       return <AdminSchedule />;
       case 'students':       return <AdminStudents />;
       case 'staff':          return <AdminStaff />;
+      case 'counseling':     return <AdminCounseling />;
       case 'payments':       return <AdminPayments />;
       case 'makeups':        return <AdminMakeups />;
+      case 'schedule-changes': return <AdminScheduleChanges />;
       case 'notifications':  return <AdminNotifications />;
       case 'vehicles':       return <AdminVehicles />;
       case 'instructor-app': return <InstructorApp />;

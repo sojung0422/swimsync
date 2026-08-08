@@ -1,9 +1,15 @@
-import { useState } from 'react';
-import { useStore, getClassDivision, getAllEnrollments } from '../store/StoreContext';
+import { useState, useEffect, useRef } from 'react';
+import {
+  useStore, getClassDivision, getAllEnrollments, parseSessionsPerWeek, isWithinReRegistrationPeriod,
+} from '../store/StoreContext';
+import type { Enrollment } from '../store/StoreContext';
 import {
   Calendar as CalendarIcon, RefreshCw, Bell, Info, MapPin, Upload, CheckCircle, XCircle,
   Wallet, CalendarClock, Car, ChevronLeft, ChevronRight, TrendingUp, X as XIcon, CreditCard, ShieldAlert,
+  MessageCircle, Clock3, AlertTriangle, BellRing,
 } from 'lucide-react';
+import ChatThread from './ChatThread';
+import { playBellSound } from '../lib/playBellSound';
 import { format, addDays, addMonths, startOfMonth, startOfWeek, isAfter, isSameMonth, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
@@ -52,12 +58,115 @@ function MiniCalendar({ month, onMonthChange, markedDates, selectedDate, onSelec
   );
 }
 
+// ─── 요일·시간·수강 횟수 변경 신청 모달 ────────────────────────────────────────
+
+const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
+const PASS_TYPES = ['주 1회', '주 2회', '주 3회', '주 5회'];
+
+function ScheduleChangeModal({ studentId, enrollment, lessonClassName, onClose }: {
+  studentId: string; enrollment: Enrollment; lessonClassName: string; onClose: () => void;
+}) {
+  const { settings, submitScheduleChangeRequest } = useStore();
+  const [days, setDays] = useState<string[]>(enrollment.regularDays);
+  const [time, setTime] = useState(enrollment.regularTime);
+  const [passType, setPassType] = useState(enrollment.passType);
+  const [submitted, setSubmitted] = useState(false);
+
+  const toggleDay = (d: string) => setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+
+  const isFrequencyChange = parseSessionsPerWeek(enrollment.passType) !== parseSessionsPerWeek(passType);
+  const inPeriod = isWithinReRegistrationPeriod(settings.reRegistrationPeriod);
+  const blocked = isFrequencyChange && !inPeriod;
+  const noChange = days.length === enrollment.regularDays.length
+    && days.every(d => enrollment.regularDays.includes(d))
+    && time === enrollment.regularTime && passType === enrollment.passType;
+
+  const handleSubmit = () => {
+    if (blocked || noChange || days.length === 0) return;
+    submitScheduleChangeRequest({
+      studentId, enrollmentId: enrollment.id,
+      currentDays: enrollment.regularDays, currentTime: enrollment.regularTime, currentPassType: enrollment.passType,
+      requestedDays: days, requestedTime: time, requestedPassType: passType,
+    });
+    setSubmitted(true);
+    setTimeout(onClose, 1400);
+  };
+
+  return (
+    <div className="absolute inset-0 bg-black/50 z-50 flex flex-col justify-end">
+      <div className="bg-white rounded-t-3xl p-6 max-h-[88%] flex flex-col animate-slide-up-modal overflow-y-auto">
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-lg font-bold text-slate-800">요일·시간 변경 신청</h3>
+          <button onClick={onClose} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
+        </div>
+
+        {submitted ? (
+          <div className="py-10 text-center">
+            <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
+            <p className="text-slate-700 font-semibold">변경 요청을 보냈어요</p>
+            <p className="text-slate-400 text-sm mt-1">학원에서 확인 후 반영해드려요.</p>
+          </div>
+        ) : (
+          <>
+            <p className="text-slate-400 text-xs mb-4">{lessonClassName} · 현재 {enrollment.regularDays.join('·')} {enrollment.regularTime} · {enrollment.passType}</p>
+
+            <div className="mb-4">
+              <p className="text-slate-500 text-xs font-semibold mb-2">요일 선택</p>
+              <div className="flex gap-1.5 flex-wrap">
+                {DAYS.map(d => (
+                  <button key={d} onClick={() => toggleDay(d)}
+                    className={`flex-1 min-w-[38px] py-2.5 rounded-xl text-sm font-medium border transition-colors ${days.includes(d) ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-slate-500 text-xs font-semibold mb-2">시간</p>
+              <select value={time} onChange={e => setTime(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors bg-white">
+                {settings.designatedTimes.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-slate-500 text-xs font-semibold mb-2">수강권 (주당 횟수)</p>
+              <select value={passType} onChange={e => setPassType(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors bg-white">
+                {PASS_TYPES.map(p => <option key={p}>{p}</option>)}
+              </select>
+            </div>
+
+            {isFrequencyChange && (
+              <div className={`rounded-xl px-3.5 py-3 mb-4 flex items-start gap-2 text-xs ${inPeriod ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                {inPeriod ? <Clock3 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+                <p>
+                  수강 횟수를 바꾸는 요청이라 <strong>재등록 기간(매월 {settings.reRegistrationPeriod.startDay}일~{settings.reRegistrationPeriod.endDay}일)</strong>에만 신청할 수 있어요.
+                  {inPeriod ? ' 지금은 재등록 기간이라 바로 신청할 수 있어요.' : ' 지금은 재등록 기간이 아니라서, 다음 재등록 기간에 다시 신청해주세요.'}
+                </p>
+              </div>
+            )}
+
+            <button onClick={handleSubmit} disabled={blocked || noChange || days.length === 0}
+              className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors">
+              변경 신청하기
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function ParentApp() {
   const {
     classes, instructors, students, events, settings, paymentPlans, paymentRecords, lessonClasses, notifications,
-    rescheduleClass, markAbsent, makeupRequests, submitMakeupRequest, markPaymentPaid,
+    rescheduleClass, markAbsent, makeupRequests, submitMakeupRequest, markPaymentPaid, scheduleChangeRequests,
+    makeupCancellations,
   } = useStore();
-  const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
+  const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
   const [showCheckout, setShowCheckout] = useState(false);
@@ -83,8 +192,23 @@ export default function ParentApp() {
 
   const studentId = 's1';
   const student = students.find(s => s.id === studentId);
+  const myInstructor = student ? instructors.find(i => i.id === student.instructorId) : undefined;
   const today = new Date();
   const makeupSettings = settings.makeupSettings;
+
+  // 학원이 자리 사정(신규/체험 문의 등)으로 취소한 보강 — 벨소리 알림 + 재신청 안내
+  const myCancelledMakeups = makeupCancellations.filter(n => n.studentId === studentId);
+  const bellPlayedRef = useRef<Set<string>>(new Set());
+  const [dismissedCancelIds, setDismissedCancelIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const unplayed = myCancelledMakeups.filter(r => !bellPlayedRef.current.has(r.id));
+    if (unplayed.length > 0) {
+      playBellSound();
+      unplayed.forEach(r => bellPlayedRef.current.add(r.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myCancelledMakeups.map(r => r.id).join(',')]);
+  const visibleCancelledMakeups = myCancelledMakeups.filter(r => !dismissedCancelIds.has(r.id));
 
   const requiresDoc = student?.category === 'adult'
     ? makeupSettings.adultRequiresDocument
@@ -237,6 +361,17 @@ export default function ParentApp() {
         </div>
 
         {/* App Content */}
+        {activeTab === 'messages' ? (
+          <div className="flex-1 overflow-hidden pb-20">
+            <ChatThread
+              studentId={studentId}
+              viewerRole="parent"
+              counterpartName={myInstructor?.name ?? '담당 강사'}
+              counterpartSubtitle={`${student?.studentName ?? ''} 학생 담당 강사`}
+              counterpartPhone={myInstructor?.phone}
+            />
+          </div>
+        ) : (
         <div className="flex-1 overflow-y-auto pb-20 bg-slate-50">
           {/* Header */}
           <div className="bg-white px-6 pt-4 pb-4 flex justify-between items-center sticky top-0 z-20 shadow-sm">
@@ -257,6 +392,32 @@ export default function ParentApp() {
           </div>
 
           <div className="px-5 py-5 space-y-5">
+            {/* 보강 취소 알림 (학원이 자리 사정으로 취소) */}
+            {visibleCancelledMakeups.map(r => {
+              const cls = classes.find(c => c.id === r.classId);
+              return (
+                <div key={r.id} className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-start gap-3">
+                  <BellRing className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-red-700 text-sm font-bold">보강 일정이 취소됐어요</p>
+                    <p className="text-red-600 text-xs mt-1 leading-relaxed">
+                      {cls ? `${format(parseISO(cls.date), 'M월 d일 (E)', { locale: ko })} ${cls.time}` : '예정됐던'} 보강이 학원 사정으로 취소됐어요. 보강 일정을 다시 잡아주세요.
+                    </p>
+                    <div className="flex gap-2 mt-2.5">
+                      <button onClick={() => { setDismissedCancelIds(prev => new Set(prev).add(r.id)); openReschedule(); }}
+                        className="text-xs font-semibold text-white bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded-lg transition-colors">
+                        보강 다시 신청하기
+                      </button>
+                      <button onClick={() => setDismissedCancelIds(prev => new Set(prev).add(r.id))}
+                        className="text-xs font-semibold text-red-500 hover:text-red-700 px-2 py-1.5 transition-colors">
+                        확인했어요
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+
             {/* Notice */}
             {events.filter(e => e.type === 'notice').slice(0, 1).map(notice => (
               <div key={notice.id} className="rounded-2xl p-5 text-white shadow-md relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#0891b2,#3b82f6)' }}>
@@ -311,6 +472,37 @@ export default function ParentApp() {
                 </div>
               )}
             </div>
+
+            {/* 내 수업 정보 — 요일/시간/수강권 변경 신청 */}
+            {student && (
+              <div>
+                <h2 className="text-[15px] font-bold text-slate-800 mb-3">내 수업 정보</h2>
+                <div className="space-y-2">
+                  {getAllEnrollments(student).filter(e => e.status === 'active').map(enr => {
+                    const lc = lessonClasses.find(l => l.id === enr.lessonClassId);
+                    const pendingReq = scheduleChangeRequests.find(r => r.studentId === studentId && r.enrollmentId === enr.id && r.status === 'pending');
+                    return (
+                      <div key={enr.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-800 text-sm font-semibold">{lc?.name ?? '반 정보 없음'}</p>
+                            <p className="text-slate-400 text-xs mt-0.5">{enr.regularDays.join('·')} {enr.regularTime} · {enr.passType}</p>
+                          </div>
+                          {pendingReq ? (
+                            <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg">승인 대기중</span>
+                          ) : (
+                            <button onClick={() => setScheduleChangeTarget(enr)}
+                              className="text-xs font-semibold text-cyan-700 bg-cyan-50 px-2.5 py-1.5 rounded-lg hover:bg-cyan-100 transition-colors">
+                              변경 신청
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Attendance Summary */}
             <div>
@@ -427,6 +619,7 @@ export default function ParentApp() {
             </div>
           </div>
         </div>
+        )}
 
         {/* ── 공지/알림 패널 ── */}
         {showNotifications && (
@@ -451,6 +644,16 @@ export default function ParentApp() {
               </div>
             </div>
           </div>
+        )}
+
+        {/* ── 요일·시간·수강 횟수 변경 신청 모달 ── */}
+        {scheduleChangeTarget && (
+          <ScheduleChangeModal
+            studentId={studentId}
+            enrollment={scheduleChangeTarget}
+            lessonClassName={lessonClasses.find(l => l.id === scheduleChangeTarget.lessonClassId)?.name ?? ''}
+            onClose={() => setScheduleChangeTarget(null)}
+          />
         )}
 
         {/* ── 결석 신청 모달 (달력) ── */}
@@ -711,6 +914,11 @@ export default function ParentApp() {
             className={`flex flex-col items-center gap-1 ${activeTab === 'absence' ? 'text-cyan-600' : 'text-slate-400'}`}>
             <XCircle className="w-6 h-6" />
             <span className="text-[10px] font-medium">결석</span>
+          </button>
+          <button onClick={() => setActiveTab('messages')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'messages' ? 'text-cyan-600' : 'text-slate-400'}`}>
+            <MessageCircle className="w-6 h-6" />
+            <span className="text-[10px] font-medium">메시지</span>
           </button>
         </div>
       </div>
