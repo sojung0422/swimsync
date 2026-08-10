@@ -9,31 +9,47 @@ export default function DriverApp() {
   const [activeTab, setActiveTab] = useState<'route' | 'students'>('route');
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
 
-  // Mock: logged in as driver d1
+  // Mock: logged in as driver d1 — 기사 한 명이 여러 차량(노선)을 맡을 수도 있어 전체를 가져옴
   const driverId = 'd1';
   const driver = drivers.find(d => d.id === driverId);
-  const vehicle = vehicles.find(v => v.driverId === driverId);
+  const myVehicles = vehicles.filter(v => v.driverId === driverId);
+  const vehicle = myVehicles[0]; // 상단 요약 카드용 대표 차량
 
   const today = format(new Date(), 'yyyy-MM-dd');
   const todayDisplay = format(new Date(), 'M월 d일 (E)', { locale: ko });
 
-  // Students assigned to this vehicle
-  const assignedStudents = vehicle ? students.filter(s => vehicle.studentIds.includes(s.id)) : [];
+  // Students assigned to this driver's vehicles
+  const assignedStudents = students.filter(s => myVehicles.some(v => v.studentIds.includes(s.id)));
 
   // Today's class sessions for assigned students
   const todayClasses = classes.filter(c => c.date === today);
 
-  // 보강 수업은 차량이 운행되지 않으므로(정규 수업만 픽업 대상), 정규 수강(studentIds)으로만 오늘 탑승자를 계산
-  const allTodayStudents = assignedStudents.filter(s => {
-    const hasRegularClass = todayClasses.some(c => c.studentIds.includes(s.id));
-    const isAbsent = todayClasses.some(c => c.absentStudentIds.includes(s.id));
-    return hasRegularClass && !isAbsent;
-  });
+  const isRegularToday = (s: typeof students[number]) => todayClasses.some(c => c.studentIds.includes(s.id));
+  const isAbsentToday = (s: typeof students[number]) => todayClasses.some(c => c.absentStudentIds.includes(s.id));
 
-  // 오늘 보강으로 결석 처리된(=정규 픽업 대상에서 빠진) 우리 차량 학생 — 참고용 안내
-  const makeupAbsentTodayCount = assignedStudents.filter(s =>
-    todayClasses.some(c => c.studentIds.includes(s.id) && c.absentStudentIds.includes(s.id))
-  ).length;
+  // 보강 수업은 차량이 운행되지 않으므로(정규 수업만 픽업 대상), 정규 수강(studentIds)으로만 오늘 탑승자를 계산
+  const allTodayStudents = assignedStudents.filter(s => isRegularToday(s) && !isAbsentToday(s));
+
+  // 오늘 보강으로 결석 처리된(=정규 픽업 대상에서 빠진) 우리 차량 학생 — 목록에는 빨간색으로 표시하고, 위에는 참고 안내만
+  const makeupAbsentTodayCount = assignedStudents.filter(s => isRegularToday(s) && isAbsentToday(s)).length;
+
+  // 픽업 순서: 시간별(출발 시간) → 노선별(차량, 실제 방문 순서 = 배정 순서) → 그 노선에서 태워야 하는 아이들 순
+  const timeGroups = Object.values(
+    myVehicles.reduce<Record<string, typeof myVehicles>>((acc, v) => {
+      (acc[v.departureTime] ??= []).push(v);
+      return acc;
+    }, {})
+  )
+    .map(vehiclesAtTime => ({
+      time: vehiclesAtTime[0].departureTime,
+      routes: vehiclesAtTime.map(v => ({
+        vehicle: v,
+        // studentIds 배열 순서 = 그 노선에서 실제로 태우는 순서(관리자가 차량 관리에서 정한 순서)
+        present: v.studentIds.map(id => students.find(s => s.id === id)).filter((s): s is NonNullable<typeof s> => Boolean(s) && isRegularToday(s!) && !isAbsentToday(s!)),
+        absent: v.studentIds.map(id => students.find(s => s.id === id)).filter((s): s is NonNullable<typeof s> => Boolean(s) && isRegularToday(s!) && isAbsentToday(s!)),
+      })),
+    }))
+    .sort((a, b) => a.time.localeCompare(b.time));
 
   return (
     <div className="flex items-center justify-center h-full bg-slate-100 p-8">
@@ -61,10 +77,12 @@ export default function DriverApp() {
               </div>
             </div>
             {vehicle && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">{vehicle.vehicleNumber}</span>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="bg-white/20 text-white text-xs px-2.5 py-1 rounded-full font-medium">
+                  {myVehicles.length > 1 ? `차량 ${myVehicles.length}대` : vehicle.vehicleNumber}
+                </span>
                 <span className="text-white/80 text-xs flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {vehicle.route}
+                  <MapPin className="w-3 h-3" /> {myVehicles.length > 1 ? myVehicles.map(v => v.route).join(' · ') : vehicle.route}
                 </span>
               </div>
             )}
@@ -97,9 +115,9 @@ export default function DriverApp() {
                 </div>
                 <div className="text-right">
                   <p className="text-slate-500 text-xs">출발 시간</p>
-                  <p className="text-slate-800 font-bold text-base mt-0.5 flex items-center gap-1">
+                  <p className="text-slate-800 font-bold text-base mt-0.5 flex items-center gap-1 justify-end">
                     <Clock className="w-3.5 h-3.5 text-cyan-600" />
-                    {vehicle?.departureTime ?? '--:--'}
+                    {timeGroups.length > 0 ? timeGroups.map(g => g.time).join(', ') : '--:--'}
                   </p>
                 </div>
               </div>
@@ -109,58 +127,85 @@ export default function DriverApp() {
                 <div className="bg-slate-100 border border-slate-200 rounded-2xl p-3.5 flex items-start gap-2">
                   <Info className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
                   <p className="text-slate-500 text-xs">
-                    오늘 원래 탑승 예정이던 학생 중 <strong className="text-slate-700">{makeupAbsentTodayCount}명</strong>이 보강으로 결석 처리되어 픽업 목록에서 빠졌어요.
+                    오늘 원래 탑승 예정이던 학생 중 <strong className="text-slate-700">{makeupAbsentTodayCount}명</strong>이 보강으로 결석 처리됐어요 (아래 목록에 빨간색으로 표시).
                     <strong className="text-slate-700"> 보강 수업은 차량이 운행되지 않아요</strong> — 보호자가 직접 등하원해요.
                   </p>
                 </div>
               )}
 
-              {/* ── Regular pickup list ── */}
-              <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Navigation className="w-4 h-4 text-cyan-600" />
-                    <span className="text-slate-700 text-sm font-semibold">픽업 순서</span>
-                  </div>
-                  <span className="text-slate-400 text-xs">{allTodayStudents.length}명</span>
+              {/* ── 픽업 순서: 시간별 → 노선별(실제 방문 순서) → 그 노선에서 태워야 하는 아이들 순 ── */}
+              {timeGroups.length === 0 ? (
+                <div className="bg-white rounded-2xl border border-slate-200 py-8 text-center text-slate-400 text-sm">
+                  배정된 노선이 없습니다.
                 </div>
-                {allTodayStudents.length === 0 ? (
-                  <div className="py-8 text-center text-slate-400 text-sm">
-                    오늘 탑승 예정 학생이 없습니다.
-                  </div>
-                ) : (
-                  <div className="divide-y divide-slate-50">
-                    {allTodayStudents.map((s, idx) => {
-                      const isExpanded = expandedStudentId === s.id;
-                      return (
-                        <div key={s.id}>
-                          <button onClick={() => setExpandedStudentId(isExpanded ? null : s.id)}
-                            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
-                            <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
-                              {idx + 1}
-                            </div>
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                              {s.studentName[0]}
-                            </div>
-                            <div className="flex-1 min-w-0 text-left">
-                              <p className="text-slate-800 text-sm font-medium">{s.studentName}</p>
-                              <p className="text-slate-400 text-xs truncate">{s.address || '주소 없음'}</p>
-                            </div>
-                            <ChevronRight className={`w-4 h-4 text-slate-300 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
-                          </button>
-                          {isExpanded && (
-                            <div className="px-4 pb-3 -mt-1 animate-fade-up">
-                              <a href={`tel:${getPrimaryContactPhone(s)}`} className="flex items-center gap-2 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2.5 text-cyan-700 text-sm font-semibold">
-                                <Phone className="w-3.5 h-3.5" /> {getPrimaryContactPhone(s) || '연락처 없음'} (탭하여 전화)
-                              </a>
-                            </div>
-                          )}
+              ) : (
+                timeGroups.map(group => (
+                  <div key={group.time} className="space-y-2">
+                    <div className="flex items-center gap-1.5 px-1">
+                      <Clock className="w-3.5 h-3.5 text-cyan-600" />
+                      <span className="text-slate-700 text-sm font-bold">{group.time} 출발</span>
+                    </div>
+                    {group.routes.map(({ vehicle: v, present, absent }) => (
+                      <div key={v.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Navigation className="w-4 h-4 text-cyan-600 shrink-0" />
+                            <span className="text-slate-700 text-sm font-semibold truncate">{v.route || v.vehicleNumber}</span>
+                          </div>
+                          <span className="text-slate-400 text-xs shrink-0">{present.length}명</span>
                         </div>
-                      );
-                    })}
+                        {present.length === 0 && absent.length === 0 ? (
+                          <div className="py-6 text-center text-slate-400 text-sm">오늘 탑승 예정 학생이 없습니다.</div>
+                        ) : (
+                          <div className="divide-y divide-slate-50">
+                            {present.map((s, idx) => {
+                              const isExpanded = expandedStudentId === s.id;
+                              return (
+                                <div key={s.id}>
+                                  <button onClick={() => setExpandedStudentId(isExpanded ? null : s.id)}
+                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-50 transition-colors">
+                                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">
+                                      {idx + 1}
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                                      {s.studentName[0]}
+                                    </div>
+                                    <div className="flex-1 min-w-0 text-left">
+                                      <p className="text-slate-800 text-sm font-medium">{s.studentName}</p>
+                                      <p className="text-slate-400 text-xs truncate">{s.address || '주소 없음'}</p>
+                                    </div>
+                                    <ChevronRight className={`w-4 h-4 text-slate-300 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                                  </button>
+                                  {isExpanded && (
+                                    <div className="px-4 pb-3 -mt-1 animate-fade-up">
+                                      <a href={`tel:${getPrimaryContactPhone(s)}`} className="flex items-center gap-2 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2.5 text-cyan-700 text-sm font-semibold">
+                                        <Phone className="w-3.5 h-3.5" /> {getPrimaryContactPhone(s) || '연락처 없음'} (탭하여 전화)
+                                      </a>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                            {absent.map(s => (
+                              <div key={s.id} className="flex items-center gap-3 px-4 py-3 bg-red-50">
+                                <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xs font-bold shrink-0">✕</div>
+                                <div className="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center text-red-500 text-xs font-bold shrink-0">
+                                  {s.studentName[0]}
+                                </div>
+                                <div className="flex-1 min-w-0 text-left">
+                                  <p className="text-red-500 text-sm font-medium line-through decoration-red-300">{s.studentName}</p>
+                                  <p className="text-red-400 text-xs truncate">보강으로 결석 (차량 미운행)</p>
+                                </div>
+                                <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full shrink-0">결석</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                )}
-              </div>
+                ))
+              )}
             </div>
           )}
 
@@ -178,21 +223,27 @@ export default function DriverApp() {
                   <div className="py-8 text-center text-slate-400 text-sm">배정된 학생이 없습니다.</div>
                 ) : (
                   <div className="divide-y divide-slate-50">
-                    {assignedStudents.map(s => (
-                      <div key={s.id} className="flex items-center gap-3 px-4 py-3.5">
-                        <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
-                          {s.studentName[0]}
+                    {assignedStudents.map(s => {
+                      const myRoute = myVehicles.find(v => v.studentIds.includes(s.id));
+                      return (
+                        <div key={s.id} className="flex items-center gap-3 px-4 py-3.5">
+                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                            {s.studentName[0]}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-slate-800 text-sm font-semibold">{s.studentName}</p>
+                            <p className="text-slate-400 text-xs truncate">{s.address || '주소 없음'}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {myVehicles.length > 1 && myRoute && (
+                              <p className="text-cyan-600 text-[11px] font-medium">{myRoute.route || myRoute.vehicleNumber} · {myRoute.departureTime}</p>
+                            )}
+                            <p className="text-slate-600 text-xs">{s.regularDays.join('·')}</p>
+                            <p className="text-slate-400 text-xs">{s.regularTime}</p>
+                          </div>
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-slate-800 text-sm font-semibold">{s.studentName}</p>
-                          <p className="text-slate-400 text-xs truncate">{s.address || '주소 없음'}</p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-slate-600 text-xs">{s.regularDays.join('·')}</p>
-                          <p className="text-slate-400 text-xs">{s.regularTime}</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -211,8 +262,12 @@ export default function DriverApp() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-slate-500 text-xs">{vehicle?.vehicleNumber}</p>
-                    <p className="text-cyan-600 text-xs font-medium">{vehicle?.route}</p>
+                    {myVehicles.map(v => (
+                      <p key={v.id} className="text-xs">
+                        <span className="text-slate-500">{v.vehicleNumber}</span>{' '}
+                        <span className="text-cyan-600 font-medium">{v.route}</span>
+                      </p>
+                    ))}
                   </div>
                 </div>
               </div>

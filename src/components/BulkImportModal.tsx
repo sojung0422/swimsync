@@ -17,6 +17,7 @@ function draftToStudentInput(draft: ImportedStudentDraft): Omit<Student, 'id' | 
     age: draft.age, region: '', passType: '주 2회', totalClasses: 8,
     rescheduleLimit: 2, notes: draft.notes, progress: '',
     address: draft.address, vehicleId: '', category: 'child', paymentPlanId: '', division: '정규반',
+    pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   };
 }
 

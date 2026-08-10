@@ -214,7 +214,11 @@ function CounselingScreen({ studentId, instructorId, onClose }: { studentId: str
 }
 
 export default function InstructorApp() {
-  const { classes, students, instructors, makeupRequests, messages, settings, counselingRecords, makeupCancellations } = useStore();
+  const {
+    classes, students, instructors, makeupRequests, messages, settings, counselingRecords, makeupCancellations,
+    withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
+    returnRequests, approveReturnRequest, rejectReturnRequest,
+  } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages'>('schedule');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDoc, setShowDoc] = useState<string | null>(null);
@@ -237,6 +241,19 @@ export default function InstructorApp() {
   const myStudentIds = new Set(students.filter(s => teachesStudent(instructorId, s)).map(s => s.id));
   const myRequests = makeupRequests.filter(r => myStudentIds.has(r.studentId)).slice().reverse();
   const myPendingRequestCount = myRequests.filter(r => r.status === 'pending').length;
+
+  // 내 강습생의 퇴원/복귀 요청 — 확인해야 최종 처리(퇴원) 또는 신규로 받기(복귀)가 가능함
+  const myPendingWithdrawals = withdrawalRequests.filter(r => myStudentIds.has(r.studentId) && r.status === 'pending');
+  const myPendingReturns = returnRequests.filter(r => myStudentIds.has(r.studentId) && r.status === 'pending');
+  const lifecycleBellRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const unplayed = [...myPendingWithdrawals, ...myPendingReturns].filter(r => !lifecycleBellRef.current.has(r.id));
+    if (unplayed.length > 0) {
+      playBellSound();
+      unplayed.forEach(r => lifecycleBellRef.current.add(r.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myPendingWithdrawals.map(r => r.id).join(','), myPendingReturns.map(r => r.id).join(',')]);
 
   // 학원이 자리 사정(신규/체험 문의 등)으로 취소한, 내가 맡았던 보강 — 벨소리 알림
   const myCancelledMakeups = makeupCancellations.filter(n => classes.find(c => c.id === n.classId)?.instructorId === instructorId);
@@ -486,6 +503,32 @@ export default function InstructorApp() {
               </div>
             ) : activeTab === 'students' ? (
               <div className="space-y-3">
+                {myPendingReturns.map(r => {
+                  const s = students.find(st => st.id === r.studentId);
+                  return (
+                    <div key={r.id} className="bg-cyan-50 border border-cyan-200 rounded-2xl p-4">
+                      <p className="text-cyan-800 text-sm font-bold">복귀 신청 확인 필요</p>
+                      <p className="text-cyan-600 text-xs mt-1">{s?.studentName} — 희망 복귀일 {r.requestedReturnDate} {r.hasSeatAvailable ? '(자리 있음)' : '(정원 초과 주의)'}</p>
+                      <div className="flex gap-2 mt-2.5">
+                        <button onClick={() => approveReturnRequest(r.id)} className="text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 rounded-lg transition-colors">확인 후 신규로 받기</button>
+                        <button onClick={() => rejectReturnRequest(r.id)} className="text-xs font-semibold text-cyan-600 hover:text-cyan-800 px-2 py-1.5 transition-colors">거절</button>
+                      </div>
+                    </div>
+                  );
+                })}
+                {myPendingWithdrawals.map(r => {
+                  const s = students.find(st => st.id === r.studentId);
+                  return (
+                    <div key={r.id} className="bg-red-50 border border-red-200 rounded-2xl p-4">
+                      <p className="text-red-700 text-sm font-bold">퇴원 요청 확인 필요</p>
+                      <p className="text-red-600 text-xs mt-1">{s?.studentName} — 사유: {r.reason || '-'}</p>
+                      <div className="flex gap-2 mt-2.5">
+                        <button onClick={() => approveWithdrawalRequest(r.id)} className="text-xs font-semibold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors">확인 후 퇴원 처리</button>
+                        <button onClick={() => rejectWithdrawalRequest(r.id)} className="text-xs font-semibold text-red-500 hover:text-red-700 px-2 py-1.5 transition-colors">거절</button>
+                      </div>
+                    </div>
+                  );
+                })}
                 <h2 className="text-[15px] font-bold text-slate-800 px-1">내 강습생 ({myStudents.length}명)</h2>
                 {myStudents.map(s => {
                   const myRecords = counselingRecords.filter(c => c.studentId === s.id && c.instructorId === instructorId);
@@ -588,8 +631,11 @@ export default function InstructorApp() {
             <span className="text-[10px] font-medium">스케줄</span>
           </button>
           <button onClick={() => setActiveTab('students')}
-            className={`flex flex-col items-center gap-1 ${activeTab === 'students' ? 'text-cyan-600' : 'text-slate-400'}`}>
+            className={`relative flex flex-col items-center gap-1 ${activeTab === 'students' ? 'text-cyan-600' : 'text-slate-400'}`}>
             <Users className="w-6 h-6" />
+            {(myPendingWithdrawals.length + myPendingReturns.length) > 0 && (
+              <span className="absolute -top-1 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">{myPendingWithdrawals.length + myPendingReturns.length}</span>
+            )}
             <span className="text-[10px] font-medium">내 강습생</span>
           </button>
           <button onClick={() => setActiveTab('requests')}

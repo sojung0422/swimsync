@@ -14,7 +14,12 @@ export type Instructor = {
   dutyNote: string; vehicleNumber: string; address: string; memo: string;
   status: 'active' | 'resigned';
 };
-export type LessonClass = { id: string; name: string; description: string; };
+export type LessonClass = {
+  id: string; name: string; description: string;
+  defaultTime: string; // 반 개설 시 기본 시간 — 담당쌤 배정 시 변경 가능
+  capacity: number; // 이 반명의 정원 (같은 반명이면 담당쌤이 달라도 공통 정원 기준을 공유)
+  eligibilityCondition: string; // 수강 가능 조건 (예: "만 3~7세", "초급 레벨 이상")
+};
 
 // 보강은 같은 구분(division) 내에서만 가능 — 유치부/정규반/성인반은 서로 섞이지 않음
 export type Division = '유치부' | '정규반' | '성인반';
@@ -34,6 +39,10 @@ export type Enrollment = {
   passType: string;
   paymentPlanId: string;
   monthlyPrice: number; // 0이면 paymentPlanId의 금액을 사용
+  // 장기 결석(차감 처리) 관련 — 2주 이상 여행/출장/수술 등으로 일시 중단할 때 기록
+  pauseReason: string; // '' = 사유 없음(일반 휴학)
+  expectedReturnDate: string; // '' = 미정
+  withdrawalReason: string; // 퇴원 처리 시 사유
 };
 
 export type Student = {
@@ -55,6 +64,9 @@ export type Student = {
   paymentPlanId: string;
   division: Division;
   additionalEnrollments: Enrollment[];
+  pauseReason: string;
+  expectedReturnDate: string;
+  withdrawalReason: string;
 };
 
 export const getPrimaryEnrollment = (s: Student): Enrollment => ({
@@ -63,6 +75,7 @@ export const getPrimaryEnrollment = (s: Student): Enrollment => ({
   regularDays: s.regularDays, regularTime: s.regularTime,
   startDate: s.registrationDate, endDate: '', status: s.status === 'inactive' ? 'ended' : s.status === 'deferred' ? 'paused' : 'active',
   passType: s.passType, paymentPlanId: s.paymentPlanId, monthlyPrice: 0,
+  pauseReason: s.pauseReason, expectedReturnDate: s.expectedReturnDate, withdrawalReason: s.withdrawalReason,
 });
 
 export const getAllEnrollments = (s: Student): Enrollment[] => [getPrimaryEnrollment(s), ...s.additionalEnrollments];
@@ -91,7 +104,7 @@ export const getClassDivision = (cls: ClassSession, students: Student[]): Divisi
   return null;
 };
 
-export type AcademyEvent = { id: string; date: string; title: string; type: 'event' | 'notice' | 'memo' };
+export type AcademyEvent = { id: string; date: string; endDate: string; title: string; type: 'event' | 'notice' | 'memo' };
 
 export type MakeupPolicyRule = { sessionsPerWeek: number; maxMakeups: number };
 
@@ -162,6 +175,25 @@ export type PaymentPlan = {
   id: string; name: string; category: 'adult' | 'child';
   hasFreeSwim: boolean; sessionsPerWeek: number;
   monthlyPrice: number; description: string;
+  sessionRates: number[]; // 등록일 기준 그 달 남은 횟수(1회~14회)별 일할 청구 금액 — 인덱스 0 = 1회
+};
+
+// 원생이 2주 이상 결석(장기 결석) 후 다시 등록을 요청하는 경우 — 강사·데스크 확인 후에만 자리 재배정
+export type ReturnRequest = {
+  id: string; studentId: string; enrollmentId: string;
+  requestedReturnDate: string;
+  hasSeatAvailable: boolean; // 신청 시점 기준 정원 여유 여부(참고용, 최종 승인은 관리자 판단)
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string; resolvedAt: string;
+};
+
+// 퇴원 요청 — 학부모가 사유와 함께 요청하면 강사/데스크가 확인 후 최종 퇴원 처리
+export type WithdrawalRequest = {
+  id: string; studentId: string; enrollmentId: string;
+  reason: string;
+  requestedBy: 'parent' | 'admin';
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string; resolvedAt: string;
 };
 
 // 학생별 월별 수납 이력(원장) — 어떤 반(enrollment)에 대해, 언제, 얼마를, 어떻게 수납했는지 추적
@@ -215,11 +247,17 @@ const INITIAL_INSTRUCTORS: Instructor[] = [
 ];
 
 export const INITIAL_LESSON_CLASSES: LessonClass[] = [
-  { id: 'lc1', name: '초급반 A', description: '수영 기초 과정 (오전)' },
-  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)' },
-  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전' },
-  { id: 'lc4', name: '고급반', description: '경기 준비 및 고급 영법' },
+  { id: 'lc1', name: '초급반 A', description: '수영 기초 과정 (오전)', defaultTime: '15:00', capacity: 5, eligibilityCondition: '만 5~9세, 수영 초경험자' },
+  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)', defaultTime: '15:00', capacity: 5, eligibilityCondition: '만 5~9세, 수영 초경험자' },
+  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전', defaultTime: '16:00', capacity: 6, eligibilityCondition: '자유형 25m 완주 가능자' },
+  { id: 'lc4', name: '고급반', description: '경기 준비 및 고급 영법', defaultTime: '17:00', capacity: 6, eligibilityCondition: '4영법 모두 가능자' },
 ];
+
+// "주 N회" 문자열과 월 기준 정가로부터 1회~14회 일할 청구 요금표를 선형 비례로 자동 계산 (관리자가 이후 개별 조정 가능)
+export const computeLinearSessionRates = (monthlyPrice: number, sessionsPerWeek: number): number[] => {
+  const fullMonthSessions = Math.max(1, sessionsPerWeek * 4);
+  return Array.from({ length: 14 }, (_, i) => Math.round((monthlyPrice / fullMonthSessions) * (i + 1) / 100) * 100);
+};
 
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'd1', name: '최기사', phone: '010-7777-8888', vehicleNumber: '서울 12가 3456' },
@@ -232,11 +270,11 @@ const INITIAL_VEHICLES: Vehicle[] = [
 ];
 
 const INITIAL_PAYMENT_PLANS: PaymentPlan[] = [
-  { id: 'pp1', name: '아동 주2회', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 120000, description: '아동 기본 수영 강습 (주 2회)' },
-  { id: 'pp2', name: '아동 주3회', category: 'child', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 150000, description: '아동 집중 수영 강습 (주 3회)' },
-  { id: 'pp3', name: '아동 주2회+자유수영', category: 'child', hasFreeSwim: true, sessionsPerWeek: 2, monthlyPrice: 145000, description: '아동 강습 + 자유수영 포함' },
-  { id: 'pp4', name: '성인 주3회', category: 'adult', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 130000, description: '성인 기초 수영 (주 3회)' },
-  { id: 'pp5', name: '성인 주5회+자유수영', category: 'adult', hasFreeSwim: true, sessionsPerWeek: 5, monthlyPrice: 180000, description: '성인 집중 + 자유수영 포함' },
+  { id: 'pp1', name: '정규 주1회 탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 1, monthlyPrice: 160000, description: '아동 기본 수영 강습 (주 1회, 차량 탑승 포함)', sessionRates: computeLinearSessionRates(160000, 1) },
+  { id: 'pp2', name: '정규 주2회 탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 285000, description: '아동 기본 수영 강습 (주 2회, 차량 탑승 포함)', sessionRates: computeLinearSessionRates(285000, 2) },
+  { id: 'pp3', name: '정규 주2회 미탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 275000, description: '아동 기본 수영 강습 (주 2회, 차량 미탑승)', sessionRates: computeLinearSessionRates(275000, 2) },
+  { id: 'pp4', name: '성인 주3회', category: 'adult', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 130000, description: '성인 기초 수영 (주 3회)', sessionRates: computeLinearSessionRates(130000, 3) },
+  { id: 'pp5', name: '성인 주5회+자유수영', category: 'adult', hasFreeSwim: true, sessionsPerWeek: 5, monthlyPrice: 180000, description: '성인 집중 + 자유수영 포함', sessionRates: computeLinearSessionRates(180000, 5) },
 ];
 
 const INITIAL_SETTINGS: AcademySettings = {
@@ -273,7 +311,7 @@ const INITIAL_STUDENTS: Student[] = [
     paymentCompleted: true, studentPhoto: '',
     address: '서울시 강남구 역삼동 123-45', vehicleId: 'v1',
     category: 'child', paymentPlanId: 'pp1', division: '정규반',
-    additionalEnrollments: [],
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   },
   {
     id: 's2', studentNumber: '2025-002', nickname: '',
@@ -293,8 +331,10 @@ const INITIAL_STUDENTS: Student[] = [
         id: 'enr_s2_1', lessonClassId: 'lc4', instructorId: 'i3',
         regularDays: ['화'], regularTime: '17:00', startDate: '2025-06-01', endDate: '',
         status: 'active', passType: '주 1회', paymentPlanId: '', monthlyPrice: 60000,
+        pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
       },
     ],
+    pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   },
   {
     id: 's3', studentNumber: '2025-003', nickname: '',
@@ -309,7 +349,7 @@ const INITIAL_STUDENTS: Student[] = [
     paymentCompleted: false, studentPhoto: '',
     address: '서울시 송파구 잠실동 456-78', vehicleId: 'v2',
     category: 'child', paymentPlanId: 'pp1', division: '유치부',
-    additionalEnrollments: [],
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   },
 ];
 
@@ -363,8 +403,8 @@ const generateMockClasses = () => {
 
 const INITIAL_CLASSES = generateMockClasses();
 const INITIAL_EVENTS: AcademyEvent[] = [
-  { id: 'e1', date: format(new Date(), 'yyyy-MM-dd'), title: '수영장 정기 소독', type: 'notice' },
-  { id: 'e2', date: format(addDays(new Date(), 2), 'yyyy-MM-dd'), title: '여름방학 특강 접수', type: 'event' },
+  { id: 'e1', date: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd'), title: '수영장 정기 소독', type: 'notice' },
+  { id: 'e2', date: format(addDays(new Date(), 2), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 5), 'yyyy-MM-dd'), title: '여름방학 특강 접수', type: 'event' },
 ];
 const INITIAL_NOTIFICATIONS: NotificationRecord[] = [
   { id: 'n1', createdAt: format(new Date(), 'yyyy-MM-dd HH:mm'), type: 'holiday', title: '수영장 정기 소독 안내', content: '이번 주 토요일 수영장 정기 소독이 있습니다. 해당 일자 강습은 휴무입니다.', recipientIds: ['s1', 's2', 's3'], sentAt: format(new Date(), 'yyyy-MM-dd HH:mm') },
@@ -422,8 +462,18 @@ type StoreContextType = {
   deferStudentClasses: (id: string, months: number) => void;
   // Enrollment ops (다중 반)
   addEnrollment: (studentId: string, enrollment: Omit<Enrollment, 'id'>) => void;
-  updateEnrollment: (studentId: string, enrollmentId: string, updates: Partial<Enrollment>) => void;
+  updateEnrollment: (studentId: string, enrollmentId: string, updates: Partial<Enrollment>, resumeFromDate?: string) => void;
   cancelEnrollment: (studentId: string, enrollmentId: string) => void;
+  // 장기 결석(차감) / 퇴원 / 복귀
+  pauseEnrollmentLongTerm: (studentId: string, enrollmentId: string, reason: string, expectedReturnDate: string) => void;
+  withdrawalRequests: WithdrawalRequest[];
+  submitWithdrawalRequest: (studentId: string, enrollmentId: string, reason: string, requestedBy: WithdrawalRequest['requestedBy']) => void;
+  approveWithdrawalRequest: (id: string) => void;
+  rejectWithdrawalRequest: (id: string) => void;
+  returnRequests: ReturnRequest[];
+  submitReturnRequest: (studentId: string, enrollmentId: string, returnDate: string) => void;
+  approveReturnRequest: (id: string) => void;
+  rejectReturnRequest: (id: string) => void;
   // Class ops
   rescheduleClass: (studentId: string, fromClassId: string, toClassId: string) => boolean;
   markAbsent: (studentId: string, classId: string) => void;
@@ -485,6 +535,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [counselingRecords, setCounselingRecords] = useState<CounselingRecord[]>(INITIAL_COUNSELING_RECORDS);
   const [scheduleChangeRequests, setScheduleChangeRequests] = useState<ScheduleChangeRequest[]>([]);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
+  const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
   const [makeupCancellations, setMakeupCancellations] = useState<MakeupCancellationNotice[]>([]);
@@ -560,10 +612,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setClasses(prev => buildClassesForStudent(studentId, [newEnrollment], new Date(), 90, prev));
   };
 
-  const updateEnrollment = (studentId: string, enrollmentId: string, updates: Partial<Enrollment>) => {
+  const updateEnrollment = (studentId: string, enrollmentId: string, updates: Partial<Enrollment>, resumeFromDate?: string) => {
     const student = students.find(s => s.id === studentId);
     if (!student) return;
     const today = format(new Date(), 'yyyy-MM-dd');
+    const resumeStart = resumeFromDate ? new Date(resumeFromDate) : new Date();
 
     if (enrollmentId === 'primary') {
       const oldPrimary = getPrimaryEnrollment(student);
@@ -574,6 +627,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       if (updates.regularTime !== undefined) primaryUpdates.regularTime = updates.regularTime;
       if (updates.passType !== undefined) primaryUpdates.passType = updates.passType;
       if (updates.paymentPlanId !== undefined) primaryUpdates.paymentPlanId = updates.paymentPlanId;
+      if (updates.pauseReason !== undefined) primaryUpdates.pauseReason = updates.pauseReason;
+      if (updates.expectedReturnDate !== undefined) primaryUpdates.expectedReturnDate = updates.expectedReturnDate;
+      if (updates.withdrawalReason !== undefined) primaryUpdates.withdrawalReason = updates.withdrawalReason;
       if (updates.status === 'paused') primaryUpdates.status = 'deferred';
       if (updates.status === 'ended') primaryUpdates.status = 'inactive';
       if (updates.status === 'active') primaryUpdates.status = 'active';
@@ -582,7 +638,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       setClasses(prev => {
         const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldPrimary, prev, today);
         const newPrimary = getPrimaryEnrollment(updatedStudent);
-        return newPrimary.status === 'active' ? buildClassesForStudent(studentId, [newPrimary], new Date(), 90, cleared) : cleared;
+        return newPrimary.status === 'active' ? buildClassesForStudent(studentId, [newPrimary], resumeStart, 90, cleared) : cleared;
       });
       return;
     }
@@ -595,7 +651,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       : s));
     setClasses(prev => {
       const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldEnrollment, prev, today);
-      return newEnrollment.status === 'active' ? buildClassesForStudent(studentId, [newEnrollment], new Date(), 90, cleared) : cleared;
+      return newEnrollment.status === 'active' ? buildClassesForStudent(studentId, [newEnrollment], resumeStart, 90, cleared) : cleared;
     });
   };
 
@@ -609,6 +665,58 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, additionalEnrollments: s.additionalEnrollments.filter(e => e.id !== enrollmentId) } : s));
     setClasses(prev => removeStudentFromFutureEnrollmentClasses(studentId, enrollment, prev, today));
     setPaymentRecords(prev => prev.filter(p => !(p.studentId === studentId && p.enrollmentId === enrollmentId)));
+  };
+
+  // 2주 이상 여행/출장/수술 등 장기 결석 — 해당 월 수강료는 선납된 것으로 보고 자리를 비워둠 (자동 재개 없음)
+  const pauseEnrollmentLongTerm = (studentId: string, enrollmentId: string, reason: string, expectedReturnDate: string) => {
+    updateEnrollment(studentId, enrollmentId, { status: 'paused', pauseReason: reason, expectedReturnDate });
+  };
+
+  // ── WithdrawalRequest (퇴원 요청) ──────────────────────────────
+  const submitWithdrawalRequest = (studentId: string, enrollmentId: string, reason: string, requestedBy: WithdrawalRequest['requestedBy']) => {
+    setWithdrawalRequests(prev => [...prev, {
+      id: `wr_${Date.now()}`, studentId, enrollmentId, reason, requestedBy,
+      status: 'pending', requestedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
+    }]);
+  };
+  const approveWithdrawalRequest = (id: string) => {
+    const req = withdrawalRequests.find(r => r.id === id);
+    if (!req) return;
+    updateEnrollment(req.studentId, req.enrollmentId, { status: 'ended', withdrawalReason: req.reason });
+    setWithdrawalRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+  const rejectWithdrawalRequest = (id: string) => {
+    setWithdrawalRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+
+  // ── ReturnRequest (장기 결석 후 복귀 신청) — 강사·데스크 확인 후에만 자리 재배정 ──
+  const submitReturnRequest = (studentId: string, enrollmentId: string, returnDate: string) => {
+    const student = students.find(s => s.id === studentId);
+    const enrollment = enrollmentId === 'primary' ? (student ? getPrimaryEnrollment(student) : undefined) : student?.additionalEnrollments.find(e => e.id === enrollmentId);
+    let hasSeatAvailable = true;
+    if (enrollment && student) {
+      const lc = lessonClasses.find(l => l.id === enrollment.lessonClassId);
+      const instructorCap = instructors.find(i => i.id === enrollment.instructorId)?.maxCapacity ?? 0;
+      const cap = lc?.capacity || instructorCap;
+      const matchingCount = students.flatMap(s => getAllEnrollments(s)).filter(e =>
+        e.status === 'active' && e.lessonClassId === enrollment.lessonClassId && e.instructorId === enrollment.instructorId &&
+        e.regularTime === enrollment.regularTime && e.regularDays.some(d => enrollment.regularDays.includes(d))
+      ).length;
+      hasSeatAvailable = cap === 0 || matchingCount < cap;
+    }
+    setReturnRequests(prev => [...prev, {
+      id: `rr_${Date.now()}`, studentId, enrollmentId, requestedReturnDate: returnDate, hasSeatAvailable,
+      status: 'pending', requestedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
+    }]);
+  };
+  const approveReturnRequest = (id: string) => {
+    const req = returnRequests.find(r => r.id === id);
+    if (!req) return;
+    updateEnrollment(req.studentId, req.enrollmentId, { status: 'active', pauseReason: '', expectedReturnDate: '' }, req.requestedReturnDate);
+    setReturnRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+  };
+  const rejectReturnRequest = (id: string) => {
+    setReturnRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
   };
 
   // ── ScheduleChangeRequest (학부모 요일·시간·수강횟수 변경 요청) ───────
@@ -790,7 +898,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       counselingRecords, addCounselingRecord, updateCounselingRecord, deleteCounselingRecord,
       scheduleChangeRequests, submitScheduleChangeRequest, approveScheduleChangeRequest, rejectScheduleChangeRequest,
       addStudent, updateStudent, deleteStudent, extendStudentClasses, deferStudentClasses,
-      addEnrollment, updateEnrollment, cancelEnrollment,
+      addEnrollment, updateEnrollment, cancelEnrollment, pauseEnrollmentLongTerm,
+      withdrawalRequests, submitWithdrawalRequest, approveWithdrawalRequest, rejectWithdrawalRequest,
+      returnRequests, submitReturnRequest, approveReturnRequest, rejectReturnRequest,
       rescheduleClass, markAbsent,
       addEvent, addInstructor, updateInstructor, deleteInstructor, updateInstructorColor,
       updateSettings, updateMakeupSettings,

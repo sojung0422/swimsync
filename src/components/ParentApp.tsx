@@ -15,9 +15,9 @@ import { ko } from 'date-fns/locale';
 
 // ─── 달력 선택 컴포넌트 ────────────────────────────────────────────────────────
 
-function MiniCalendar({ month, onMonthChange, markedDates, selectedDate, onSelectDate }: {
+function MiniCalendar({ month, onMonthChange, markedDates, selectedDate, selectedDates, onSelectDate }: {
   month: Date; onMonthChange: (m: Date) => void;
-  markedDates: Set<string>; selectedDate: string | null; onSelectDate: (dateStr: string) => void;
+  markedDates: Set<string>; selectedDate?: string | null; selectedDates?: Set<string>; onSelectDate: (dateStr: string) => void;
 }) {
   const gridStart = startOfWeek(startOfMonth(month), { weekStartsOn: 0 });
   const days = Array.from({ length: 42 }).map((_, i) => addDays(gridStart, i));
@@ -43,7 +43,7 @@ function MiniCalendar({ month, onMonthChange, markedDates, selectedDate, onSelec
           const dateStr = format(day, 'yyyy-MM-dd');
           const inMonth = isSameMonth(day, month);
           const marked = markedDates.has(dateStr);
-          const isSelected = selectedDate === dateStr;
+          const isSelected = selectedDates ? selectedDates.has(dateStr) : selectedDate === dateStr;
           return (
             <button key={dateStr} disabled={!marked} onClick={() => onSelectDate(dateStr)}
               className={`aspect-square rounded-lg text-[11px] flex items-center justify-center font-semibold transition-colors
@@ -163,10 +163,14 @@ export default function ParentApp() {
   const {
     classes, instructors, students, events, settings, paymentPlans, paymentRecords, lessonClasses, notifications,
     rescheduleClass, markAbsent, makeupRequests, submitMakeupRequest, markPaymentPaid, scheduleChangeRequests,
-    makeupCancellations,
+    makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
+  const [withdrawEnrollmentTarget, setWithdrawEnrollmentTarget] = useState<Enrollment | null>(null);
+  const [withdrawReasonDraft, setWithdrawReasonDraft] = useState('');
+  const [returnEnrollmentTarget, setReturnEnrollmentTarget] = useState<Enrollment | null>(null);
+  const [returnDateDraft, setReturnDateDraft] = useState(new Date().toISOString().slice(0, 10));
   const [showNotifications, setShowNotifications] = useState(false);
   const [readNotificationIds, setReadNotificationIds] = useState<Set<string>>(new Set());
   const [showCheckout, setShowCheckout] = useState(false);
@@ -176,7 +180,12 @@ export default function ParentApp() {
   // 결석 신청 (달력에서 날짜 선택)
   const [activeModal, setActiveModal] = useState<'none' | 'absence' | 'reschedule'>('none');
   const [calMonth, setCalMonth] = useState(new Date());
-  const [absenceDate, setAbsenceDate] = useState<string | null>(null);
+  const [absenceDates, setAbsenceDates] = useState<Set<string>>(new Set());
+  const toggleAbsenceDate = (dateStr: string) => setAbsenceDates(prev => {
+    const next = new Set(prev);
+    if (next.has(dateStr)) next.delete(dateStr); else next.add(dateStr);
+    return next;
+  });
 
   // 보강 신청 (달력에서 결석 대상 날짜 → 보강 대상 날짜 → 시간 순으로 선택)
   const [rescheduleStep, setRescheduleStep] = useState<'source' | 'target-date' | 'target-time' | 'doc-form'>('source');
@@ -280,7 +289,7 @@ export default function ParentApp() {
   const openAbsence = () => {
     setActiveModal('absence');
     setCalMonth(new Date());
-    setAbsenceDate(null);
+    setAbsenceDates(new Set());
   };
 
   const openReschedule = () => {
@@ -299,13 +308,17 @@ export default function ParentApp() {
     setActiveModal('none');
     setDocPhoto(null);
     setDocReason('');
+    setAbsenceDates(new Set());
   };
 
-  // ── 결석 ────────────────────────────────────────────────────────
+  // ── 결석 (여러 날짜 동시 신청 가능) ────────────────────────────────
   const handleConfirmAbsence = () => {
-    const cls = myUpcomingClasses.find(c => c.date === absenceDate);
-    if (!cls) return;
-    markAbsent(studentId, cls.id);
+    if (absenceDates.size === 0) return;
+    absenceDates.forEach(dateStr => {
+      const cls = myUpcomingClasses.find(c => c.date === dateStr);
+      if (cls) markAbsent(studentId, cls.id);
+    });
+    setAbsenceDates(new Set());
     closeModal();
     setAbsenceSubmitted(true);
   };
@@ -418,17 +431,26 @@ export default function ParentApp() {
               );
             })}
 
-            {/* Notice */}
-            {events.filter(e => e.type === 'notice').slice(0, 1).map(notice => (
-              <div key={notice.id} className="rounded-2xl p-5 text-white shadow-md relative overflow-hidden" style={{ background: 'linear-gradient(135deg,#0891b2,#3b82f6)' }}>
-                <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -mr-8 -mt-8" />
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold">공지</span>
+            {/* 공지사항 / 이벤트 — 메모(memo)는 학원 내부용이라 학부모 앱에는 노출되지 않음 */}
+            {events
+              .filter(e => e.type === 'notice' || e.type === 'event')
+              .slice()
+              .sort((a, b) => b.date.localeCompare(a.date))
+              .slice(0, 3)
+              .map(notice => (
+                <div key={notice.id} className="rounded-2xl p-5 text-white shadow-md relative overflow-hidden" style={{ background: notice.type === 'notice' ? 'linear-gradient(135deg,#0891b2,#3b82f6)' : 'linear-gradient(135deg,#059669,#0d9488)' }}>
+                  <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -mr-8 -mt-8" />
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold">{notice.type === 'notice' ? '공지' : '이벤트'}</span>
+                  </div>
+                  <h3 className="font-bold text-base mb-1">{notice.title}</h3>
+                  <p className="text-blue-100 text-sm">
+                    {notice.endDate && notice.endDate !== notice.date
+                      ? `${format(parseISO(notice.date), 'M월 d일', { locale: ko })} ~ ${format(parseISO(notice.endDate), 'M월 d일', { locale: ko })}`
+                      : `${format(parseISO(notice.date), 'M월 d일', { locale: ko })} 진행 예정`}
+                  </p>
                 </div>
-                <h3 className="font-bold text-base mb-1">{notice.title}</h3>
-                <p className="text-blue-100 text-sm">{format(parseISO(notice.date), 'M월 d일', { locale: ko })} 진행 예정</p>
-              </div>
-            ))}
+              ))}
 
             {/* Next class */}
             <div>
@@ -473,14 +495,52 @@ export default function ParentApp() {
               )}
             </div>
 
-            {/* 내 수업 정보 — 요일/시간/수강권 변경 신청 */}
+            {/* 결석 처리된 수업 — 빨간색으로 표시 */}
+            {classes.filter(c => c.absentStudentIds.includes(studentId) && (isAfter(parseISO(c.date), addDays(today, -14)))).length > 0 && (
+              <div>
+                <h2 className="text-[15px] font-bold text-slate-800 mb-3">결석 처리된 수업</h2>
+                <div className="space-y-1.5">
+                  {classes
+                    .filter(c => c.absentStudentIds.includes(studentId) && isAfter(parseISO(c.date), addDays(today, -14)))
+                    .sort((a, b) => b.date.localeCompare(a.date))
+                    .map(c => (
+                      <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
+                        <span className="text-red-600 text-sm font-semibold line-through decoration-red-300">
+                          {format(parseISO(c.date), 'M월 d일 (E)', { locale: ko })} {c.time}
+                        </span>
+                        <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">결석</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {/* 내 수업 정보 — 요일/시간/수강권 변경, 장기 결석 복귀, 퇴원 신청 */}
             {student && (
               <div>
                 <h2 className="text-[15px] font-bold text-slate-800 mb-3">내 수업 정보</h2>
                 <div className="space-y-2">
-                  {getAllEnrollments(student).filter(e => e.status === 'active').map(enr => {
+                  {getAllEnrollments(student).filter(e => e.status === 'active' || e.status === 'paused').map(enr => {
                     const lc = lessonClasses.find(l => l.id === enr.lessonClassId);
-                    const pendingReq = scheduleChangeRequests.find(r => r.studentId === studentId && r.enrollmentId === enr.id && r.status === 'pending');
+                    const pendingChangeReq = scheduleChangeRequests.find(r => r.studentId === studentId && r.enrollmentId === enr.id && r.status === 'pending');
+                    const pendingWithdrawal = withdrawalRequests.find(r => r.studentId === studentId && r.enrollmentId === enr.id && r.status === 'pending');
+                    const pendingReturn = returnRequests.find(r => r.studentId === studentId && r.enrollmentId === enr.id && r.status === 'pending');
+                    if (enr.status === 'paused') {
+                      return (
+                        <div key={enr.id} className="bg-amber-50 rounded-2xl p-4 border border-amber-200">
+                          <p className="text-slate-800 text-sm font-semibold">{lc?.name ?? '반 정보 없음'} — 장기 결석 중</p>
+                          <p className="text-amber-600 text-xs mt-0.5">{enr.pauseReason && `사유: ${enr.pauseReason}`} {enr.expectedReturnDate && `· 예상 복귀일: ${enr.expectedReturnDate}`}</p>
+                          {pendingReturn ? (
+                            <span className="inline-block mt-2 text-[11px] font-bold text-cyan-700 bg-cyan-50 border border-cyan-200 px-2.5 py-1.5 rounded-lg">복귀 신청 승인 대기중 (희망일 {pendingReturn.requestedReturnDate})</span>
+                          ) : (
+                            <button onClick={() => { setReturnEnrollmentTarget(enr); setReturnDateDraft(new Date().toISOString().slice(0, 10)); }}
+                              className="mt-2 text-xs font-semibold text-white bg-cyan-600 hover:bg-cyan-700 px-3 py-1.5 rounded-lg transition-colors">
+                              복귀 신청하기
+                            </button>
+                          )}
+                        </div>
+                      );
+                    }
                     return (
                       <div key={enr.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
                         <div className="flex items-center justify-between">
@@ -488,12 +548,22 @@ export default function ParentApp() {
                             <p className="text-slate-800 text-sm font-semibold">{lc?.name ?? '반 정보 없음'}</p>
                             <p className="text-slate-400 text-xs mt-0.5">{enr.regularDays.join('·')} {enr.regularTime} · {enr.passType}</p>
                           </div>
-                          {pendingReq ? (
+                          {pendingChangeReq ? (
                             <span className="text-[11px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg">승인 대기중</span>
                           ) : (
                             <button onClick={() => setScheduleChangeTarget(enr)}
                               className="text-xs font-semibold text-cyan-700 bg-cyan-50 px-2.5 py-1.5 rounded-lg hover:bg-cyan-100 transition-colors">
                               변경 신청
+                            </button>
+                          )}
+                        </div>
+                        <div className="mt-2 pt-2 border-t border-slate-50">
+                          {pendingWithdrawal ? (
+                            <span className="text-[11px] font-medium text-red-500">퇴원 신청 확인 대기중</span>
+                          ) : (
+                            <button onClick={() => { setWithdrawEnrollmentTarget(enr); setWithdrawReasonDraft(''); }}
+                              className="text-[11px] font-medium text-slate-400 hover:text-red-500 transition-colors">
+                              퇴원 신청
                             </button>
                           )}
                         </div>
@@ -656,6 +726,45 @@ export default function ParentApp() {
           />
         )}
 
+        {/* ── 퇴원 신청 모달 ── */}
+        {withdrawEnrollmentTarget && (
+          <div className="absolute inset-0 bg-black/50 z-50 flex flex-col justify-end">
+            <div className="bg-white rounded-t-3xl p-6 animate-slide-up-modal">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-slate-800">퇴원 신청</h3>
+                <button onClick={() => setWithdrawEnrollmentTarget(null)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
+              </div>
+              <p className="text-slate-500 text-xs mb-3">신청하면 학원에서 확인 후 퇴원 처리를 진행해요.</p>
+              <textarea value={withdrawReasonDraft} onChange={e => setWithdrawReasonDraft(e.target.value)} rows={3}
+                placeholder="퇴원 사유 (선택)"
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-red-400 transition-colors resize-none mb-3" />
+              <button onClick={() => { submitWithdrawalRequest(studentId, withdrawEnrollmentTarget.id, withdrawReasonDraft.trim(), 'parent'); setWithdrawEnrollmentTarget(null); }}
+                className="w-full py-3 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-sm transition-colors">
+                퇴원 신청하기
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── 복귀 신청 모달 ── */}
+        {returnEnrollmentTarget && (
+          <div className="absolute inset-0 bg-black/50 z-50 flex flex-col justify-end">
+            <div className="bg-white rounded-t-3xl p-6 animate-slide-up-modal">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-slate-800">복귀 신청</h3>
+                <button onClick={() => setReturnEnrollmentTarget(null)} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
+              </div>
+              <p className="text-slate-500 text-xs mb-3">복귀 희망일을 선택하면 신청이 접수돼요. 담당쌤·데스크가 자리를 확인하고 승인해야 다시 수강할 수 있어요.</p>
+              <input type="date" value={returnDateDraft} onChange={e => setReturnDateDraft(e.target.value)}
+                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-400 transition-colors mb-3" />
+              <button onClick={() => { submitReturnRequest(studentId, returnEnrollmentTarget.id, returnDateDraft); setReturnEnrollmentTarget(null); }}
+                className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold text-sm transition-colors">
+                복귀 신청하기
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* ── 결석 신청 모달 (달력) ── */}
         {activeModal === 'absence' && (
           <div className="absolute inset-0 bg-black/50 z-50 flex flex-col justify-end">
@@ -667,29 +776,36 @@ export default function ParentApp() {
 
               <div className="bg-amber-50 text-amber-700 p-3 rounded-xl text-xs mb-4 flex items-start gap-2">
                 <Info className="w-4 h-4 shrink-0 mt-0.5" />
-                <p>결석할 날짜를 달력에서 선택하세요. 파란 표시가 있는 날짜만 예정된 강습이 있어요.</p>
+                <p>결석할 날짜를 달력에서 선택하세요 (여러 날짜 동시 선택 가능). 파란 표시가 있는 날짜만 예정된 강습이 있어요.</p>
               </div>
 
               <MiniCalendar month={calMonth} onMonthChange={setCalMonth}
-                markedDates={myScheduledDates} selectedDate={absenceDate} onSelectDate={setAbsenceDate} />
+                markedDates={myScheduledDates} selectedDates={absenceDates} onSelectDate={toggleAbsenceDate} />
 
-              {absenceDate && (() => {
-                const cls = myUpcomingClasses.find(c => c.date === absenceDate);
-                if (!cls) return null;
-                return (
-                  <div className="mt-5 animate-fade-up">
-                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-3">
-                      <p className="text-slate-500 text-xs mb-1">결석 처리할 수업</p>
-                      <p className="text-slate-800 font-bold">{format(parseISO(cls.date), 'M월 d일 (E)', { locale: ko })} {cls.time}</p>
-                      <p className="text-slate-400 text-xs mt-0.5">{instructors.find(i => i.id === cls.instructorId)?.name} 강사님</p>
-                    </div>
-                    <button onClick={handleConfirmAbsence}
-                      className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-sm transition-colors">
-                      결석 처리하기
-                    </button>
+              {absenceDates.size > 0 && (
+                <div className="mt-5 animate-fade-up">
+                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-3 space-y-2 max-h-40 overflow-y-auto">
+                    <p className="text-slate-500 text-xs mb-1">결석 처리할 수업 ({absenceDates.size}건)</p>
+                    {Array.from(absenceDates).sort().map(dateStr => {
+                      const cls = myUpcomingClasses.find(c => c.date === dateStr);
+                      if (!cls) return null;
+                      return (
+                        <div key={dateStr} className="flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-800 font-bold text-sm">{format(parseISO(cls.date), 'M월 d일 (E)', { locale: ko })} {cls.time}</p>
+                            <p className="text-slate-400 text-xs">{instructors.find(i => i.id === cls.instructorId)?.name} 강사님</p>
+                          </div>
+                          <button onClick={() => toggleAbsenceDate(dateStr)} className="text-slate-300 hover:text-red-500 text-xs font-bold px-2">✕</button>
+                        </div>
+                      );
+                    })}
                   </div>
-                );
-              })()}
+                  <button onClick={handleConfirmAbsence}
+                    className="w-full py-3.5 bg-red-500 hover:bg-red-600 text-white rounded-xl font-bold text-sm transition-colors">
+                    {absenceDates.size}건 결석 처리하기
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}

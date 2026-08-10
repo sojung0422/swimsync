@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useStore } from '../store/StoreContext';
+import { useStore, computeLinearSessionRates } from '../store/StoreContext';
 import type { PaymentPlan, MakeupPolicyRule } from '../store/StoreContext';
 import {
   CreditCard, Plus, Edit2, Trash2, X, CheckCircle, XCircle,
-  ChevronDown, ChevronUp, Waves, AlertCircle, TrendingUp, Users, RefreshCw
+  ChevronDown, ChevronUp, Waves, AlertCircle, TrendingUp, Users, RefreshCw, Sparkles, Table2
 } from 'lucide-react';
 
 // ─── 보강 정책 설정 ────────────────────────────────────────────────────────────
@@ -105,14 +105,18 @@ function PlanFormModal({ initial, onClose, onSave, title }: {
   const [sessionsPerWeek, setSessionsPerWeek] = useState(initial?.sessionsPerWeek ?? 2);
   const [monthlyPrice, setMonthlyPrice] = useState(initial?.monthlyPrice ?? 120000);
   const [description, setDescription] = useState(initial?.description ?? '');
+  const [sessionRates, setSessionRates] = useState<number[]>(initial?.sessionRates ?? computeLinearSessionRates(initial?.monthlyPrice ?? 120000, initial?.sessionsPerWeek ?? 2));
+
+  const recalcRates = () => setSessionRates(computeLinearSessionRates(monthlyPrice, sessionsPerWeek));
+  const updateRate = (idx: number, val: number) => setSessionRates(rates => rates.map((r, i) => i === idx ? val : r));
 
   const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors";
   const labelCls = "block text-xs font-medium text-slate-500 mb-1";
 
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-xl">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 sticky top-0 bg-white">
           <h2 className="text-[15px] font-semibold text-slate-800">{title}</h2>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
         </div>
@@ -172,9 +176,28 @@ function PlanFormModal({ initial, onClose, onSave, title }: {
             <p className="text-slate-500 text-sm mt-0.5">1회당 {sessionsPerWeek > 0 ? Math.round(monthlyPrice / (sessionsPerWeek * 4)).toLocaleString() : 0}원</p>
           </div>
 
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={labelCls + ' mb-0'}>횟수별 청구 요금 (등록일 기준 일할 계산용, 1회~14회)</label>
+              <button type="button" onClick={recalcRates}
+                className="flex items-center gap-1 text-cyan-600 hover:text-cyan-700 text-xs font-medium">
+                <Sparkles className="w-3 h-3" /> 자동 계산
+              </button>
+            </div>
+            <div className="grid grid-cols-7 gap-1.5">
+              {sessionRates.map((rate, i) => (
+                <div key={i} className="flex flex-col items-center">
+                  <span className="text-[10px] text-slate-400 mb-0.5">{i + 1}회</span>
+                  <input type="number" value={rate} onChange={e => updateRate(i, parseInt(e.target.value) || 0)}
+                    className="w-full border border-slate-200 rounded-lg px-1 py-1.5 text-slate-700 text-[11px] text-center focus:outline-none focus:border-cyan-500" />
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
-            <button onClick={() => { if (!name.trim()) return; onSave({ name: name.trim(), category, hasFreeSwim, sessionsPerWeek, monthlyPrice, description }); onClose(); }}
+            <button onClick={() => { if (!name.trim()) return; onSave({ name: name.trim(), category, hasFreeSwim, sessionsPerWeek, monthlyPrice, description, sessionRates }); onClose(); }}
               className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">
               저장
             </button>
@@ -285,6 +308,47 @@ export default function AdminPayments() {
                   <p className="text-sm">등록된 플랜이 없습니다.</p>
                 </div>
               ) : (
+                <>
+                  {/* ── 원비표 (횟수별 청구 요금 한눈에 보기) ── */}
+                  <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                    <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+                      <Table2 className="w-4 h-4 text-cyan-600" />
+                      <h2 className="text-[14px] font-semibold text-slate-700">원비표</h2>
+                      <span className="text-slate-400 text-xs">등록일 기준 그 달 남은 횟수만큼 일할 청구할 때 사용하는 요금표예요</span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm whitespace-nowrap">
+                        <thead>
+                          <tr className="border-b border-slate-100 bg-slate-50">
+                            <th className="px-3 py-2.5 text-left text-xs font-medium text-slate-500 sticky left-0 bg-slate-50">프로그램</th>
+                            <th className="px-3 py-2.5 text-right text-xs font-medium text-slate-500">원비(월)</th>
+                            {Array.from({ length: 14 }, (_, i) => (
+                              <th key={i} className="px-2 py-2.5 text-right text-xs font-medium text-slate-500">{i + 1}회</th>
+                            ))}
+                            <th className="px-3 py-2.5 text-center text-xs font-medium text-slate-500">관리</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredPlans.map(plan => (
+                            <tr key={plan.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                              <td className="px-3 py-2.5 text-slate-700 font-medium sticky left-0 bg-white">{plan.name}</td>
+                              <td className="px-3 py-2.5 text-right text-slate-700 font-semibold">{plan.monthlyPrice.toLocaleString()}</td>
+                              {plan.sessionRates.map((rate, i) => (
+                                <td key={i} className="px-2 py-2.5 text-right text-slate-500 text-xs">{rate.toLocaleString()}</td>
+                              ))}
+                              <td className="px-3 py-2.5 text-center">
+                                <button onClick={() => setPlanModal({ mode: 'edit', plan })}
+                                  className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors">
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
                 <div className="space-y-3">
                   {filteredPlans.map(plan => {
                     const planStudents = students.filter(s => s.paymentPlanId === plan.id);
@@ -358,6 +422,7 @@ export default function AdminPayments() {
                     );
                   })}
                 </div>
+                </>
               )}
             </>
           )}

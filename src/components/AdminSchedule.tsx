@@ -19,7 +19,7 @@ export default function AdminSchedule() {
   const [selectedMonthDay, setSelectedMonthDay] = useState<Date | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [newEvent, setNewEvent] = useState({ date: format(new Date(), 'yyyy-MM-dd'), title: '', type: 'notice' as 'notice' | 'event' | 'memo' });
+  const [newEvent, setNewEvent] = useState({ date: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd'), title: '', type: 'notice' as 'notice' | 'event' | 'memo' });
 
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName });
@@ -29,7 +29,10 @@ export default function AdminSchedule() {
   const [cancelMakeupTarget, setCancelMakeupTarget] = useState<{ classId: string; studentId: string; studentName: string } | null>(null);
 
   const getClassesForDate = (date: Date) => classes.filter(c => c.date === format(date, 'yyyy-MM-dd'));
-  const getEventsForDate  = (date: Date) => events.filter(e => e.date === format(date, 'yyyy-MM-dd'));
+  const getEventsForDate  = (date: Date) => {
+    const d = format(date, 'yyyy-MM-dd');
+    return events.filter(e => d >= e.date && d <= (e.endDate || e.date));
+  };
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd   = endOfMonth(monthStart);
@@ -39,9 +42,11 @@ export default function AdminSchedule() {
 
   const navigate = (delta: number) => setCurrentDate(addDays(currentDate, delta * (view === 'month' ? 30 : view === 'week' ? 7 : 1)));
 
+  const eventDateRangeInvalid = newEvent.endDate < newEvent.date;
+
   const handleAddEvent = () => {
-    if (newEvent.title && newEvent.date) {
-      addEvent({ date: newEvent.date, title: newEvent.title, type: newEvent.type });
+    if (newEvent.title && newEvent.date && !eventDateRangeInvalid) {
+      addEvent({ date: newEvent.date, endDate: newEvent.endDate, title: newEvent.title, type: newEvent.type });
       setShowEventModal(false);
       setNewEvent({ ...newEvent, title: '' });
     }
@@ -97,7 +102,7 @@ export default function AdminSchedule() {
           <div className="flex items-center gap-2">
             {view === 'month' && (
               <div className="flex items-center gap-2">
-                <button onClick={() => { setNewEvent({ ...newEvent, date: format(new Date(), 'yyyy-MM-dd') }); setShowEventModal(true); }}
+                <button onClick={() => { setNewEvent({ ...newEvent, date: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd') }); setShowEventModal(true); }}
                   className="flex items-center gap-1.5 text-sm text-white bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 rounded-lg font-semibold transition-colors">
                   <Plus size={14} /> 일정 추가
                 </button>
@@ -248,7 +253,17 @@ export default function AdminSchedule() {
                                         </div>
                                       );
                                     })}
-                                    {presentStudents.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
+                                    {cls.absentStudentIds.map(id => {
+                                      const s = students.find(st => st.id === id);
+                                      return (
+                                        <div key={id} onClick={() => setSelectedClass(cls)}
+                                          className="rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] border-red-400 bg-red-50 text-red-500 text-[11px] font-bold line-through decoration-red-300">
+                                          {s?.studentName}
+                                          <span className="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span>
+                                        </div>
+                                      );
+                                    })}
+                                    {presentStudents.length === 0 && cls.absentStudentIds.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
                                   </div>
                                 );
                               }
@@ -286,6 +301,7 @@ export default function AdminSchedule() {
                     {instructors.map(inst => {
                       const cls = classes.find(c => c.date === format(currentDate, 'yyyy-MM-dd') && c.time === time && c.instructorId === inst.id);
                       const presentStudents = cls ? [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id)) : [];
+                      const absentStudents = cls ? cls.absentStudentIds : [];
                       const color = inst.color || '#0891b2';
                       return (
                         <div key={inst.id} className="p-2 border-r border-slate-100 last:border-r-0">
@@ -303,7 +319,17 @@ export default function AdminSchedule() {
                                   </div>
                                 );
                               })}
-                              {presentStudents.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
+                              {absentStudents.map(id => {
+                                const s = students.find(st => st.id === id);
+                                return (
+                                  <div key={id} onClick={() => setSelectedClass(cls)}
+                                    className="px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] border-red-400 bg-red-50 text-red-500 cursor-pointer hover:shadow-sm transition-all line-through decoration-red-300">
+                                    {s?.studentName}
+                                    <span className="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span>
+                                  </div>
+                                );
+                              })}
+                              {presentStudents.length === 0 && absentStudents.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
                             </div>
                           ) : <div className="h-full flex items-center justify-center text-slate-200 text-sm">—</div>}
                         </div>
@@ -336,7 +362,10 @@ export default function AdminSchedule() {
             <div className="space-y-2 mb-5 max-h-[50vh] overflow-y-auto">
               {getEventsForDate(selectedMonthDay).map(e => (
                 <div key={e.id} className={`p-3 rounded-xl text-sm border ${e.type === 'notice' ? 'bg-violet-50 border-violet-100 text-violet-800' : e.type === 'event' ? 'bg-emerald-50 border-emerald-100 text-emerald-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
-                  <div className="text-[10px] font-bold mb-1 opacity-60">{e.type === 'notice' ? '공지사항' : e.type === 'event' ? '이벤트/특강' : '메모/기록'}</div>
+                  <div className="text-[10px] font-bold mb-1 opacity-60 flex items-center justify-between">
+                    <span>{e.type === 'notice' ? '공지사항' : e.type === 'event' ? '이벤트/특강' : '메모/기록'}</span>
+                    {e.endDate && e.endDate !== e.date && <span className="font-normal opacity-70">{e.date} ~ {e.endDate}</span>}
+                  </div>
                   <div className="font-medium">{e.title}</div>
                 </div>
               ))}
@@ -344,7 +373,7 @@ export default function AdminSchedule() {
                 <div className="text-slate-400 text-sm text-center py-8 bg-slate-50 rounded-xl border border-slate-100">등록된 일정이 없습니다.</div>
               )}
             </div>
-            <button onClick={() => { setNewEvent({ ...newEvent, date: format(selectedMonthDay, 'yyyy-MM-dd') }); setShowEventModal(true); }}
+            <button onClick={() => { setNewEvent({ ...newEvent, date: format(selectedMonthDay, 'yyyy-MM-dd'), endDate: format(selectedMonthDay, 'yyyy-MM-dd') }); setShowEventModal(true); }}
               className="w-full flex items-center justify-center gap-2 bg-cyan-50 hover:bg-cyan-100 text-cyan-700 border border-cyan-200 py-2.5 rounded-xl font-bold text-sm transition-colors">
               <Plus size={15} /> 새 일정/메모 추가
             </button>
@@ -361,10 +390,21 @@ export default function AdminSchedule() {
               <button onClick={() => setShowEventModal(false)} className="text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 p-1.5 rounded-lg transition-colors"><X size={15} /></button>
             </div>
             <div className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">날짜</label>
-                <input type="date" value={newEvent.date} onChange={e => setNewEvent({ ...newEvent, date: e.target.value })} className={inputCls} />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">시작일</label>
+                  <input type="date" value={newEvent.date}
+                    onChange={e => setNewEvent({ ...newEvent, date: e.target.value, endDate: newEvent.endDate < e.target.value ? e.target.value : newEvent.endDate })}
+                    className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">종료일</label>
+                  <input type="date" value={newEvent.endDate} min={newEvent.date} onChange={e => setNewEvent({ ...newEvent, endDate: e.target.value })} className={inputCls} />
+                </div>
               </div>
+              {eventDateRangeInvalid && (
+                <p className="text-red-500 text-xs -mt-2">종료일은 시작일과 같거나 이후 날짜여야 해요.</p>
+              )}
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">구분</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -375,13 +415,14 @@ export default function AdminSchedule() {
                     </button>
                   ))}
                 </div>
+                <p className="text-slate-400 text-[11px] mt-1.5">공지사항·이벤트는 학부모 앱에도 노출돼요. 메모는 학원 내부(관리자·강사)만 볼 수 있어요.</p>
               </div>
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wide">내용</label>
                 <textarea value={newEvent.title} onChange={e => setNewEvent({ ...newEvent, title: e.target.value })}
                   className={`${inputCls} h-24 resize-none`} placeholder="일정이나 메모 내용을 입력하세요" />
               </div>
-              <button onClick={handleAddEvent} disabled={!newEvent.title}
+              <button onClick={handleAddEvent} disabled={!newEvent.title || eventDateRangeInvalid}
                 className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-xl transition-colors text-sm">
                 저장하기
               </button>

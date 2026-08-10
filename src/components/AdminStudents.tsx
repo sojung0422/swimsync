@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, Fragment } from 'react';
 import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone } from '../store/StoreContext';
 import type { Student, Enrollment } from '../store/StoreContext';
 import {
@@ -39,28 +39,30 @@ const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 // ─── 강습반 관리 모달 ──────────────────────────────────────────────────────────
 
+const blankLessonClassForm = () => ({ name: '', description: '', defaultTime: '15:00', capacity: 5, eligibilityCondition: '' });
+
 function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
-  const { lessonClasses, addLessonClass, deleteLessonClass, updateLessonClass } = useStore();
-  const [newName, setNewName] = useState('');
-  const [newDesc, setNewDesc] = useState('');
+  const { lessonClasses, settings, addLessonClass, deleteLessonClass, updateLessonClass } = useStore();
+  const [newForm, setNewForm] = useState(blankLessonClassForm());
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editDesc, setEditDesc] = useState('');
+  const [editForm, setEditForm] = useState(blankLessonClassForm());
 
   const handleAdd = () => {
-    if (!newName.trim()) return;
-    addLessonClass({ name: newName.trim(), description: newDesc.trim() });
-    setNewName(''); setNewDesc('');
+    if (!newForm.name.trim()) return;
+    addLessonClass({ ...newForm, name: newForm.name.trim(), description: newForm.description.trim() });
+    setNewForm(blankLessonClassForm());
   };
 
   const handleEditSave = (id: string) => {
-    updateLessonClass(id, { name: editName, description: editDesc });
+    updateLessonClass(id, editForm);
     setEditingId(null);
   };
 
+  const fieldCls = "w-full border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 text-sm focus:outline-none focus:border-cyan-500";
+
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-xl">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-xl">
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <h2 className="text-[15px] font-semibold text-slate-800 flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-cyan-600" /> 강습반 관리
@@ -69,7 +71,8 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-6 space-y-2 max-h-72 overflow-y-auto">
+        <p className="px-6 pt-4 text-xs text-slate-400">반명은 여러 담당쌤이 공유할 수 있어요 — 같은 반명을 다른 담당쌤에게 배정할 때도 여기서 정한 정원·수강 조건이 그대로 적용되고, 시간만 배정 시 바꿀 수 있어요.</p>
+        <div className="p-6 space-y-2 max-h-80 overflow-y-auto">
           {lessonClasses.length === 0 && (
             <p className="text-slate-400 text-sm text-center py-4">등록된 강습반이 없습니다.</p>
           )}
@@ -77,8 +80,24 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
             <div key={lc.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
               {editingId === lc.id ? (
                 <div className="space-y-2">
-                  <input className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 text-sm focus:outline-none focus:border-cyan-500" value={editName} onChange={e => setEditName(e.target.value)} />
-                  <input className="w-full border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 text-sm focus:outline-none focus:border-cyan-500" value={editDesc} onChange={e => setEditDesc(e.target.value)} />
+                  <input className={fieldCls} placeholder="반명" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} />
+                  <input className={fieldCls} placeholder="설명 (선택)" value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-1">기본 시간</label>
+                      <select className={fieldCls} value={editForm.defaultTime} onChange={e => setEditForm({ ...editForm, defaultTime: e.target.value })}>
+                        {settings.designatedTimes.map(t => <option key={t}>{t}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-slate-400 mb-1">정원(명)</label>
+                      <input type="number" min={1} className={fieldCls} value={editForm.capacity} onChange={e => setEditForm({ ...editForm, capacity: parseInt(e.target.value) || 1 })} />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">수강 가능 조건 (선택)</label>
+                    <input className={fieldCls} placeholder="예: 만 3~7세, 초급 레벨 이상" value={editForm.eligibilityCondition} onChange={e => setEditForm({ ...editForm, eligibilityCondition: e.target.value })} />
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleEditSave(lc.id)} className="flex-1 bg-cyan-600 text-white rounded-lg py-1.5 text-xs font-medium">저장</button>
                     <button onClick={() => setEditingId(null)} className="flex-1 bg-slate-100 text-slate-600 rounded-lg py-1.5 text-xs">취소</button>
@@ -86,14 +105,17 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-slate-800 text-sm font-medium">{lc.name}</p>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {lc.defaultTime} · 정원 {lc.capacity}명{lc.eligibilityCondition ? ` · ${lc.eligibilityCondition}` : ''}
+                    </p>
                     {lc.description && <p className="text-slate-400 text-xs mt-0.5">{lc.description}</p>}
                   </div>
-                  <button onClick={() => { setEditingId(lc.id); setEditName(lc.name); setEditDesc(lc.description); }} className="text-slate-400 hover:text-cyan-600 transition-colors">
+                  <button onClick={() => { setEditingId(lc.id); setEditForm({ name: lc.name, description: lc.description, defaultTime: lc.defaultTime, capacity: lc.capacity, eligibilityCondition: lc.eligibilityCondition }); }} className="text-slate-400 hover:text-cyan-600 transition-colors shrink-0">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
-                  <button onClick={() => deleteLessonClass(lc.id)} className="text-slate-400 hover:text-red-500 transition-colors">
+                  <button onClick={() => deleteLessonClass(lc.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -102,8 +124,22 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
         <div className="p-6 border-t border-slate-100 space-y-2">
-          <input className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors" placeholder="강습반 이름 (예: 초급반 A)" value={newName} onChange={e => setNewName(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
-          <input className="w-full border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors" placeholder="설명 (선택)" value={newDesc} onChange={e => setNewDesc(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleAdd()} />
+          <p className="text-xs font-semibold text-slate-600">신규 반 개설</p>
+          <input className={fieldCls} placeholder="반명 (예: 유치반, 마스터반)" value={newForm.name} onChange={e => setNewForm({ ...newForm, name: e.target.value })} />
+          <input className={fieldCls} placeholder="설명 (선택)" value={newForm.description} onChange={e => setNewForm({ ...newForm, description: e.target.value })} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-[10px] text-slate-400 mb-1">기본 시간</label>
+              <select className={fieldCls} value={newForm.defaultTime} onChange={e => setNewForm({ ...newForm, defaultTime: e.target.value })}>
+                {settings.designatedTimes.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] text-slate-400 mb-1">정원(명)</label>
+              <input type="number" min={1} className={fieldCls} value={newForm.capacity} onChange={e => setNewForm({ ...newForm, capacity: parseInt(e.target.value) || 1 })} />
+            </div>
+          </div>
+          <input className={fieldCls} placeholder="수강 가능 조건 (선택, 예: 만 3~7세)" value={newForm.eligibilityCondition} onChange={e => setNewForm({ ...newForm, eligibilityCondition: e.target.value })} />
           <button onClick={handleAdd} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl py-2 text-sm font-medium transition-colors">
             <Plus className="w-4 h-4 inline mr-1" /> 강습반 추가
           </button>
@@ -128,6 +164,7 @@ const defaultForm = (): FormData => ({
   age: 0, region: '', passType: '주 2회', totalClasses: 8,
   rescheduleLimit: 2, notes: '', progress: '',
   address: '', vehicleId: '', category: 'child', paymentPlanId: '', division: '정규반',
+  pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
 });
 
 function StudentFormModal({ initial, onClose, onSave, title }: {
@@ -152,6 +189,8 @@ function StudentFormModal({ initial, onClose, onSave, title }: {
       address: initial.address || '', vehicleId: initial.vehicleId || '',
       category: initial.category || 'child', paymentPlanId: initial.paymentPlanId || '',
       division: initial.division || '정규반',
+      pauseReason: initial.pauseReason || '', expectedReturnDate: initial.expectedReturnDate || '',
+      withdrawalReason: initial.withdrawalReason || '',
     } : defaultForm()
   );
   const fileRef = useRef<HTMLInputElement>(null);
@@ -526,10 +565,20 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
 
   const toggleDay = (d: string) => setRegularDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
+  const selectedLessonClass = lessonClasses.find(lc => lc.id === lessonClassId);
+
+  const handleLessonClassChange = (id: string) => {
+    setLessonClassId(id);
+    const lc = lessonClasses.find(l => l.id === id);
+    if (lc?.defaultTime) setRegularTime(lc.defaultTime);
+  };
+
+  // 반명(lessonClassId) 기준 정원 — 같은 반명이면 담당쌤이 달라도 공통 정원을 공유함. 반에 정원이 없으면 담당쌤의 1타임 정원으로 대체
   const instructorCap = instructors.find(i => i.id === instructorId)?.maxCapacity ?? 0;
-  const matchingCount = instructorId && regularTime && regularDays.length > 0
+  const effectiveCap = selectedLessonClass?.capacity || instructorCap;
+  const matchingCount = lessonClassId && instructorId && regularTime && regularDays.length > 0
     ? students.flatMap(s => getAllEnrollments(s)).filter(e =>
-        e.status === 'active' && e.instructorId === instructorId && e.regularTime === regularTime && e.regularDays.some(d => regularDays.includes(d))
+        e.status === 'active' && e.lessonClassId === lessonClassId && e.instructorId === instructorId && e.regularTime === regularTime && e.regularDays.some(d => regularDays.includes(d))
       ).length
     : 0;
 
@@ -540,6 +589,8 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
     onSave({
       lessonClassId, instructorId, regularDays, regularTime, startDate,
       endDate: enrollment?.endDate ?? '', status: 'active', passType, paymentPlanId, monthlyPrice,
+      pauseReason: enrollment?.pauseReason ?? '', expectedReturnDate: enrollment?.expectedReturnDate ?? '',
+      withdrawalReason: enrollment?.withdrawalReason ?? '',
     });
   };
 
@@ -554,7 +605,7 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>강습반 *</label>
-              <select className={`${inputCls} cursor-pointer`} value={lessonClassId} onChange={e => setLessonClassId(e.target.value)}>
+              <select className={`${inputCls} cursor-pointer`} value={lessonClassId} onChange={e => handleLessonClassChange(e.target.value)}>
                 <option value="">선택하세요</option>
                 {lessonClasses.map(lc => <option key={lc.id} value={lc.id}>{lc.name}</option>)}
               </select>
@@ -567,6 +618,13 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
               </select>
             </div>
           </div>
+
+          {selectedLessonClass && (selectedLessonClass.eligibilityCondition || selectedLessonClass.capacity) && (
+            <div className="rounded-xl px-3 py-2.5 text-xs text-cyan-700 bg-cyan-50 border border-cyan-200">
+              "{selectedLessonClass.name}" 기본 정원 {selectedLessonClass.capacity}명
+              {selectedLessonClass.eligibilityCondition && ` · 수강 가능 조건: ${selectedLessonClass.eligibilityCondition}`}
+            </div>
+          )}
 
           <div>
             <label className={labelCls}>요일 *</label>
@@ -581,15 +639,15 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
           </div>
 
           <div>
-            <label className={labelCls}>시간</label>
+            <label className={labelCls}>시간 {selectedLessonClass?.defaultTime && <span className="text-slate-400 font-normal">(기본 {selectedLessonClass.defaultTime}, 담당쌤별로 변경 가능)</span>}</label>
             <select className={`${inputCls} cursor-pointer`} value={regularTime} onChange={e => setRegularTime(e.target.value)}>
               {settings.designatedTimes.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
 
-          {instructorId && regularDays.length > 0 && (
-            <div className={`rounded-xl px-3 py-2.5 text-xs font-medium ${matchingCount >= instructorCap ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}>
-              현재 이 시간대 등록 인원: {matchingCount}/{instructorCap}명 {matchingCount >= instructorCap && '(정원 초과 주의)'}
+          {lessonClassId && instructorId && regularDays.length > 0 && (
+            <div className={`rounded-xl px-3 py-2.5 text-xs font-medium ${matchingCount >= effectiveCap ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-slate-50 text-slate-600 border border-slate-200'}`}>
+              현재 이 반·시간대 등록 인원: {matchingCount}/{effectiveCap}명 {matchingCount >= effectiveCap && '(정원 초과 주의)'}
             </div>
           )}
 
@@ -642,11 +700,95 @@ const ENROLLMENT_STATUS_META: Record<Enrollment['status'], { text: string; color
   ended:  { text: '종강', color: 'bg-slate-100 text-slate-500 border-slate-200' },
 };
 
+const PAUSE_REASON_CHIPS = ['여행', '출장', '수술', '기타'];
+
+function PauseReasonModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (reason: string, expectedReturnDate: string) => void }) {
+  const [chip, setChip] = useState('여행');
+  const [detail, setDetail] = useState('');
+  const [expectedReturnDate, setExpectedReturnDate] = useState('');
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-xl p-6 space-y-4">
+        <div>
+          <h3 className="text-slate-800 font-semibold">장기 결석(차감) 처리</h3>
+          <p className="text-slate-500 text-xs mt-1 leading-relaxed">2주 이상 여행·출장·수술 등으로 결석할 때 사용해요. 해당 월 수강료는 선납 처리되고, 자동으로 재개되지 않아요 — 복귀 시 별도로 "복귀 신청"을 해야 해요.</p>
+        </div>
+        <div>
+          <p className="text-xs text-slate-500 mb-1.5 font-medium">사유</p>
+          <div className="grid grid-cols-4 gap-1.5">
+            {PAUSE_REASON_CHIPS.map(c => (
+              <button key={c} onClick={() => setChip(c)}
+                className={`py-1.5 rounded-lg text-xs font-medium border transition-colors ${chip === c ? 'bg-amber-500 border-amber-500 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                {c}
+              </button>
+            ))}
+          </div>
+          <input className="w-full mt-2 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400" placeholder="상세 사유 (선택)" value={detail} onChange={e => setDetail(e.target.value)} />
+        </div>
+        <div>
+          <p className="text-xs text-slate-500 mb-1.5 font-medium">예상 복귀일 (선택)</p>
+          <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-400" value={expectedReturnDate} onChange={e => setExpectedReturnDate(e.target.value)} />
+        </div>
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
+          <button onClick={() => onConfirm(detail.trim() ? `${chip} — ${detail.trim()}` : chip, expectedReturnDate)}
+            className="flex-1 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-medium transition-colors">처리하기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WithdrawalReasonModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (reason: string) => void }) {
+  const [reason, setReason] = useState('');
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-xl p-6 space-y-4">
+        <div>
+          <h3 className="text-slate-800 font-semibold">퇴원 처리</h3>
+          <p className="text-slate-500 text-xs mt-1">복귀 의사가 없는 경우 퇴원으로 처리해요.</p>
+        </div>
+        <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-400 resize-none" rows={3} placeholder="퇴원 사유 (선택)" value={reason} onChange={e => setReason(e.target.value)} />
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
+          <button onClick={() => onConfirm(reason.trim())} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors">퇴원 처리하기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ReturnDateModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (date: string) => void }) {
+  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-xl p-6 space-y-4">
+        <div>
+          <h3 className="text-slate-800 font-semibold">복귀 신청</h3>
+          <p className="text-slate-500 text-xs mt-1 leading-relaxed">복귀 희망일을 선택하면 신청이 접수돼요. 담당쌤·데스크가 자리를 확인하고 승인해야 실제로 다시 수강할 수 있어요.</p>
+        </div>
+        <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-400" value={date} onChange={e => setDate(e.target.value)} />
+        <div className="flex gap-3">
+          <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
+          <button onClick={() => onConfirm(date)} className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">복귀 신청하기</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EnrollmentSection({ student }: { student: Student }) {
-  const { lessonClasses, instructors, addEnrollment, updateEnrollment, cancelEnrollment } = useStore();
+  const {
+    lessonClasses, instructors, addEnrollment, updateEnrollment, cancelEnrollment,
+    pauseEnrollmentLongTerm, withdrawalRequests, submitWithdrawalRequest, approveWithdrawalRequest, rejectWithdrawalRequest,
+    returnRequests, submitReturnRequest, approveReturnRequest, rejectReturnRequest,
+  } = useStore();
   const [showAdd, setShowAdd] = useState(false);
   const [editTarget, setEditTarget] = useState<Enrollment | null>(null);
   const [cancelTarget, setCancelTarget] = useState<Enrollment | null>(null);
+  const [pauseTarget, setPauseTarget] = useState<Enrollment | null>(null);
+  const [withdrawTarget, setWithdrawTarget] = useState<Enrollment | null>(null);
+  const [returnTarget, setReturnTarget] = useState<Enrollment | null>(null);
 
   const enrollments = getAllEnrollments(student);
 
@@ -677,8 +819,11 @@ function EnrollmentSection({ student }: { student: Student }) {
               const lc = lessonClasses.find(l => l.id === enr.lessonClassId);
               const inst = instructors.find(i => i.id === enr.instructorId);
               const meta = ENROLLMENT_STATUS_META[enr.status];
+              const pendingWithdrawal = withdrawalRequests.find(r => r.studentId === student.id && r.enrollmentId === enr.id && r.status === 'pending');
+              const pendingReturn = returnRequests.find(r => r.studentId === student.id && r.enrollmentId === enr.id && r.status === 'pending');
               return (
-                <tr key={enr.id} className="hover:bg-slate-50 transition-colors">
+                <Fragment key={enr.id}>
+                <tr className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-3 font-semibold text-slate-800">
                     {lc?.name ?? '-'} {enr.id === 'primary' && <span className="text-[10px] text-slate-400 font-normal ml-1">(기본)</span>}
                   </td>
@@ -691,12 +836,13 @@ function EnrollmentSection({ student }: { student: Student }) {
                     <div className="flex items-center gap-1">
                       {enr.status === 'active' ? (
                         <>
-                          <button onClick={() => handleStatusChange(enr, 'paused')} title="휴학" className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"><PauseCircle className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setPauseTarget(enr)} title="장기 결석(차감) 처리" className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"><PauseCircle className="w-3.5 h-3.5" /></button>
                           <button onClick={() => handleStatusChange(enr, 'ended')} title="종강" className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"><StopCircle className="w-3.5 h-3.5" /></button>
+                          <button onClick={() => setWithdrawTarget(enr)} title="퇴원 처리" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><XCircle className="w-3.5 h-3.5" /></button>
                         </>
-                      ) : (
-                        <button onClick={() => handleStatusChange(enr, 'active')} title="재개" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><CheckCircle className="w-3.5 h-3.5" /></button>
-                      )}
+                      ) : enr.status === 'paused' ? (
+                        <button onClick={() => setReturnTarget(enr)} title="복귀 신청" className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><CheckCircle className="w-3.5 h-3.5" /></button>
+                      ) : null}
                       <button onClick={() => setEditTarget(enr)} title="수정(반 이동 포함)" className="p-1.5 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
                       {enr.id !== 'primary' && (
                         <button onClick={() => setCancelTarget(enr)} title="등록취소" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
@@ -704,6 +850,44 @@ function EnrollmentSection({ student }: { student: Student }) {
                     </div>
                   </td>
                 </tr>
+                {enr.status === 'paused' && (enr.pauseReason || enr.expectedReturnDate) && (
+                  <tr className="bg-amber-50/50">
+                    <td colSpan={7} className="px-4 py-2 text-amber-700 text-xs">
+                      장기 결석 사유: {enr.pauseReason || '-'} {enr.expectedReturnDate && `· 예상 복귀일: ${enr.expectedReturnDate}`}
+                    </td>
+                  </tr>
+                )}
+                {pendingWithdrawal && (
+                  <tr className="bg-red-50/60">
+                    <td colSpan={7} className="px-4 py-2.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-red-700 text-xs">
+                          퇴원 요청 있음 ({pendingWithdrawal.requestedBy === 'parent' ? '학부모 신청' : '관리자 등록'}) — 사유: {pendingWithdrawal.reason || '-'}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => approveWithdrawalRequest(pendingWithdrawal.id)} className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[11px] font-semibold">확인 후 퇴원 처리</button>
+                          <button onClick={() => rejectWithdrawalRequest(pendingWithdrawal.id)} className="px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-lg text-[11px]">거절</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                {pendingReturn && (
+                  <tr className="bg-cyan-50/60">
+                    <td colSpan={7} className="px-4 py-2.5">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <span className="text-cyan-700 text-xs">
+                          복귀 신청 대기중 — 희망일 {pendingReturn.requestedReturnDate} {pendingReturn.hasSeatAvailable ? '(자리 있음)' : '(정원 초과 주의)'}
+                        </span>
+                        <div className="flex gap-1.5">
+                          <button onClick={() => approveReturnRequest(pendingReturn.id)} className="px-2.5 py-1 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-[11px] font-semibold">확인 후 신규로 받기</button>
+                          <button onClick={() => rejectReturnRequest(pendingReturn.id)} className="px-2.5 py-1 bg-white border border-slate-200 text-slate-500 rounded-lg text-[11px]">거절</button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>
@@ -731,6 +915,18 @@ function EnrollmentSection({ student }: { student: Student }) {
             </div>
           </div>
         </div>
+      )}
+      {pauseTarget && (
+        <PauseReasonModal onClose={() => setPauseTarget(null)}
+          onConfirm={(reason, expectedReturnDate) => { pauseEnrollmentLongTerm(student.id, pauseTarget.id, reason, expectedReturnDate); setPauseTarget(null); }} />
+      )}
+      {withdrawTarget && (
+        <WithdrawalReasonModal onClose={() => setWithdrawTarget(null)}
+          onConfirm={reason => { submitWithdrawalRequest(student.id, withdrawTarget.id, reason, 'admin'); setWithdrawTarget(null); }} />
+      )}
+      {returnTarget && (
+        <ReturnDateModal onClose={() => setReturnTarget(null)}
+          onConfirm={date => { submitReturnRequest(student.id, returnTarget.id, date); setReturnTarget(null); }} />
       )}
     </div>
   );
