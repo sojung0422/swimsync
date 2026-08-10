@@ -247,6 +247,17 @@ export default function ParentApp() {
     .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
   const unreadNotificationCount = myNotifications.filter(n => !readNotificationIds.has(n.id)).length;
 
+  // 퇴원/복귀/일정변경 처리 결과 등 시스템 알림 — 처음 등장할 때만 벨소리 (앱 로드 시점에 이미 있던 알림은 조용히 배지만 표시)
+  const notifBellRef = useRef<Set<string>>(new Set(myNotifications.map(n => n.id)));
+  useEffect(() => {
+    const unplayed = myNotifications.filter(n => !notifBellRef.current.has(n.id));
+    if (unplayed.length > 0) {
+      playBellSound();
+      unplayed.forEach(n => notifBellRef.current.add(n.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myNotifications.map(n => n.id).join(',')]);
+
   const handleOpenNotifications = () => {
     setShowNotifications(true);
     setReadNotificationIds(new Set(myNotifications.map(n => n.id)));

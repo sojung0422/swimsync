@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useStore } from '../store/StoreContext';
+import { useStore, computeMonthlyHours } from '../store/StoreContext';
 import type { Instructor } from '../store/StoreContext';
-import { Search, UserPlus, Save, Trash2, Users, Printer } from 'lucide-react';
+import { Search, UserPlus, Save, Trash2, Users, Printer, Wallet, FileText, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { format } from 'date-fns';
 
 const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -13,10 +14,143 @@ const blankForm = (): StaffForm => ({
   hireDate: new Date().toISOString().slice(0, 10), position: '', department: '',
   workDays: [], workTimeStart: '13:00', workTimeEnd: '21:00',
   dutyNote: '', vehicleNumber: '', address: '', memo: '', status: 'active',
+  monthlySalary: 0, hourlyRate: 0,
 });
+
+// ─── 급여 정산 ──────────────────────────────────────────────────────────────
+
+function PayslipModal({ instructor, record, onClose }: { instructor: Instructor; record: { month: string; payType: '정규' | '파트'; baseAmount: number; hourlyRate: number; hoursWorked: number; totalAmount: number; issuedAt: string }; onClose: () => void }) {
+  const { settings } = useStore();
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:bg-white print:static">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-xl print:shadow-none print:border-0">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 print:hidden">
+          <h2 className="text-[15px] font-semibold text-slate-800">급여 명세서</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-8 space-y-5">
+          <div className="text-center pb-4 border-b-2 border-slate-800">
+            <p className="text-slate-400 text-xs">{settings.academyName} · {settings.branchName}</p>
+            <h3 className="text-xl font-bold text-slate-900 mt-1">{record.month} 급여 명세서</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-y-2 text-sm">
+            <span className="text-slate-400">성명</span><span className="text-slate-800 font-medium text-right">{instructor.name}</span>
+            <span className="text-slate-400">직책</span><span className="text-slate-800 font-medium text-right">{instructor.position || '-'}</span>
+            <span className="text-slate-400">고용 형태</span><span className="text-slate-800 font-medium text-right">{record.payType}</span>
+          </div>
+          <div className="border-t border-dashed border-slate-200 pt-4 space-y-2 text-sm">
+            {record.payType === '정규' ? (
+              <div className="flex justify-between"><span className="text-slate-500">기본급(월급)</span><span className="text-slate-800 font-medium">{record.baseAmount.toLocaleString()}원</span></div>
+            ) : (
+              <>
+                <div className="flex justify-between"><span className="text-slate-500">시급</span><span className="text-slate-800 font-medium">{record.hourlyRate.toLocaleString()}원</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">근무 시간</span><span className="text-slate-800 font-medium">{record.hoursWorked}시간</span></div>
+              </>
+            )}
+          </div>
+          <div className="border-t-2 border-slate-800 pt-4 flex justify-between items-center">
+            <span className="text-slate-700 font-bold">지급 총액</span>
+            <span className="text-slate-900 font-bold text-xl">{record.totalAmount.toLocaleString()}원</span>
+          </div>
+          <p className="text-slate-300 text-[11px] text-center pt-2">발행일: {record.issuedAt}</p>
+        </div>
+        <div className="p-6 pt-0 print:hidden">
+          <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-medium transition-colors">
+            <Printer className="w-4 h-4" /> 명세서 인쇄 / PDF 저장
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PayrollView() {
+  const { instructors, payrollRecords, issuePayroll } = useStore();
+  const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [payslipTarget, setPayslipTarget] = useState<{ instructor: Instructor; record: typeof payrollRecords[number] } | null>(null);
+  const [hoursDraft, setHoursDraft] = useState<Record<string, number>>({});
+
+  const activeInstructors = instructors.filter(i => i.status === 'active');
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="max-w-4xl mx-auto p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-slate-800 font-bold text-lg">급여 정산 — {month}</h2>
+          <input type="month" value={month} onChange={e => setMonth(e.target.value)}
+            className="border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors" />
+        </div>
+        <p className="text-slate-400 text-xs -mt-2">정규직은 등록된 월급이 그대로 지급액이 되고, 파트타임은 근무 요일·시간을 기준으로 추정한 시간에 시급을 곱해 계산해요. 발행 전 근무시간을 직접 조정할 수 있어요.</p>
+
+        <div className="space-y-2.5">
+          {activeInstructors.length === 0 && (
+            <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center text-slate-400 text-sm">재직 중인 직원이 없습니다.</div>
+          )}
+          {activeInstructors.map(inst => {
+            const estimatedHours = computeMonthlyHours(inst, month);
+            const hours = hoursDraft[inst.id] ?? estimatedHours;
+            const totalAmount = inst.type === '정규' ? inst.monthlySalary : Math.round(inst.hourlyRate * hours);
+            const issued = payrollRecords.find(p => p.instructorId === inst.id && p.month === month);
+            const isExpanded = expandedId === inst.id;
+            return (
+              <div key={inst.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+                <div className="px-5 py-4 flex items-center gap-4">
+                  <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: `${inst.color}20`, color: inst.color }}>{inst.name[0]}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="text-slate-800 text-sm font-semibold">{inst.name}</p>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-slate-50 text-slate-500 border-slate-200">{inst.type}</span>
+                      {issued && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-emerald-50 text-emerald-700 border-emerald-200">이번 달 발행됨</span>}
+                    </div>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {inst.type === '정규' ? `월급 ${inst.monthlySalary.toLocaleString()}원` : `시급 ${inst.hourlyRate.toLocaleString()}원 · 예상 ${estimatedHours}시간`}
+                    </p>
+                  </div>
+                  <p className="text-slate-800 text-base font-bold shrink-0">{totalAmount.toLocaleString()}원</p>
+                  <button onClick={() => setExpandedId(isExpanded ? null : inst.id)} className="text-slate-400 hover:text-slate-700 transition-colors p-1 shrink-0">
+                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                  </button>
+                </div>
+                {isExpanded && (
+                  <div className="px-5 pb-4 border-t border-slate-100 pt-4 animate-fade-up space-y-3">
+                    {inst.type === '파트' && (
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500 font-medium">근무 시간 조정</label>
+                        <input type="number" min={0} step={0.5} value={hours}
+                          onChange={e => setHoursDraft(prev => ({ ...prev, [inst.id]: parseFloat(e.target.value) || 0 }))}
+                          className="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-center" />
+                        <span className="text-slate-400 text-xs">시간</span>
+                      </div>
+                    )}
+                    <div className="flex gap-2">
+                      <button onClick={() => issuePayroll(inst.id, month, inst.type === '파트' ? hours : undefined)}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-medium transition-colors">
+                        <Wallet className="w-3.5 h-3.5" /> {issued ? '재발행' : '명세서 발행'}
+                      </button>
+                      {issued && (
+                        <button onClick={() => setPayslipTarget({ instructor: inst, record: issued })}
+                          className="flex items-center gap-1.5 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 rounded-xl text-xs font-medium transition-colors">
+                          <FileText className="w-3.5 h-3.5" /> 명세서 보기
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {payslipTarget && <PayslipModal instructor={payslipTarget.instructor} record={payslipTarget.record} onClose={() => setPayslipTarget(null)} />}
+    </div>
+  );
+}
 
 export default function AdminStaff() {
   const { instructors, addInstructor, updateInstructor, deleteInstructor } = useStore();
+  const [mode, setMode] = useState<'info' | 'payroll'>('info');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resigned'>('active');
   const [nameFilter, setNameFilter] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(instructors[0]?.id ?? null);
@@ -63,7 +197,20 @@ export default function AdminStaff() {
   const labelCls = "block text-xs text-slate-500 mb-1 font-medium";
 
   return (
-    <div className="flex h-full bg-slate-50">
+    <div className="flex flex-col h-full bg-slate-50">
+      <div className="shrink-0 flex border-b border-slate-200 bg-white px-6">
+        <button onClick={() => setMode('info')}
+          className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${mode === 'info' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+          <Users className="w-4 h-4" /> 직원 정보
+        </button>
+        <button onClick={() => setMode('payroll')}
+          className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${mode === 'payroll' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+          <Wallet className="w-4 h-4" /> 급여 정산
+        </button>
+      </div>
+
+      {mode === 'payroll' ? <PayrollView /> : (
+    <div className="flex flex-1 min-h-0 bg-slate-50">
       {/* ── 좌측: 직원 목록 ── */}
       <div className="w-72 shrink-0 border-r border-slate-200 bg-white flex flex-col">
         <div className="p-4 border-b border-slate-100 space-y-3">
@@ -204,6 +351,21 @@ export default function AdminStaff() {
               </div>
             )}
 
+            <div className="grid grid-cols-2 gap-3 bg-emerald-50/40 border border-emerald-100 rounded-xl p-4">
+              {form.type === '정규' ? (
+                <div className="col-span-2">
+                  <label className={labelCls}>월급 (정규직 급여 정산 기준)</label>
+                  <input type="number" min={0} step={10000} className={inputCls} value={form.monthlySalary} onChange={e => set('monthlySalary', parseInt(e.target.value) || 0)} />
+                </div>
+              ) : (
+                <div className="col-span-2">
+                  <label className={labelCls}>시급 (파트타임 급여 정산 기준)</label>
+                  <input type="number" min={0} step={500} className={inputCls} value={form.hourlyRate} onChange={e => set('hourlyRate', parseInt(e.target.value) || 0)} />
+                </div>
+              )}
+              <p className="col-span-2 text-emerald-600 text-xs -mt-1">"급여 정산" 탭에서 이 기준으로 월별 급여를 자동 계산해 명세서를 발행할 수 있어요.</p>
+            </div>
+
             <div>
               <label className={labelCls}>근무 요일</label>
               <div className="flex gap-2">
@@ -270,6 +432,8 @@ export default function AdminStaff() {
             </div>
           </div>
         </div>
+      )}
+    </div>
       )}
     </div>
   );

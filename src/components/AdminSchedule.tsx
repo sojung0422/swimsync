@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useStore, ClassSession } from '../store/StoreContext';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
@@ -22,6 +22,7 @@ export default function AdminSchedule() {
   const [newEvent, setNewEvent] = useState({ date: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd'), title: '', type: 'notice' as 'notice' | 'event' | 'memo' });
 
   const [newTimeSlot, setNewTimeSlot] = useState('');
+  const [newLevel, setNewLevel] = useState('');
   const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName });
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
   const [weekFilterMode, setWeekFilterMode] = useState<'all' | 'individual'>('all');
@@ -495,6 +496,29 @@ export default function AdminSchedule() {
                     setNewTimeSlot('');
                   }} className="px-3 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">추가</button>
                 </div>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><GraduationCap size={15} className="text-cyan-600" /> 레벨(급수) 체계 설정</h4>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {settings.swimLevels.map(level => (
+                    <button key={level}
+                      onClick={() => updateSettings({ swimLevels: settings.swimLevels.filter(l => l !== level) })}
+                      title="클릭하면 이 레벨을 삭제해요"
+                      className="px-3 py-1.5 rounded-lg text-sm font-bold border bg-cyan-600 border-cyan-600 text-white hover:bg-red-500 hover:border-red-500 transition-colors">
+                      {level} ✕
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2">
+                  <input value={newLevel} onChange={e => setNewLevel(e.target.value)} placeholder="예: 상급, 경기반" className={`${inputCls} w-40`} />
+                  <button onClick={() => {
+                    if (!newLevel.trim() || settings.swimLevels.includes(newLevel.trim())) return;
+                    updateSettings({ swimLevels: [...settings.swimLevels, newLevel.trim()] });
+                    setNewLevel('');
+                  }} className="px-3 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">추가</button>
+                </div>
+                <p className="text-slate-400 text-xs mt-2">여기서 정한 레벨 순서대로 강습생 등록 화면과 레벨 테스트 기록에서 선택할 수 있어요.</p>
               </div>
             </div>
             <div className="mt-8 pt-5 border-t border-slate-100">

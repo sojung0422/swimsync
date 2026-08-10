@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { useStore, computeLinearSessionRates } from '../store/StoreContext';
-import type { PaymentPlan, MakeupPolicyRule } from '../store/StoreContext';
+import { format, subMonths } from 'date-fns';
+import { useStore, computeLinearSessionRates, computeApplicableDiscounts, getAllEnrollments } from '../store/StoreContext';
+import type { PaymentPlan, MakeupPolicyRule, Discount } from '../store/StoreContext';
 import {
   CreditCard, Plus, Edit2, Trash2, X, CheckCircle, XCircle,
-  ChevronDown, ChevronUp, Waves, AlertCircle, TrendingUp, Users, RefreshCw, Sparkles, Table2
+  ChevronDown, ChevronUp, Waves, AlertCircle, TrendingUp, Users, RefreshCw, Sparkles, Table2,
+  Gift, Percent, BarChart3, UserMinus, UserPlus2
 } from 'lucide-react';
 
 // ─── 보강 정책 설정 ────────────────────────────────────────────────────────────
@@ -208,6 +210,293 @@ function PlanFormModal({ initial, onClose, onSave, title }: {
   );
 }
 
+// ─── 형제/이벤트 할인 관리 ─────────────────────────────────────────────────────
+
+function DiscountFormModal({ initial, onClose, onSave, title }: {
+  initial?: Discount; onClose: () => void;
+  onSave: (d: Omit<Discount, 'id'>) => void; title: string;
+}) {
+  const [name, setName] = useState(initial?.name ?? '');
+  const [kind, setKind] = useState<'sibling' | 'event'>(initial?.kind ?? 'sibling');
+  const [percent, setPercent] = useState(initial?.percent ?? 5);
+  const [minSiblingCount, setMinSiblingCount] = useState(initial?.minSiblingCount ?? 2);
+  const [startDate, setStartDate] = useState(initial?.startDate ?? format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(initial?.endDate ?? format(new Date(), 'yyyy-MM-dd'));
+  const [active, setActive] = useState(initial?.active ?? true);
+
+  const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors";
+  const labelCls = "block text-xs font-medium text-slate-500 mb-1";
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-xl">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100">
+          <h2 className="text-[15px] font-semibold text-slate-800">{title}</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className={labelCls}>이름 *</label>
+            <input className={inputCls} placeholder="예: 형제 2인 이상 할인, 여름방학 이벤트" value={name} onChange={e => setName(e.target.value)} />
+          </div>
+          <div>
+            <label className={labelCls}>종류</label>
+            <div className="flex gap-2">
+              {([['sibling', '형제·다자녀'], ['event', '이벤트 기간']] as const).map(([val, label]) => (
+                <button key={val} type="button" onClick={() => setKind(val)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm font-medium border transition-colors ${kind === val ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className={labelCls}>할인율 (%)</label>
+            <input type="number" min={0} max={100} className={inputCls} value={percent} onChange={e => setPercent(parseInt(e.target.value) || 0)} />
+          </div>
+          {kind === 'sibling' ? (
+            <div>
+              <label className={labelCls}>적용 조건 — 형제(가족) 총원이 몇 명 이상일 때</label>
+              <input type="number" min={2} className={inputCls} value={minSiblingCount} onChange={e => setMinSiblingCount(parseInt(e.target.value) || 2)} />
+              <p className="text-slate-400 text-xs mt-1">같은 어머니/아버지 연락처로 등록된 수강 중인 형제 수를 자동으로 세어 적용해요.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls}>시작일</label>
+                <input type="date" className={inputCls} value={startDate} onChange={e => setStartDate(e.target.value)} />
+              </div>
+              <div>
+                <label className={labelCls}>종료일</label>
+                <input type="date" className={inputCls} value={endDate} onChange={e => setEndDate(e.target.value)} min={startDate} />
+              </div>
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+            <input type="checkbox" checked={active} onChange={e => setActive(e.target.checked)} className="w-4 h-4 accent-cyan-600" />
+            지금 바로 적용 (사용함)
+          </label>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
+            <button onClick={() => {
+              if (!name.trim()) return;
+              onSave({ name: name.trim(), kind, percent, minSiblingCount, startDate: kind === 'event' ? startDate : '', endDate: kind === 'event' ? endDate : '', active });
+              onClose();
+            }} className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">
+              저장
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DiscountsPanel() {
+  const { discounts, students, addDiscount, updateDiscount, deleteDiscount } = useStore();
+  const [modal, setModal] = useState<{ mode: 'add' | 'edit'; discount?: Discount } | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<Discount | null>(null);
+
+  const matchingCount = (d: Discount) => students.filter(s => s.status === 'active' && computeApplicableDiscounts(s, students, [d]).matched.length > 0).length;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <p className="text-slate-400 text-xs">여기서 만든 할인은 조건에 맞는 학생에게 자동으로 계산되어, 학생 상세의 결제 정보에서 확인·적용할 수 있어요.</p>
+        <button onClick={() => setModal({ mode: 'add' })}
+          className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-medium transition-colors shrink-0 ml-3">
+          <Plus className="w-3.5 h-3.5" /> 할인·이벤트 추가
+        </button>
+      </div>
+
+      {discounts.length === 0 ? (
+        <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center text-slate-400">
+          <Gift className="w-10 h-10 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">등록된 할인·이벤트가 없습니다.</p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {discounts.map(d => (
+            <div key={d.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${d.kind === 'sibling' ? 'bg-violet-50 border-violet-100' : 'bg-amber-50 border-amber-100'}`}>
+                {d.kind === 'sibling' ? <Users className={`w-5 h-5 text-violet-600`} /> : <Gift className="w-5 h-5 text-amber-600" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-slate-800 text-sm font-semibold">{d.name}</p>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold border bg-cyan-50 text-cyan-700 border-cyan-200 flex items-center gap-0.5">
+                    <Percent className="w-2.5 h-2.5" /> {d.percent}%
+                  </span>
+                  {!d.active && <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-slate-100 text-slate-500 border-slate-200">사용 안 함</span>}
+                </div>
+                <p className="text-slate-400 text-xs mt-1">
+                  {d.kind === 'sibling' ? `형제(가족) ${d.minSiblingCount}명 이상` : `이벤트 기간: ${d.startDate} ~ ${d.endDate}`}
+                  {' · '}현재 적용 대상 {matchingCount(d)}명
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button onClick={() => updateDiscount(d.id, { active: !d.active })}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${d.active ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'}`}>
+                  {d.active ? '사용 중' : '중지됨'}
+                </button>
+                <button onClick={() => setModal({ mode: 'edit', discount: d })}
+                  className="p-2 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded-lg transition-colors">
+                  <Edit2 className="w-4 h-4" />
+                </button>
+                <button onClick={() => setDeleteConfirm(d)}
+                  className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modal && (
+        <DiscountFormModal
+          title={modal.mode === 'add' ? '할인·이벤트 추가' : '할인·이벤트 수정'}
+          initial={modal.discount}
+          onClose={() => setModal(null)}
+          onSave={data => modal.mode === 'add' ? addDiscount(data) : updateDiscount(modal.discount!.id, data)}
+        />
+      )}
+
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-sm shadow-xl p-6 space-y-4">
+            <div>
+              <h3 className="text-slate-800 font-semibold">할인·이벤트 삭제</h3>
+              <p className="text-slate-500 text-sm mt-1">"{deleteConfirm.name}"을(를) 삭제합니다.</p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
+              <button onClick={() => { deleteDiscount(deleteConfirm.id); setDeleteConfirm(null); }} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors">삭제</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 매출/이탈 통계 대시보드 ───────────────────────────────────────────────────
+
+function BarRow({ label, value, max, colorClass, valueLabel }: { label: string; value: number; max: number; colorClass: string; valueLabel: string }) {
+  const pct = max > 0 ? Math.max(2, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-slate-400 text-xs w-14 shrink-0">{label}</span>
+      <div className="flex-1 h-5 bg-slate-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-slate-600 text-xs font-semibold w-20 text-right shrink-0">{valueLabel}</span>
+    </div>
+  );
+}
+
+function StatsDashboard() {
+  const { paymentRecords, students, withdrawalRequests, lessonClasses } = useStore();
+
+  const months = Array.from({ length: 6 }, (_, i) => format(subMonths(new Date(), 5 - i), 'yyyy-MM'));
+
+  const revenueByMonth = months.map(m => ({
+    month: m,
+    total: paymentRecords.filter(p => p.billingMonth === m && p.status === 'paid').reduce((sum, p) => sum + p.paidAmount, 0),
+  }));
+  const maxRevenue = Math.max(1, ...revenueByMonth.map(r => r.total));
+
+  const newByMonth = months.map(m => ({ month: m, count: students.filter(s => s.registrationDate.startsWith(m)).length }));
+  const withdrawnByMonth = months.map(m => ({
+    month: m,
+    count: withdrawalRequests.filter(r => r.status === 'approved' && r.resolvedAt.startsWith(m)).length,
+  }));
+  const maxFlow = Math.max(1, ...newByMonth.map(r => r.count), ...withdrawnByMonth.map(r => r.count));
+
+  const classFillRates = lessonClasses.map(lc => {
+    const enrolled = students.flatMap(getAllEnrollments).filter(e => e.status === 'active' && e.lessonClassId === lc.id).length;
+    return { name: lc.name, enrolled, capacity: lc.capacity, rate: lc.capacity > 0 ? Math.round((enrolled / lc.capacity) * 100) : 0 };
+  });
+
+  const totalActiveRevenuePotential = students.filter(s => s.status === 'active').reduce((sum, s) => sum + s.paymentAmount, 0);
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-4">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
+            <span className="text-slate-500 text-xs font-medium">이번 달 확정 매출</span>
+          </div>
+          <p className="text-slate-800 text-xl font-bold">{(revenueByMonth[revenueByMonth.length - 1]?.total ?? 0).toLocaleString()}원</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <UserPlus2 className="w-4 h-4 text-cyan-600" />
+            <span className="text-slate-500 text-xs font-medium">이번 달 신규 등록</span>
+          </div>
+          <p className="text-slate-800 text-xl font-bold">{newByMonth[newByMonth.length - 1]?.count ?? 0}명</p>
+        </div>
+        <div className="bg-white border border-slate-200 rounded-2xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <UserMinus className="w-4 h-4 text-red-500" />
+            <span className="text-slate-500 text-xs font-medium">이번 달 퇴원</span>
+          </div>
+          <p className="text-slate-800 text-xl font-bold">{withdrawnByMonth[withdrawnByMonth.length - 1]?.count ?? 0}명</p>
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-cyan-600" />
+          <h2 className="text-[14px] font-semibold text-slate-700">월별 매출 추이 (최근 6개월, 완납 기준)</h2>
+        </div>
+        <div className="p-6 space-y-3">
+          {revenueByMonth.map(r => (
+            <BarRow key={r.month} label={r.month.slice(5)} value={r.total} max={maxRevenue} colorClass="bg-emerald-500" valueLabel={`${r.total.toLocaleString()}원`} />
+          ))}
+          <p className="text-slate-400 text-xs pt-1">수강 중인 전체 학생의 월 결제 금액 합계(잠재 매출) 참고치: {totalActiveRevenuePotential.toLocaleString()}원</p>
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <BarChart3 className="w-4 h-4 text-cyan-600" />
+          <h2 className="text-[14px] font-semibold text-slate-700">신규 등록 vs 퇴원 추이 (최근 6개월)</h2>
+        </div>
+        <div className="p-6 space-y-4">
+          <div className="space-y-2">
+            <p className="text-slate-500 text-xs font-medium">신규 등록</p>
+            {newByMonth.map(r => (
+              <BarRow key={r.month} label={r.month.slice(5)} value={r.count} max={maxFlow} colorClass="bg-cyan-500" valueLabel={`${r.count}명`} />
+            ))}
+          </div>
+          <div className="space-y-2 pt-2 border-t border-slate-100">
+            <p className="text-slate-500 text-xs font-medium">퇴원</p>
+            {withdrawnByMonth.map(r => (
+              <BarRow key={r.month} label={r.month.slice(5)} value={r.count} max={maxFlow} colorClass="bg-red-400" valueLabel={`${r.count}명`} />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+          <Users className="w-4 h-4 text-cyan-600" />
+          <h2 className="text-[14px] font-semibold text-slate-700">강습반별 정원 충족률</h2>
+        </div>
+        <div className="p-6 space-y-3">
+          {classFillRates.length === 0 ? (
+            <p className="text-slate-400 text-sm">등록된 강습반이 없습니다.</p>
+          ) : classFillRates.map(c => (
+            <BarRow key={c.name} label={c.name} value={c.enrolled} max={Math.max(1, ...classFillRates.map(x => x.capacity))} colorClass={c.rate >= 100 ? 'bg-red-500' : c.rate >= 70 ? 'bg-amber-500' : 'bg-cyan-500'} valueLabel={`${c.enrolled}/${c.capacity}명 (${c.rate}%)`} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPayments() {
@@ -217,7 +506,7 @@ export default function AdminPayments() {
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<'all' | 'adult' | 'child'>('all');
   const [deleteConfirm, setDeleteConfirm] = useState<PaymentPlan | null>(null);
-  const [activeTab, setActiveTab] = useState<'plans' | 'status'>('plans');
+  const [activeTab, setActiveTab] = useState<'plans' | 'status' | 'discounts' | 'stats'>('plans');
 
   const filteredPlans = paymentPlans.filter(p => filterCategory === 'all' || p.category === filterCategory);
 
@@ -275,6 +564,14 @@ export default function AdminPayments() {
         <button onClick={() => setActiveTab('status')}
           className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'status' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
           <CheckCircle className="w-4 h-4" /> 결제 현황
+        </button>
+        <button onClick={() => setActiveTab('discounts')}
+          className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'discounts' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+          <Gift className="w-4 h-4" /> 할인·이벤트
+        </button>
+        <button onClick={() => setActiveTab('stats')}
+          className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'stats' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+          <BarChart3 className="w-4 h-4" /> 통계 대시보드
         </button>
       </div>
 
@@ -477,6 +774,9 @@ export default function AdminPayments() {
               </div>
             </div>
           )}
+
+          {activeTab === 'discounts' && <DiscountsPanel />}
+          {activeTab === 'stats' && <StatsDashboard />}
         </div>
       </div>
 
