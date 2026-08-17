@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { startOfMonth, addDays, format, getDay } from 'date-fns';
+import { startOfMonth, endOfMonth, addDays, addMonths, format, getDay, parseISO, differenceInCalendarDays } from 'date-fns';
 
 const DAY_MAP: Record<string, number> = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
 
@@ -158,9 +158,56 @@ export type ScheduleChangeRequest = {
   id: string; studentId: string; enrollmentId: string; // 'primary' 또는 additionalEnrollments의 id
   currentDays: string[]; currentTime: string; currentPassType: string;
   requestedDays: string[]; requestedTime: string; requestedPassType: string;
-  isFrequencyChange: boolean; // 주당 횟수가 바뀌는 요청인지 (true면 재등록 기간에만 신청 가능)
+  isFrequencyChange: boolean; // 주당 횟수가 바뀌는 요청인지 — true면 이번 달이 아니라 effectiveDate(다음 달 1일)부터 적용됨
+  effectiveDate: string; // 'yyyy-MM-dd' — 요일/시간만 바뀌는 요청은 승인 즉시(오늘), 횟수 변경은 다음 달 1일
   status: 'pending' | 'approved' | 'rejected';
   requestedAt: string; resolvedAt: string;
+};
+
+// 결석 취소 가능 기간 추적 — 결석을 누른 시점 기준 3일 이내에는 취소 가능하지만,
+// 수업이 이미 3일 이내로 임박한 상태에서 결석을 누르면 취소 유예 없이 바로 자리가 확정 오픈된다.
+export type AbsenceRecord = {
+  id: string; studentId: string; classId: string;
+  markedAt: string; // ISO
+  cancelDeadline: string; // ISO — 이 시각이 지나면 취소 불가 + 자리가 보강용으로 완전히 열림
+  status: 'active' | 'cancelled';
+};
+
+// 결석 취소 가능 여부(취소 버튼 활성화 여부)
+export const isAbsenceCancellable = (record: AbsenceRecord, now: Date = new Date()): boolean =>
+  record.status === 'active' && now < parseISO(record.cancelDeadline);
+
+// 결석으로 비워진 자리가 "예비"(취소 유예 중이라 아직 보강 배정 불가)인지, 취소 유예가 끝나 "확정 오픈"됐는지
+export const isAbsenceSeatFinalized = (record: AbsenceRecord | undefined, now: Date = new Date()): boolean => {
+  if (!record) return true; // 기록이 없는 결석(레거시 데이터)은 즉시 오픈된 것으로 취급
+  if (record.status === 'cancelled') return false; // 취소됐다면 원생이 복귀한 것이므로 자리는 열리지 않음
+  return now >= parseISO(record.cancelDeadline);
+};
+
+// 보강 후보를 우선순위로 정렬 — 동일 강사 / 가까운 날짜 / 여유 자리를 가점 요소로 삼아 상단에 "추천" 후보를 골라준다
+// (완전 자동 확정이 아니라 순서만 매겨주는 반자동 보조 — 최종 선택은 학부모가 직접 함)
+export const rankMakeupCandidates = <T extends { c: ClassSession; instructor?: Instructor; remaining: number }>(
+  candidates: T[], fromClass: ClassSession, now: Date = new Date()
+): (T & { score: number; reasons: string[] })[] => {
+  return candidates.map(cand => {
+    const reasons: string[] = [];
+    let score = 0;
+    if (fromClass.instructorId === cand.c.instructorId) { score += 3; reasons.push('동일 강사'); }
+    const daysAway = differenceInCalendarDays(parseISO(cand.c.date), now);
+    if (daysAway <= 7) { score += 2; reasons.push('가까운 날짜'); }
+    if (cand.remaining >= 2) { score += 1; reasons.push('여유 자리'); }
+    return { ...cand, score, reasons };
+  }).sort((a, b) => b.score - a.score || a.c.date.localeCompare(b.c.date) || a.c.time.localeCompare(b.c.time));
+};
+
+// 클래스의 실제 보강 배정 가능 정원(예비 중인 결석 자리는 아직 카운트에서 빼지 않음)
+export const computeOpenMakeupSlots = (cls: ClassSession, capacity: number, absenceRecords: AbsenceRecord[], now: Date = new Date()): number => {
+  const finalizedAbsentCount = cls.absentStudentIds.filter(sid => {
+    const rec = absenceRecords.find(r => r.classId === cls.id && r.studentId === sid && r.status === 'active');
+    return isAbsenceSeatFinalized(rec, now);
+  }).length;
+  const current = cls.studentIds.length + cls.makeupStudentIds.length - finalizedAbsentCount;
+  return capacity - current;
 };
 
 // ── New Types ─────────────────────────────────────────────────
@@ -296,6 +343,19 @@ export const INITIAL_LESSON_CLASSES: LessonClass[] = [
 export const computeLinearSessionRates = (monthlyPrice: number, sessionsPerWeek: number): number[] => {
   const fullMonthSessions = Math.max(1, sessionsPerWeek * 4);
   return Array.from({ length: 14 }, (_, i) => Math.round((monthlyPrice / fullMonthSessions) * (i + 1) / 100) * 100);
+};
+
+// 등록일부터 그 달 말일까지, 정해진 요일(regularDays)이 몇 번 돌아오는지 계산 — 원비표에서 해당 회차 요금을 자동으로 골라줄 때 사용
+export const computeRemainingSessionsInMonth = (startDate: string, regularDays: string[]): number => {
+  if (!startDate || regularDays.length === 0) return 0;
+  const start = parseISO(startDate);
+  const monthEnd = endOfMonth(start);
+  let count = 0;
+  for (let d = start; d <= monthEnd; d = addDays(d, 1)) {
+    const dayLabel = Object.entries(DAY_MAP).find(([, v]) => v === getDay(d))?.[0];
+    if (dayLabel && regularDays.includes(dayLabel)) count++;
+  }
+  return count;
 };
 
 // 같은 가족(모/부 연락처가 일치)으로 등록된 활성 학생 수 — 형제 할인 판단에 사용
@@ -545,7 +605,7 @@ type StoreContextType = {
   updateCounselingRecord: (id: string, updates: Partial<CounselingRecord>) => void;
   deleteCounselingRecord: (id: string) => void;
   scheduleChangeRequests: ScheduleChangeRequest[];
-  submitScheduleChangeRequest: (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange'>) => void;
+  submitScheduleChangeRequest: (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange' | 'effectiveDate'>) => void;
   approveScheduleChangeRequest: (id: string) => void;
   rejectScheduleChangeRequest: (id: string) => void;
   // Student ops
@@ -571,6 +631,8 @@ type StoreContextType = {
   // Class ops
   rescheduleClass: (studentId: string, fromClassId: string, toClassId: string) => boolean;
   markAbsent: (studentId: string, classId: string) => void;
+  absenceRecords: AbsenceRecord[];
+  cancelAbsence: (recordId: string) => void;
   // Event ops
   addEvent: (e: Omit<AcademyEvent, 'id'>) => void;
   // Instructor / Staff
@@ -652,6 +714,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
   const [makeupCancellations, setMakeupCancellations] = useState<MakeupCancellationNotice[]>([]);
+  const [absenceRecords, setAbsenceRecords] = useState<AbsenceRecord[]>([]);
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>(INITIAL_WAITLIST);
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
@@ -737,8 +800,10 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const updateEnrollment = (studentId: string, enrollmentId: string, updates: Partial<Enrollment>, resumeFromDate?: string) => {
     const student = students.find(s => s.id === studentId);
     if (!student) return;
-    const today = format(new Date(), 'yyyy-MM-dd');
     const resumeStart = resumeFromDate ? new Date(resumeFromDate) : new Date();
+    // 미래 날짜(예: 다음 달 1일)로 예약 적용하는 경우, 오늘부터 그 날짜 전까지의 수업은 기존 일정 그대로 유지되어야 하므로
+    // "제거" 기준일도 오늘이 아니라 resumeStart로 맞춘다 (그래야 예약 적용일 이전 수업이 지워지지 않는다)
+    const clearFrom = format(resumeStart, 'yyyy-MM-dd');
 
     if (enrollmentId === 'primary') {
       const oldPrimary = getPrimaryEnrollment(student);
@@ -758,7 +823,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       const updatedStudent = { ...student, ...primaryUpdates };
       setStudents(prev => prev.map(s => s.id === studentId ? updatedStudent : s));
       setClasses(prev => {
-        const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldPrimary, prev, today);
+        const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldPrimary, prev, clearFrom);
         const newPrimary = getPrimaryEnrollment(updatedStudent);
         return newPrimary.status === 'active' ? buildClassesForStudent(studentId, [newPrimary], resumeStart, 90, cleared) : cleared;
       });
@@ -772,7 +837,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       ? { ...s, additionalEnrollments: s.additionalEnrollments.map(e => e.id === enrollmentId ? newEnrollment : e) }
       : s));
     setClasses(prev => {
-      const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldEnrollment, prev, today);
+      const cleared = removeStudentFromFutureEnrollmentClasses(studentId, oldEnrollment, prev, clearFrom);
       return newEnrollment.status === 'active' ? buildClassesForStudent(studentId, [newEnrollment], resumeStart, 90, cleared) : cleared;
     });
   };
@@ -848,10 +913,14 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ── ScheduleChangeRequest (학부모 요일·시간·수강횟수 변경 요청) ───────
-  const submitScheduleChangeRequest = (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange'>) => {
+  const submitScheduleChangeRequest = (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange' | 'effectiveDate'>) => {
     const isFrequencyChange = parseSessionsPerWeek(r.currentPassType) !== parseSessionsPerWeek(r.requestedPassType);
+    // 요일/시간만 바뀌는 요청은 당월(승인 즉시) 적용, 수강 횟수가 바뀌는 요청은 다음 달 1일부터 자동 적용되도록 예약
+    const effectiveDate = isFrequencyChange
+      ? format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd')
+      : format(new Date(), 'yyyy-MM-dd');
     setScheduleChangeRequests(prev => [...prev, {
-      ...r, id: `sc_${Date.now()}`, isFrequencyChange, status: 'pending',
+      ...r, id: `sc_${Date.now()}`, isFrequencyChange, effectiveDate, status: 'pending',
       requestedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
     }]);
   };
@@ -860,10 +929,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     if (!req) return;
     updateEnrollment(req.studentId, req.enrollmentId, {
       regularDays: req.requestedDays, regularTime: req.requestedTime, passType: req.requestedPassType,
-    });
+    }, req.effectiveDate);
     setScheduleChangeRequests(prev => prev.map(r => r.id === id
       ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
-    pushSystemAlert(req.studentId, '[일정 변경 승인]', `${req.requestedDays.join('·')} ${req.requestedTime} · ${req.requestedPassType}(으)로 변경이 승인되었습니다.`);
+    const whenLabel = req.isFrequencyChange ? `${req.effectiveDate}부터 ` : '';
+    pushSystemAlert(req.studentId, '[일정 변경 승인]', `${whenLabel}${req.requestedDays.join('·')} ${req.requestedTime} · ${req.requestedPassType}(으)로 변경이 승인되었습니다.`);
   };
   const rejectScheduleChangeRequest = (id: string) => {
     const req = scheduleChangeRequests.find(r => r.id === id);
@@ -890,7 +960,25 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const markAbsent = (studentId: string, classId: string) => {
-    setClasses(prev => prev.map(cls => cls.id === classId && !cls.absentStudentIds.includes(studentId) ? { ...cls, absentStudentIds: [...cls.absentStudentIds, studentId] } : cls));
+    const cls = classes.find(c => c.id === classId);
+    if (!cls || cls.absentStudentIds.includes(studentId)) return;
+    setClasses(prev => prev.map(c => c.id === classId ? { ...c, absentStudentIds: [...c.absentStudentIds, studentId] } : c));
+    // 결석 취소 가능 기간(3일) 계산 — 수업이 이미 3일 이내로 임박했다면 취소 유예 없이 즉시 확정(자리 바로 오픈)
+    const now = new Date();
+    const daysUntilClass = differenceInCalendarDays(parseISO(cls.date), now);
+    const cancelDeadline = daysUntilClass <= 3 ? now : addDays(now, 3);
+    setAbsenceRecords(prev => [...prev, {
+      id: `abs_${Date.now()}`, studentId, classId,
+      markedAt: now.toISOString(), cancelDeadline: cancelDeadline.toISOString(), status: 'active',
+    }]);
+  };
+
+  // 결석 취소 — 취소 유예 기간(3일) 내에만 가능. 취소되면 원생이 그 수업에 다시 정상 참석하는 것으로 되돌아감
+  const cancelAbsence = (recordId: string) => {
+    const rec = absenceRecords.find(r => r.id === recordId);
+    if (!rec || !isAbsenceCancellable(rec)) return;
+    setClasses(prev => prev.map(c => c.id === rec.classId ? { ...c, absentStudentIds: c.absentStudentIds.filter(id => id !== rec.studentId) } : c));
+    setAbsenceRecords(prev => prev.map(r => r.id === recordId ? { ...r, status: 'cancelled' } : r));
   };
 
   // ── Event ─────────────────────────────────────────────────────
@@ -1070,7 +1158,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addEnrollment, updateEnrollment, cancelEnrollment, pauseEnrollmentLongTerm,
       withdrawalRequests, submitWithdrawalRequest, approveWithdrawalRequest, rejectWithdrawalRequest,
       returnRequests, submitReturnRequest, approveReturnRequest, rejectReturnRequest,
-      rescheduleClass, markAbsent,
+      rescheduleClass, markAbsent, absenceRecords, cancelAbsence,
       addEvent, addInstructor, updateInstructor, deleteInstructor, updateInstructorColor,
       updateSettings, updateMakeupSettings,
       addLessonClass, deleteLessonClass, updateLessonClass,

@@ -1,6 +1,6 @@
 import { useState, useRef, Fragment } from 'react';
-import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts } from '../store/StoreContext';
-import type { Student, Enrollment } from '../store/StoreContext';
+import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth } from '../store/StoreContext';
+import type { Student, Enrollment, WaitlistEntry } from '../store/StoreContext';
 import {
   Search, Plus, X, ChevronLeft, List, Settings,
   Camera, Edit2, Trash2, CreditCard, Phone, BookOpen,
@@ -167,8 +167,8 @@ const defaultForm = (): FormData => ({
   pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
 });
 
-function StudentFormModal({ initial, onClose, onSave, title }: {
-  initial?: Student; onClose: () => void; onSave: (data: FormData) => void; title: string;
+function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
+  initial?: Student; prefill?: Partial<FormData>; onClose: () => void; onSave: (data: FormData) => void; title: string;
 }) {
   const { instructors, lessonClasses, settings, vehicles, drivers, paymentPlans } = useStore();
   const [form, setForm] = useState<FormData>(
@@ -191,7 +191,7 @@ function StudentFormModal({ initial, onClose, onSave, title }: {
       division: initial.division || '정규반',
       pauseReason: initial.pauseReason || '', expectedReturnDate: initial.expectedReturnDate || '',
       withdrawalReason: initial.withdrawalReason || '',
-    } : defaultForm()
+    } : { ...defaultForm(), ...prefill }
   );
   const fileRef = useRef<HTMLInputElement>(null);
   const [section, setSection] = useState<'basic' | 'lesson' | 'payment'>('basic');
@@ -212,6 +212,13 @@ function StudentFormModal({ initial, onClose, onSave, title }: {
       : [...form.regularDays, day]
     );
   };
+
+  // 원비표(sessionRates) 기준 — 등록일이 그 달 중이라도 남은 횟수만큼만 자동으로 계산해 결제 금액을 제안
+  const selectedPlan = paymentPlans.find(p => p.id === form.paymentPlanId);
+  const remainingSessions = computeRemainingSessionsInMonth(form.registrationDate, form.regularDays);
+  const suggestedAmount = selectedPlan && remainingSessions > 0
+    ? selectedPlan.sessionRates[Math.min(remainingSessions, 14) - 1]
+    : null;
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -508,6 +515,19 @@ function StudentFormModal({ initial, onClose, onSave, title }: {
                   </div>
                 </div>
 
+                {suggestedAmount !== null && (
+                  <div className="rounded-xl px-3.5 py-3 bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3">
+                    <p className="text-emerald-700 text-xs leading-relaxed">
+                      등록일({form.registrationDate}) 기준 이번 달 남은 수업 <strong>{Math.min(remainingSessions, 14)}회</strong> · 원비표 자동 계산가
+                      <br /><strong className="text-sm">{suggestedAmount.toLocaleString()}원</strong>
+                    </p>
+                    <button type="button" onClick={() => set('paymentAmount', suggestedAmount)}
+                      className="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors">
+                      이 금액 적용
+                    </button>
+                  </div>
+                )}
+
                 {form.paymentAmount > 0 && (
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                     <p className="text-slate-400 text-xs mb-1">결제 금액</p>
@@ -583,6 +603,13 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
     : 0;
 
   const canSave = lessonClassId && instructorId && regularDays.length > 0;
+
+  // 원비표(sessionRates) 기준 — 시작일이 그 달 중이라도 남은 횟수만큼만 자동으로 계산해 청구 금액을 제안
+  const selectedPlan = paymentPlans.find(p => p.id === paymentPlanId);
+  const remainingSessions = computeRemainingSessionsInMonth(startDate, regularDays);
+  const suggestedAmount = selectedPlan && remainingSessions > 0
+    ? selectedPlan.sessionRates[Math.min(remainingSessions, 14) - 1]
+    : null;
 
   const handleSave = () => {
     if (!canSave) return;
@@ -681,6 +708,19 @@ function EnrollmentFormModal({ enrollment, onClose, onSave, title }: {
             <label className={labelCls}>월 수강료 (원)</label>
             <input type="number" className={inputCls} value={monthlyPrice || ''} onChange={e => setMonthlyPrice(parseInt(e.target.value) || 0)} />
           </div>
+
+          {suggestedAmount !== null && (
+            <div className="rounded-xl px-3.5 py-3 bg-emerald-50 border border-emerald-200 flex items-center justify-between gap-3">
+              <p className="text-emerald-700 text-xs leading-relaxed">
+                시작일({startDate}) 기준 이번 달 남은 수업 <strong>{Math.min(remainingSessions, 14)}회</strong> · 원비표 자동 계산가
+                <br /><strong className="text-sm">{suggestedAmount.toLocaleString()}원</strong>
+              </p>
+              <button type="button" onClick={() => setMonthlyPrice(suggestedAmount)}
+                className="shrink-0 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors">
+                이 금액 적용
+              </button>
+            </div>
+          )}
 
           <button onClick={handleSave} disabled={!canSave}
             className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl py-2.5 text-sm font-medium transition-colors">
@@ -1621,9 +1661,10 @@ function AddWaitlistModal({ onClose }: { onClose: () => void }) {
 }
 
 function WaitlistView() {
-  const { students, lessonClasses, waitlistEntries, markWaitlistNotified, convertWaitlistEntry, cancelWaitlistEntry, deleteWaitlistEntry } = useStore();
+  const { students, lessonClasses, waitlistEntries, markWaitlistNotified, convertWaitlistEntry, cancelWaitlistEntry, deleteWaitlistEntry, addStudent } = useStore();
   const [showAdd, setShowAdd] = useState(false);
   const [filter, setFilter] = useState<'waiting' | 'all'>('waiting');
+  const [registerTarget, setRegisterTarget] = useState<WaitlistEntry | null>(null);
 
   const remainingSeats = (lessonClassId: string) => {
     const lc = lessonClasses.find(l => l.id === lessonClassId);
@@ -1691,9 +1732,9 @@ function WaitlistView() {
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 rounded-lg text-xs font-medium transition-colors">
                       <Bell className="w-3.5 h-3.5" /> 안내함
                     </button>
-                    <button onClick={() => convertWaitlistEntry(w.id)}
+                    <button onClick={() => setRegisterTarget(w)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors">
-                      <CheckCircle className="w-3.5 h-3.5" /> 등록 완료
+                      <UserPlus className="w-3.5 h-3.5" /> 이 학생 등록하기
                     </button>
                     <button onClick={() => cancelWaitlistEntry(w.id)}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg text-xs font-medium transition-colors">
@@ -1713,6 +1754,27 @@ function WaitlistView() {
       )}
 
       {showAdd && <AddWaitlistModal onClose={() => setShowAdd(false)} />}
+
+      {registerTarget && (
+        <StudentFormModal
+          title={`강습생 등록 — ${registerTarget.studentName} (대기자)`}
+          prefill={{
+            studentName: registerTarget.studentName,
+            motherPhone: registerTarget.parentPhone,
+            category: registerTarget.category,
+            lessonClassId: registerTarget.lessonClassId,
+            regularDays: registerTarget.desiredDays,
+            regularTime: registerTarget.desiredTime || '15:00',
+            notes: registerTarget.note,
+          }}
+          onClose={() => setRegisterTarget(null)}
+          onSave={data => {
+            addStudent(data as Parameters<typeof addStudent>[0]);
+            convertWaitlistEntry(registerTarget.id);
+            setRegisterTarget(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  useStore, getClassDivision, getAllEnrollments, parseSessionsPerWeek, isWithinReRegistrationPeriod,
+  useStore, getClassDivision, getAllEnrollments, parseSessionsPerWeek,
+  computeOpenMakeupSlots, isAbsenceCancellable, rankMakeupCandidates,
 } from '../store/StoreContext';
 import type { Enrollment } from '../store/StoreContext';
 import {
   Calendar as CalendarIcon, RefreshCw, Bell, Info, MapPin, Upload, CheckCircle, XCircle,
   Wallet, CalendarClock, Car, ChevronLeft, ChevronRight, TrendingUp, X as XIcon, CreditCard, ShieldAlert,
-  MessageCircle, Clock3, AlertTriangle, BellRing,
+  MessageCircle, Clock3, AlertTriangle, BellRing, Sparkles,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
 import { playBellSound } from '../lib/playBellSound';
@@ -75,14 +76,14 @@ function ScheduleChangeModal({ studentId, enrollment, lessonClassName, onClose }
   const toggleDay = (d: string) => setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
 
   const isFrequencyChange = parseSessionsPerWeek(enrollment.passType) !== parseSessionsPerWeek(passType);
-  const inPeriod = isWithinReRegistrationPeriod(settings.reRegistrationPeriod);
-  const blocked = isFrequencyChange && !inPeriod;
+  // 요일/시간 변경은 언제든 신청 가능(당월 즉시 적용). 수강 횟수 변경은 신청 시점 제약 없이 접수하되, 승인되면 다음 달 1일부터 자동 적용된다.
+  const nextMonthLabel = format(addMonths(startOfMonth(new Date()), 1), 'M월 d일', { locale: ko });
   const noChange = days.length === enrollment.regularDays.length
     && days.every(d => enrollment.regularDays.includes(d))
     && time === enrollment.regularTime && passType === enrollment.passType;
 
   const handleSubmit = () => {
-    if (blocked || noChange || days.length === 0) return;
+    if (noChange || days.length === 0) return;
     submitScheduleChangeRequest({
       studentId, enrollmentId: enrollment.id,
       currentDays: enrollment.regularDays, currentTime: enrollment.regularTime, currentPassType: enrollment.passType,
@@ -139,16 +140,13 @@ function ScheduleChangeModal({ studentId, enrollment, lessonClassName, onClose }
             </div>
 
             {isFrequencyChange && (
-              <div className={`rounded-xl px-3.5 py-3 mb-4 flex items-start gap-2 text-xs ${inPeriod ? 'bg-cyan-50 text-cyan-700 border border-cyan-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                {inPeriod ? <Clock3 className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
-                <p>
-                  수강 횟수를 바꾸는 요청이라 <strong>재등록 기간(매월 {settings.reRegistrationPeriod.startDay}일~{settings.reRegistrationPeriod.endDay}일)</strong>에만 신청할 수 있어요.
-                  {inPeriod ? ' 지금은 재등록 기간이라 바로 신청할 수 있어요.' : ' 지금은 재등록 기간이 아니라서, 다음 재등록 기간에 다시 신청해주세요.'}
-                </p>
+              <div className="rounded-xl px-3.5 py-3 mb-4 flex items-start gap-2 text-xs bg-cyan-50 text-cyan-700 border border-cyan-200">
+                <Clock3 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <p>수강 횟수를 바꾸는 요청은 신청은 언제든 할 수 있지만, 승인되면 <strong>{nextMonthLabel}부터</strong> 자동으로 적용돼요. 그 전까지는 지금 수강권 그대로 유지돼요.</p>
               </div>
             )}
 
-            <button onClick={handleSubmit} disabled={blocked || noChange || days.length === 0}
+            <button onClick={handleSubmit} disabled={noChange || days.length === 0}
               className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors">
               변경 신청하기
             </button>
@@ -164,6 +162,7 @@ export default function ParentApp() {
     classes, instructors, students, events, settings, paymentPlans, paymentRecords, lessonClasses, notifications,
     rescheduleClass, markAbsent, makeupRequests, submitMakeupRequest, markPaymentPaid, scheduleChangeRequests,
     makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
+    absenceRecords, cancelAbsence,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
@@ -281,8 +280,7 @@ export default function ParentApp() {
     .filter(c => c.id !== sourceClassId && isAfter(parseISO(c.date), today))
     .map(c => {
       const instructor = instructors.find(i => i.id === c.instructorId);
-      const current = c.studentIds.length + c.makeupStudentIds.length - c.absentStudentIds.length;
-      const remaining = (instructor?.maxCapacity ?? 5) - current;
+      const remaining = computeOpenMakeupSlots(c, instructor?.maxCapacity ?? 5, absenceRecords);
       const division = getClassDivision(c, students);
       return { c, instructor, remaining, division };
     })
@@ -506,7 +504,7 @@ export default function ParentApp() {
               )}
             </div>
 
-            {/* 결석 처리된 수업 — 빨간색으로 표시 */}
+            {/* 결석 처리된 수업 — 빨간색으로 표시, 3일 이내면 취소 가능 */}
             {classes.filter(c => c.absentStudentIds.includes(studentId) && (isAfter(parseISO(c.date), addDays(today, -14)))).length > 0 && (
               <div>
                 <h2 className="text-[15px] font-bold text-slate-800 mb-3">결석 처리된 수업</h2>
@@ -514,14 +512,32 @@ export default function ParentApp() {
                   {classes
                     .filter(c => c.absentStudentIds.includes(studentId) && isAfter(parseISO(c.date), addDays(today, -14)))
                     .sort((a, b) => b.date.localeCompare(a.date))
-                    .map(c => (
-                      <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center justify-between">
-                        <span className="text-red-600 text-sm font-semibold line-through decoration-red-300">
-                          {format(parseISO(c.date), 'M월 d일 (E)', { locale: ko })} {c.time}
-                        </span>
-                        <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">결석</span>
-                      </div>
-                    ))}
+                    .map(c => {
+                      const record = absenceRecords.find(r => r.studentId === studentId && r.classId === c.id && r.status === 'active');
+                      const cancellable = record ? isAbsenceCancellable(record) : false;
+                      return (
+                        <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
+                          <div>
+                            <span className="text-red-600 text-sm font-semibold line-through decoration-red-300">
+                              {format(parseISO(c.date), 'M월 d일 (E)', { locale: ko })} {c.time}
+                            </span>
+                            {record && (
+                              <p className="text-red-400 text-[11px] mt-0.5">
+                                {cancellable ? `${format(parseISO(record.cancelDeadline), 'M/d HH:mm')}까지 취소 가능` : '취소 가능 기간이 지났어요'}
+                              </p>
+                            )}
+                          </div>
+                          {record ? (
+                            <button onClick={() => cancelAbsence(record.id)} disabled={!cancellable}
+                              className={`shrink-0 text-[11px] font-bold px-2.5 py-1.5 rounded-full transition-colors ${cancellable ? 'text-white bg-red-500 hover:bg-red-600' : 'text-slate-400 bg-slate-100 cursor-not-allowed'}`}>
+                              결석 취소
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full shrink-0">결석</span>
+                          )}
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
             )}
@@ -858,6 +874,26 @@ export default function ParentApp() {
                   <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-4 text-xs text-slate-600">
                     결석: <strong className="text-slate-800">{format(parseISO(sourceClass.date), 'M월 d일 (E)', { locale: ko })} {sourceClass.time}</strong>
                   </div>
+                  {targetCandidates.length > 0 && (
+                    <div className="mb-4 space-y-2">
+                      <p className="text-slate-500 text-xs font-semibold flex items-center gap-1"><Sparkles className="w-3.5 h-3.5 text-amber-500" /> 추천 보강 자리</p>
+                      {rankMakeupCandidates(targetCandidates, sourceClass).slice(0, 2).map((cand, i) => (
+                        <button key={cand.c.id} onClick={() => handleConfirmReschedule(cand.c.id)}
+                          className="w-full text-left border border-amber-200 bg-amber-50/60 rounded-xl p-3.5 transition-colors hover:border-amber-400 hover:bg-amber-50">
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="shrink-0 text-[10px] font-bold text-white bg-amber-500 px-1.5 py-0.5 rounded-full">{i === 0 ? '1순위' : '2순위'}</span>
+                              <span className="font-bold text-slate-800 text-sm truncate">{format(parseISO(cand.c.date), 'M월 d일 (E)', { locale: ko })} {cand.c.time}</span>
+                            </div>
+                            <span className="shrink-0 text-xs font-medium text-cyan-600 bg-white px-2.5 py-1 rounded-full border border-cyan-100">잔여 {cand.remaining}자리</span>
+                          </div>
+                          {cand.reasons.length > 0 && <p className="text-amber-600 text-[11px] mt-1">{cand.reasons.join(' · ')}</p>}
+                        </button>
+                      ))}
+                      <p className="text-slate-400 text-[11px]">추천 자리가 마음에 안 들면 아래 달력에서 직접 골라도 돼요.</p>
+                    </div>
+                  )}
+
                   <p className="text-slate-700 text-sm font-semibold mb-2">② 보강받을 날짜를 선택하세요 ({student?.division} 자리만 표시)</p>
                   {targetDatesSet.size > 0 ? (
                     <MiniCalendar month={targetCalMonth} onMonthChange={setTargetCalMonth}

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, getClassDivision } from '../store/StoreContext';
+import { useStore, getClassDivision, computeOpenMakeupSlots } from '../store/StoreContext';
 import type { MakeupRequest } from '../store/StoreContext';
 import { format, parseISO, isAfter } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -19,7 +19,7 @@ const STATUS_META: Record<MakeupRequest['status'], { label: string; color: strin
 // ─── 보강 슬롯 선택 모달 ───────────────────────────────────────────────────────
 
 function AssignSlotModal({ request, onClose }: { request: MakeupRequest; onClose: () => void }) {
-  const { classes, instructors, students, approveMakeupRequestAsSlot } = useStore();
+  const { classes, instructors, students, absenceRecords, approveMakeupRequestAsSlot } = useStore();
   const today = new Date();
   const student = students.find(s => s.id === request.studentId);
 
@@ -27,8 +27,7 @@ function AssignSlotModal({ request, onClose }: { request: MakeupRequest; onClose
     .filter(c => isAfter(parseISO(c.date), today))
     .map(c => {
       const instructor = instructors.find(i => i.id === c.instructorId);
-      const current = c.studentIds.length + c.makeupStudentIds.length - c.absentStudentIds.length;
-      const remaining = (instructor?.maxCapacity ?? 5) - current;
+      const remaining = computeOpenMakeupSlots(c, instructor?.maxCapacity ?? 5, absenceRecords);
       const division = getClassDivision(c, students);
       return { c, instructor, remaining, division };
     })

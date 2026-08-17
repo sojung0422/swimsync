@@ -1,14 +1,13 @@
 import { useState } from 'react';
-import { useStore, isWithinReRegistrationPeriod } from '../store/StoreContext';
+import { useStore } from '../store/StoreContext';
 import type { ScheduleChangeRequest } from '../store/StoreContext';
 import {
-  Clock, CheckCircle2, XCircle, AlertCircle, Settings2, ArrowRight, RefreshCw,
+  Clock, CheckCircle2, XCircle, AlertCircle, CalendarClock, ArrowRight, RefreshCw,
 } from 'lucide-react';
 
 function RequestCard({ request }: { request: ScheduleChangeRequest }) {
-  const { students, settings, approveScheduleChangeRequest, rejectScheduleChangeRequest } = useStore();
+  const { students, approveScheduleChangeRequest, rejectScheduleChangeRequest } = useStore();
   const student = students.find(s => s.id === request.studentId);
-  const inPeriod = isWithinReRegistrationPeriod(settings.reRegistrationPeriod);
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5">
@@ -38,9 +37,9 @@ function RequestCard({ request }: { request: ScheduleChangeRequest }) {
             </span>
           </div>
 
-          {request.isFrequencyChange && request.status === 'pending' && !inPeriod && (
-            <p className="text-amber-600 text-[11px] mt-2 flex items-center gap-1">
-              <AlertCircle className="w-3 h-3 shrink-0" /> 오늘은 재등록 기간(매월 {settings.reRegistrationPeriod.startDay}일~{settings.reRegistrationPeriod.endDay}일) 밖이에요 — 승인은 가능하지만 학원 정책을 다시 확인해보세요.
+          {request.isFrequencyChange && (
+            <p className="text-cyan-600 text-[11px] mt-2 flex items-center gap-1">
+              <CalendarClock className="w-3 h-3 shrink-0" /> 수강 횟수 변경 건 — 승인 시 <strong>{request.effectiveDate}부터</strong> 자동 적용돼요 (그 전까지는 기존 일정 유지)
             </p>
           )}
 
@@ -65,46 +64,25 @@ function RequestCard({ request }: { request: ScheduleChangeRequest }) {
 }
 
 export default function AdminScheduleChanges() {
-  const { scheduleChangeRequests, settings, updateSettings } = useStore();
+  const { scheduleChangeRequests } = useStore();
   const [filter, setFilter] = useState<'pending' | 'resolved'>('pending');
 
   const pending = scheduleChangeRequests.filter(r => r.status === 'pending').slice().reverse();
   const resolved = scheduleChangeRequests.filter(r => r.status !== 'pending').slice().reverse();
   const list = filter === 'pending' ? pending : resolved;
-  const inPeriod = isWithinReRegistrationPeriod(settings.reRegistrationPeriod);
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="shrink-0 px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-slate-800">일정 변경 요청 관리</h1>
-          <p className="text-slate-400 text-xs mt-0.5">학부모 앱에서 들어온 요일·시간·수강 횟수 변경 요청을 검토합니다</p>
+          <p className="text-slate-400 text-xs mt-0.5">요일·시간 변경은 승인 즉시 적용되고, 수강 횟수 변경은 승인되면 다음 달 1일부터 자동 적용돼요</p>
         </div>
         {pending.length > 0 && (
           <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
             <AlertCircle className="w-3.5 h-3.5" /> {pending.length}건 대기 중
           </span>
         )}
-      </div>
-
-      <div className="shrink-0 px-6 py-3 bg-white border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2.5">
-          <Settings2 className="w-4 h-4 text-slate-400" />
-          <span className="text-xs font-medium text-slate-500">재등록 기간 (매월)</span>
-          <div className="flex items-center gap-1.5 text-sm">
-            <input type="number" min={1} max={31} value={settings.reRegistrationPeriod.startDay}
-              onChange={e => updateSettings({ reRegistrationPeriod: { ...settings.reRegistrationPeriod, startDay: Math.max(1, Math.min(31, parseInt(e.target.value) || 1)) } })}
-              className="w-14 border border-slate-200 rounded-lg px-2 py-1.5 text-center" />
-            <span className="text-slate-400">일 ~</span>
-            <input type="number" min={1} max={31} value={settings.reRegistrationPeriod.endDay}
-              onChange={e => updateSettings({ reRegistrationPeriod: { ...settings.reRegistrationPeriod, endDay: Math.max(1, Math.min(31, parseInt(e.target.value) || 1)) } })}
-              className="w-14 border border-slate-200 rounded-lg px-2 py-1.5 text-center" />
-            <span className="text-slate-400">일</span>
-          </div>
-          <span className={`text-[11px] font-semibold px-2 py-1 rounded-full border ${inPeriod ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-slate-50 text-slate-400 border-slate-200'}`}>
-            {inPeriod ? '오늘은 재등록 기간이에요' : '오늘은 재등록 기간이 아니에요'}
-          </span>
-        </div>
       </div>
 
       <div className="shrink-0 flex border-b border-slate-200 bg-white px-6">
