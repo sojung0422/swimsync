@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { useStore, ClassSession } from '../store/StoreContext';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap } from 'lucide-react';
+import { useStore, ClassSession, computeOpenMakeupSlots } from '../store/StoreContext';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
@@ -10,7 +10,7 @@ const modalOverlay = 'fixed inset-0 bg-black/30 backdrop-blur-sm flex items-cent
 
 export default function AdminSchedule() {
   const {
-    classes, instructors, students, events, settings, vehicles,
+    classes, instructors, students, events, settings, vehicles, absenceRecords,
     addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
@@ -28,6 +28,32 @@ export default function AdminSchedule() {
   const [weekFilterMode, setWeekFilterMode] = useState<'all' | 'individual'>('all');
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>(instructors[0]?.id || '');
   const [cancelMakeupTarget, setCancelMakeupTarget] = useState<{ classId: string; studentId: string; studentName: string } | null>(null);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // 학생 이름 검색 — 현재 보이는 화면에서 하이라이트 + 예정된 수업으로 바로 이동
+  const searchMatches = (name?: string) => studentSearch.trim().length > 0 && !!name && name.includes(studentSearch.trim());
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const searchedStudents = studentSearch.trim()
+    ? students.filter(s => s.studentName.includes(studentSearch.trim()))
+    : [];
+  const searchResultRows = searchedStudents.slice(0, 6).map(s => {
+    const upcoming = classes
+      .filter(c => c.date >= todayStr && (c.studentIds.includes(s.id) || c.makeupStudentIds.includes(s.id)) && !c.absentStudentIds.includes(s.id))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))[0];
+    return { student: s, nextClass: upcoming };
+  });
+  const jumpToClass = (cls: ClassSession) => {
+    setCurrentDate(new Date(cls.date));
+    setView('day');
+    setShowSearchResults(false);
+  };
+
+  // 정원 대비 여유 자리 — 강사 1타임 정원 기준(보강 요청 관리와 동일 기준)
+  const remainingSeats = (cls: ClassSession) => {
+    const instructor = instructors.find(i => i.id === cls.instructorId);
+    return computeOpenMakeupSlots(cls, instructor?.maxCapacity ?? 5, absenceRecords);
+  };
 
   const getClassesForDate = (date: Date) => classes.filter(c => c.date === format(date, 'yyyy-MM-dd'));
   const getEventsForDate  = (date: Date) => {
@@ -101,6 +127,36 @@ export default function AdminSchedule() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input value={studentSearch}
+                onChange={e => { setStudentSearch(e.target.value); setShowSearchResults(true); }}
+                onFocus={() => setShowSearchResults(true)}
+                placeholder="강습생 이름 검색"
+                className="pl-7 pr-6 py-1.5 text-xs border border-slate-200 rounded-lg w-36 focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400 transition-colors" />
+              {studentSearch && (
+                <button onClick={() => { setStudentSearch(''); setShowSearchResults(false); }}
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-300 hover:text-slate-600">
+                  <X size={12} />
+                </button>
+              )}
+              {showSearchResults && studentSearch.trim() && (
+                <div className="absolute right-0 top-full mt-1.5 w-72 bg-white border border-slate-200 rounded-xl shadow-lg z-30 overflow-hidden">
+                  {searchResultRows.length === 0 ? (
+                    <p className="px-3.5 py-3 text-xs text-slate-400">일치하는 강습생이 없습니다.</p>
+                  ) : searchResultRows.map(({ student, nextClass }) => (
+                    <button key={student.id} disabled={!nextClass}
+                      onClick={() => nextClass && jumpToClass(nextClass)}
+                      className="w-full text-left px-3.5 py-2.5 border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors disabled:cursor-not-allowed disabled:opacity-50">
+                      <p className="text-slate-800 text-xs font-bold">{student.studentName} <span className="text-slate-400 font-normal">· {student.age}세 · {student.level}</span></p>
+                      <p className="text-slate-400 text-[11px] mt-0.5">
+                        {nextClass ? `다음 수업: ${nextClass.date} ${nextClass.time} → 클릭해서 이동` : '예정된 수업이 없습니다'}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             {view === 'month' && (
               <div className="flex items-center gap-2">
                 <button onClick={() => { setNewEvent({ ...newEvent, date: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd') }); setShowEventModal(true); }}
@@ -231,12 +287,23 @@ export default function AdminSchedule() {
                               const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
                               const color = instructor?.color || '#0891b2';
                               if (weekFilterMode === 'all') {
+                                const remaining = remainingSeats(cls);
+                                const hasRoom = remaining > 0;
                                 return (
                                   <div key={cls.id} onClick={() => setSelectedClass(cls)}
-                                    className="rounded-lg p-2.5 cursor-pointer hover:shadow-md transition-all duration-150 flex justify-between items-center border-l-[3px]"
-                                    style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px' }}>
-                                    <span className="font-bold text-[11px] truncate mr-1" style={{ color }}>{instructor?.name}</span>
-                                    <span className="text-[10px] font-bold opacity-70 whitespace-nowrap" style={{ color }}>{presentStudents.length}명</span>
+                                    className="rounded-lg p-2.5 cursor-pointer hover:shadow-md transition-all duration-150 flex flex-col gap-1 border-l-[3px]"
+                                    style={hasRoom
+                                      ? { backgroundColor: '#05966912', borderLeftColor: '#059669', borderTopColor: '#05966930', borderRightColor: '#05966930', borderBottomColor: '#05966930', borderWidth: '1px', borderLeftWidth: '3px' }
+                                      : { backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px' }}>
+                                    <div className="flex justify-between items-center">
+                                      <span className="font-bold text-[11px] truncate mr-1" style={{ color: hasRoom ? '#059669' : color }}>{instructor?.name}</span>
+                                      <span className="text-[10px] font-bold opacity-70 whitespace-nowrap" style={{ color: hasRoom ? '#059669' : color }}>{presentStudents.length}명</span>
+                                    </div>
+                                    {hasRoom && (
+                                      <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full self-start">
+                                        여유 {remaining}자리 · 보강·신규 가능
+                                      </span>
+                                    )}
                                   </div>
                                 );
                               } else {
@@ -245,12 +312,15 @@ export default function AdminSchedule() {
                                     {presentStudents.map(id => {
                                       const s = students.find(st => st.id === id);
                                       const isMakeup = cls.makeupStudentIds.includes(id);
+                                      const vehicle = vehicles.find(v => v.id === s?.vehicleId);
+                                      const isHit = searchMatches(s?.studentName);
                                       return (
                                         <div key={id} onClick={() => setSelectedClass(cls)}
-                                          className="rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold"
+                                          className={`rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold ${isHit ? 'ring-2 ring-amber-400' : ''}`}
                                           style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
                                           {s?.studentName}
                                           {isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
+                                          <div className="text-[9.5px] font-normal opacity-70 mt-0.5">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
                                         </div>
                                       );
                                     })}
@@ -304,29 +374,41 @@ export default function AdminSchedule() {
                       const presentStudents = cls ? [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id)) : [];
                       const absentStudents = cls ? cls.absentStudentIds : [];
                       const color = inst.color || '#0891b2';
+                      const remaining = cls ? remainingSeats(cls) : 0;
                       return (
                         <div key={inst.id} className="p-2 border-r border-slate-100 last:border-r-0">
                           {cls ? (
                             <div className="flex flex-col gap-1.5">
+                              {remaining > 0 && (
+                                <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full self-start">
+                                  여유 {remaining}자리 · 보강·신규 가능
+                                </span>
+                              )}
                               {presentStudents.map(id => {
                                 const s = students.find(st => st.id === id);
                                 const isMakeup = cls.makeupStudentIds.includes(id);
+                                const vehicle = vehicles.find(v => v.id === s?.vehicleId);
+                                const isHit = searchMatches(s?.studentName);
                                 return (
                                   <div key={id} onClick={() => setSelectedClass(cls)}
-                                    className="px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] cursor-pointer hover:shadow-sm transition-all"
+                                    className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] cursor-pointer hover:shadow-sm transition-all ${isHit ? 'ring-2 ring-amber-400' : ''}`}
                                     style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
                                     {s?.studentName}
                                     {isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
+                                    <div className="text-[9.5px] font-normal opacity-70 mt-0.5">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
                                   </div>
                                 );
                               })}
                               {absentStudents.map(id => {
                                 const s = students.find(st => st.id === id);
+                                const vehicle = vehicles.find(v => v.id === s?.vehicleId);
+                                const isHit = searchMatches(s?.studentName);
                                 return (
                                   <div key={id} onClick={() => setSelectedClass(cls)}
-                                    className="px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] border-red-400 bg-red-50 text-red-500 cursor-pointer hover:shadow-sm transition-all line-through decoration-red-300">
+                                    className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] border-red-400 bg-red-50 text-red-500 cursor-pointer hover:shadow-sm transition-all line-through decoration-red-300 ${isHit ? 'ring-2 ring-amber-400' : ''}`}>
                                     {s?.studentName}
                                     <span className="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span>
+                                    <div className="text-[9.5px] font-normal opacity-70 mt-0.5 no-underline">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
                                   </div>
                                 );
                               })}
