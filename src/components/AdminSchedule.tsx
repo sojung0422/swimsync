@@ -23,7 +23,7 @@ export default function AdminSchedule() {
 
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [newLevel, setNewLevel] = useState('');
-  const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName });
+  const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName, academyPhone: settings.academyPhone });
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
   const [weekFilterMode, setWeekFilterMode] = useState<'all' | 'individual'>('all');
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>(instructors[0]?.id || '');
@@ -537,6 +537,13 @@ export default function AdminSchedule() {
                     <input className={inputCls} value={academyDraft.branchName}
                       onChange={e => setAcademyDraft({ ...academyDraft, branchName: e.target.value })}
                       onBlur={() => updateSettings({ branchName: academyDraft.branchName || settings.branchName })} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs text-slate-500 mb-1 font-medium">학원 대표번호</label>
+                    <input className={inputCls} placeholder="02-000-0000" value={academyDraft.academyPhone}
+                      onChange={e => setAcademyDraft({ ...academyDraft, academyPhone: e.target.value })}
+                      onBlur={() => updateSettings({ academyPhone: academyDraft.academyPhone })} />
+                    <p className="text-slate-400 text-xs mt-1">학부모 앱 홈 화면에 표시되고, 바로 연락처로 저장할 수 있어요.</p>
                   </div>
                 </div>
                 <p className="text-slate-400 text-xs mt-2">여기서 바꾸면 학부모 앱, 관리자 화면 등 학원명이 표시되는 모든 곳에 바로 반영돼요.</p>

@@ -4,17 +4,32 @@ import { startOfMonth, endOfMonth, addDays, addMonths, format, getDay, parseISO,
 const DAY_MAP: Record<string, number> = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
 
 // ── Core Types ────────────────────────────────────────────────
+// 직원 권한 등급 — 연차/대타 승인 등 민감한 액션은 원장·팀장만 가능
+export type StaffRole = '원장' | '팀장' | '주임' | '사원' | '데스크' | '차량' | '프리랜서';
+
+// 프리랜서(파트) 강사용 요일·시간대별 단가 — 등록 시 한 번만 설정해두면 이후 급여가 자동 계산됨
+export type RateSlot = {
+  id: string;
+  days: string[]; // 예: ['월','수','금']
+  startTime: string; endTime: string;
+  hourlyRate: number;
+};
+
 export type Instructor = {
   id: string; name: string; nickname: string;
   maxCapacity: number; type: '정규' | '파트'; color: string;
   jobType: '강사' | '데스크' | '원장' | '관리';
+  role: StaffRole; // 승인 권한 등급 (연차/대타 승인은 원장·팀장만)
   phone: string; officePhone: string; extNumber: string;
   hireDate: string; position: string; department: string;
   workDays: string[]; workTimeStart: string; workTimeEnd: string;
   dutyNote: string; vehicleNumber: string; address: string; memo: string;
   status: 'active' | 'resigned';
   monthlySalary: number; // 정규직 급여 정산 기준 월급
-  hourlyRate: number; // 파트타임 급여 정산 기준 시급
+  hourlyRate: number; // 파트타임 급여 정산 기준 시급(rateSlots가 비어있을 때의 폴백 단가)
+  rateSlots: RateSlot[]; // 파트(프리랜서) 강사용 요일·시간대별 단가 목록 — 비어있으면 hourlyRate 사용
+  annualLeaveTotal: number; // 연간 부여 연차 일수 (정규직만 의미 있음)
+  annualLeaveUsed: number; // 승인된 연차 사용량 누적 (연차=1, 반차=0.5, 반반차=0.25)
 };
 export type LessonClass = {
   id: string; name: string; description: string;
@@ -116,14 +131,23 @@ export type MakeupSettings = {
   makeupPolicies: MakeupPolicyRule[];
 };
 
+// 정규직 급여 계산 기준(기본급 템플릿·인센티브 항목·추가근무 단가) — 학원마다 다르게 초기 설정
+export type PayrollSettings = {
+  baseSalaryDefault: number; // 신규 정규직 등록 시 제안되는 기본급
+  incentiveRules: { id: string; label: string; amount: number }[]; // 예: "신규 등록 1건", "레벨테스트 합격 1인당"
+  overtimeHourlyRate: number; // 추가 근무 시간당 단가
+};
+
 export type AcademySettings = {
   academyName: string;
   branchName: string;
+  academyPhone: string; // 학원 대표번호 — 학부모 앱에서 바로 연락처 저장 가능
   designatedTimes: string[];
   makeupSettings: MakeupSettings;
   counselingIntervalMonths: number; // 정기 상담 주기 (몇 개월마다) — 관리자가 설정
   reRegistrationPeriod: { startDay: number; endDay: number }; // 매월 며칠~며칠이 재등록 기간인지 — 학원마다 다르게 설정
   swimLevels: string[]; // 급수/레벨 체계 (예: 초급, 중급, 고급) — 학원마다 다르게 설정
+  payrollSettings: PayrollSettings;
 };
 
 // "주 1회" 같은 수강권 문자열에서 주당 횟수를 추출
@@ -298,11 +322,12 @@ export type Discount = {
   active: boolean;
 };
 
-// 강사 급여 정산 — 정규직은 월급 고정, 파트타임은 시급×근무시간으로 계산해 명세서를 발행한다
+// 강사 급여 정산 — 정규직은 기본급+인센티브+추가근무, 파트(프리랜서)는 요일·시간대별 단가×근무시간으로 계산해 명세서를 발행한다
 export type PayrollRecord = {
   id: string; instructorId: string; month: string; // 'yyyy-MM'
   payType: '정규' | '파트';
   baseAmount: number; hourlyRate: number; hoursWorked: number;
+  incentiveAmount: number; overtimeHours: number; overtimeAmount: number;
   totalAmount: number; issuedAt: string; note: string;
 };
 
@@ -313,23 +338,52 @@ export type LevelTestRecord = {
   passed: boolean; note: string; createdAt: string;
 };
 
+// 강사 연차/근무불가 신청 — 정규직은 annual/half/quarter(연차 차감), 그 외(프리랜서 등)는 unavailable(차감 없음)만 사용
+export type LeaveType = 'annual' | 'half' | 'quarter' | 'unavailable';
+export type LeaveRequest = {
+  id: string; instructorId: string; date: string; leaveType: LeaveType; reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: string; resolvedAt: string | null; resolvedBy: string | null; // resolvedBy = 승인/반려한 instructorId
+};
+
+// 연차 종류별 차감 일수
+export const leaveDeduction = (leaveType: LeaveType): number => {
+  if (leaveType === 'annual') return 1;
+  if (leaveType === 'half') return 0.5;
+  if (leaveType === 'quarter') return 0.25;
+  return 0;
+};
+
+// 원장/팀장만 연차·대타를 승인할 수 있음
+export const canApproveStaffRequests = (role: StaffRole): boolean => role === '원장' || role === '팀장';
+
+// 강사 간 대타 요청 — 같은 시간대에 수업 없는 강사들에게 동시에 노출되고, 먼저 수락하는 사람이 확정된다
+export type SubRequest = {
+  id: string; classId: string; date: string; time: string;
+  requestingInstructorId: string; substituteInstructorId: string | null;
+  status: 'open' | 'filled' | 'cancelled'; reason: string;
+  createdAt: string; filledAt: string | null;
+};
+
 // ── Initial Data ──────────────────────────────────────────────
 const INITIAL_INSTRUCTORS: Instructor[] = [
-  { id: 'i1', name: '김수영', nickname: '', maxCapacity: 5, type: '정규', color: '#0891b2', jobType: '강사',
+  { id: 'i1', name: '김수영', nickname: '', maxCapacity: 5, type: '정규', color: '#0891b2', jobType: '강사', role: '팀장',
     phone: '010-2222-3333', officePhone: '02-555-1234', extNumber: '101', hireDate: '2023-03-01',
     position: '팀장', department: '강습팀', workDays: ['월', '화', '수', '목', '금'], workTimeStart: '13:00', workTimeEnd: '21:00',
     dutyNote: '초급반 총괄', vehicleNumber: '', address: '', memo: '', status: 'active',
-    monthlySalary: 2800000, hourlyRate: 0 },
-  { id: 'i2', name: '이바다', nickname: '', maxCapacity: 4, type: '파트', color: '#059669', jobType: '강사',
+    monthlySalary: 2800000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 0 },
+  { id: 'i2', name: '이바다', nickname: '', maxCapacity: 4, type: '파트', color: '#059669', jobType: '강사', role: '프리랜서',
     phone: '010-3333-4444', officePhone: '', extNumber: '', hireDate: '2024-06-01',
     position: '강사', department: '강습팀', workDays: ['화', '목', '토'], workTimeStart: '14:00', workTimeEnd: '18:00',
     dutyNote: '', vehicleNumber: '', address: '', memo: '', status: 'active',
-    monthlySalary: 0, hourlyRate: 25000 },
-  { id: 'i3', name: '박돌고래', nickname: '', maxCapacity: 6, type: '정규', color: '#d97706', jobType: '강사',
+    monthlySalary: 0, hourlyRate: 25000,
+    rateSlots: [{ id: 'rs1', days: ['화', '목', '토'], startTime: '14:00', endTime: '18:00', hourlyRate: 25000 }],
+    annualLeaveTotal: 0, annualLeaveUsed: 0 },
+  { id: 'i3', name: '박돌고래', nickname: '', maxCapacity: 6, type: '정규', color: '#d97706', jobType: '강사', role: '원장',
     phone: '010-4444-5555', officePhone: '02-555-1234', extNumber: '102', hireDate: '2022-01-15',
     position: '수석강사', department: '강습팀', workDays: ['월', '수', '금', '토'], workTimeStart: '13:00', workTimeEnd: '20:00',
     dutyNote: '고급반/경기반 담당', vehicleNumber: '', address: '', memo: '', status: 'active',
-    monthlySalary: 3200000, hourlyRate: 0 },
+    monthlySalary: 3200000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 0 },
 ];
 
 export const INITIAL_LESSON_CLASSES: LessonClass[] = [
@@ -403,6 +457,40 @@ export const computeMonthlyHours = (instructor: Instructor, month: string): numb
   return Math.round(workDayCount * dailyHours * 10) / 10;
 };
 
+// 시:분 문자열을 분 단위로 변환 (요일·시간대 단가 매칭에 사용)
+const toMinutes = (t: string): number => {
+  const [h, m] = t.split(':').map(Number);
+  return (h || 0) * 60 + (m || 0);
+};
+
+// 프리랜서(파트) 강사의 그 달 급여 — 실제 배정된 수업(ClassSession) 각각에 대해 요일·시간이 맞는 RateSlot을 찾아
+// (수업 시간 = academySettings와 별개로 1회 수업을 1시간으로 간주) 시간×단가를 합산. 매칭되는 슬롯이 없으면 기존 hourlyRate(1시간 기준)로 폴백.
+export const computeFreelancerPay = (instructor: Instructor, classes: ClassSession[], month: string): { amount: number; hours: number } => {
+  const dayLabelByIndex = Object.fromEntries(Object.entries(DAY_MAP).map(([k, v]) => [v, k]));
+  const myClasses = classes.filter(c => c.instructorId === instructor.id && c.date.startsWith(month));
+  let amount = 0;
+  let hours = 0;
+  for (const cls of myClasses) {
+    const dayLabel = dayLabelByIndex[getDay(parseISO(cls.date))];
+    const clsMinutes = toMinutes(cls.time);
+    const slot = instructor.rateSlots.find(s =>
+      s.days.includes(dayLabel) && toMinutes(s.startTime) <= clsMinutes && clsMinutes < toMinutes(s.endTime)
+    );
+    const sessionHours = 1; // 강습 1회 = 1시간 기준
+    hours += sessionHours;
+    amount += (slot ? slot.hourlyRate : instructor.hourlyRate) * sessionHours;
+  }
+  return { amount: Math.round(amount), hours: Math.round(hours * 10) / 10 };
+};
+
+// 특정 일시(date+time)에 수업이 없는 강사 목록 — 대타 요청 대상 매칭에 사용 (요청 당사자는 제외)
+export const getFreeInstructorsAt = (date: string, time: string, instructors: Instructor[], classes: ClassSession[], excludeInstructorId: string): Instructor[] =>
+  instructors.filter(inst =>
+    inst.status === 'active' &&
+    inst.id !== excludeInstructorId &&
+    !classes.some(c => c.date === date && c.time === time && c.instructorId === inst.id)
+  );
+
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'd1', name: '최기사', phone: '010-7777-8888', vehicleNumber: '서울 12가 3456' },
   { id: 'd2', name: '한드라이버', phone: '010-9999-0000', vehicleNumber: '서울 98나 7654' },
@@ -424,6 +512,7 @@ const INITIAL_PAYMENT_PLANS: PaymentPlan[] = [
 const INITIAL_SETTINGS: AcademySettings = {
   academyName: '푸른바다 수영장',
   branchName: '강남점',
+  academyPhone: '02-555-1234',
   designatedTimes: ['14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00'],
   makeupSettings: {
     childRequiresDocument: false,
@@ -437,6 +526,14 @@ const INITIAL_SETTINGS: AcademySettings = {
   counselingIntervalMonths: 2,
   reRegistrationPeriod: { startDay: 20, endDay: 25 },
   swimLevels: ['초급', '중급', '고급'],
+  payrollSettings: {
+    baseSalaryDefault: 2500000,
+    incentiveRules: [
+      { id: 'inc1', label: '신규 등록 1건', amount: 10000 },
+      { id: 'inc2', label: '레벨테스트 합격 1인당', amount: 5000 },
+    ],
+    overtimeHourlyRate: 15000,
+  },
 };
 
 const INITIAL_DISCOUNTS: Discount[] = [
@@ -447,6 +544,8 @@ const INITIAL_DISCOUNTS: Discount[] = [
 const INITIAL_WAITLIST: WaitlistEntry[] = [];
 const INITIAL_PAYROLL_RECORDS: PayrollRecord[] = [];
 const INITIAL_LEVEL_TEST_RECORDS: LevelTestRecord[] = [];
+const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [];
+const INITIAL_SUB_REQUESTS: SubRequest[] = [];
 
 export const getMakeupLimitForSessions = (policies: MakeupPolicyRule[], sessionsPerWeek: number): number =>
   policies.find(p => p.sessionsPerWeek === sessionsPerWeek)?.maxMakeups ?? 2;
@@ -643,6 +742,7 @@ type StoreContextType = {
   // Settings
   updateSettings: (s: Partial<AcademySettings>) => void;
   updateMakeupSettings: (s: Partial<MakeupSettings>) => void;
+  updatePayrollSettings: (s: Partial<PayrollSettings>) => void;
   // LessonClass
   addLessonClass: (lc: Omit<LessonClass, 'id'>) => void;
   deleteLessonClass: (id: string) => void;
@@ -687,10 +787,23 @@ type StoreContextType = {
   deleteDiscount: (id: string) => void;
   // 강사 급여 정산
   payrollRecords: PayrollRecord[];
-  issuePayroll: (instructorId: string, month: string, hoursOverride?: number) => void;
+  issuePayroll: (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number }) => void;
   // 레벨(급수) 테스트
   levelTestRecords: LevelTestRecord[];
   recordLevelTest: (studentId: string, instructorId: string, resultLevel: string, passed: boolean, note: string) => void;
+  // 데모 로그인 시뮬레이터 — 실제 서버 인증이 아니라, "지금 어떤 직원으로 보고 있는지"를 로컬에 기억해 역할별 승인 권한을 UI에서 게이팅함
+  currentInstructorId: string | null;
+  setCurrentInstructorId: (id: string) => void;
+  // 강사 연차/근무불가 신청
+  leaveRequests: LeaveRequest[];
+  submitLeaveRequest: (instructorId: string, date: string, leaveType: LeaveType, reason: string) => { ok: boolean; error?: string };
+  approveLeaveRequest: (id: string, approverInstructorId: string) => { ok: boolean; error?: string };
+  rejectLeaveRequest: (id: string, approverInstructorId: string) => { ok: boolean; error?: string };
+  // 강사 간 대타 요청
+  subRequests: SubRequest[];
+  submitSubRequest: (classId: string, reason: string) => void;
+  acceptSubRequest: (id: string, acceptingInstructorId: string) => { ok: boolean; error?: string };
+  cancelSubRequest: (id: string, byInstructorId: string) => void;
 };
 
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -719,6 +832,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
   const [levelTestRecords, setLevelTestRecords] = useState<LevelTestRecord[]>(INITIAL_LEVEL_TEST_RECORDS);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
+  const [subRequests, setSubRequests] = useState<SubRequest[]>(INITIAL_SUB_REQUESTS);
+  const [currentInstructorId, setCurrentInstructorIdState] = useState<string | null>(
+    typeof window !== 'undefined' ? window.localStorage.getItem('swimsync-current-instructor') : null
+  );
+  const setCurrentInstructorId = (id: string) => {
+    setCurrentInstructorIdState(id);
+    if (typeof window !== 'undefined') window.localStorage.setItem('swimsync-current-instructor', id);
+  };
 
   // 시스템이 자동 발생시키는 개인 알림(퇴원/복귀/일정변경 처리 결과 등) — 학부모 앱 알림센터(공지·알림)에 즉시 반영
   const pushSystemAlert = (studentId: string, title: string, content: string) => {
@@ -995,6 +1117,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // ── Settings ─────────────────────────────────────────────────
   const updateSettings = (newSettings: Partial<AcademySettings>) => setSettings(prev => ({ ...prev, ...newSettings }));
   const updateMakeupSettings = (ms: Partial<MakeupSettings>) => setSettings(prev => ({ ...prev, makeupSettings: { ...prev.makeupSettings, ...ms } }));
+  const updatePayrollSettings = (ps: Partial<PayrollSettings>) => setSettings(prev => ({ ...prev, payrollSettings: { ...prev.payrollSettings, ...ps } }));
 
   // ── LessonClass ───────────────────────────────────────────────
   const addLessonClass = (lcData: Omit<LessonClass, 'id'>) => setLessonClasses(prev => [...prev, { ...lcData, id: `lc_${Date.now()}` }]);
@@ -1124,16 +1247,90 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const deleteDiscount = (id: string) => setDiscounts(prev => prev.filter(d => d.id !== id));
 
   // ── 강사 급여 정산 ────────────────────────────────────────────
-  const issuePayroll = (instructorId: string, month: string, hoursOverride?: number) => {
+  const issuePayroll = (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number }) => {
     const inst = instructors.find(i => i.id === instructorId);
     if (!inst) return;
-    const hoursWorked = hoursOverride ?? computeMonthlyHours(inst, month);
-    const baseAmount = inst.type === '정규' ? inst.monthlySalary : 0;
-    const totalAmount = inst.type === '정규' ? inst.monthlySalary : Math.round(inst.hourlyRate * hoursWorked);
+    const incentiveAmount = opts?.incentiveAmount ?? 0;
+    const overtimeHours = opts?.overtimeHours ?? 0;
+    const overtimeAmount = Math.round(overtimeHours * settings.payrollSettings.overtimeHourlyRate);
+    let baseAmount = 0;
+    let hoursWorked = 0;
+    if (inst.type === '정규') {
+      baseAmount = inst.monthlySalary;
+      hoursWorked = opts?.hoursOverride ?? computeMonthlyHours(inst, month);
+    } else if (opts?.hoursOverride !== undefined) {
+      hoursWorked = opts.hoursOverride;
+      baseAmount = Math.round(inst.hourlyRate * hoursWorked);
+    } else {
+      const computed = computeFreelancerPay(inst, classes, month);
+      hoursWorked = computed.hours;
+      baseAmount = computed.amount;
+    }
+    const totalAmount = baseAmount + incentiveAmount + overtimeAmount;
     setPayrollRecords(prev => [
       ...prev.filter(p => !(p.instructorId === instructorId && p.month === month)),
-      { id: `pay_${Date.now()}`, instructorId, month, payType: inst.type, baseAmount, hourlyRate: inst.hourlyRate, hoursWorked, totalAmount, issuedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), note: '' },
+      { id: `pay_${Date.now()}`, instructorId, month, payType: inst.type, baseAmount, hourlyRate: inst.hourlyRate, hoursWorked, incentiveAmount, overtimeHours, overtimeAmount, totalAmount, issuedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), note: '' },
     ]);
+  };
+
+  // ── 강사 연차/근무불가 신청 ─────────────────────────────────────
+  const submitLeaveRequest = (instructorId: string, date: string, leaveType: LeaveType, reason: string): { ok: boolean; error?: string } => {
+    const inst = instructors.find(i => i.id === instructorId);
+    if (!inst) return { ok: false, error: '강사 정보를 찾을 수 없습니다.' };
+    if (inst.type === '정규' && leaveType !== 'unavailable') {
+      const remaining = inst.annualLeaveTotal - inst.annualLeaveUsed;
+      if (remaining < leaveDeduction(leaveType)) return { ok: false, error: '남은 연차가 부족합니다.' };
+    }
+    setLeaveRequests(prev => [...prev, {
+      id: `leave_${Date.now()}`, instructorId, date, leaveType, reason,
+      status: 'pending', requestedAt: new Date().toISOString(), resolvedAt: null, resolvedBy: null,
+    }]);
+    return { ok: true };
+  };
+
+  const approveLeaveRequest = (id: string, approverInstructorId: string): { ok: boolean; error?: string } => {
+    const approver = instructors.find(i => i.id === approverInstructorId);
+    if (!approver || !canApproveStaffRequests(approver.role)) return { ok: false, error: '원장·팀장만 승인할 수 있습니다.' };
+    const req = leaveRequests.find(r => r.id === id);
+    if (!req || req.status !== 'pending') return { ok: false, error: '이미 처리된 요청입니다.' };
+    const inst = instructors.find(i => i.id === req.instructorId);
+    if (inst && inst.type === '정규' && req.leaveType !== 'unavailable') {
+      const remaining = inst.annualLeaveTotal - inst.annualLeaveUsed;
+      if (remaining < leaveDeduction(req.leaveType)) return { ok: false, error: '승인 시점 기준 남은 연차가 부족합니다.' };
+      setInstructors(prev => prev.map(i => i.id === inst.id ? { ...i, annualLeaveUsed: i.annualLeaveUsed + leaveDeduction(req.leaveType) } : i));
+    }
+    setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', resolvedAt: new Date().toISOString(), resolvedBy: approverInstructorId } : r));
+    return { ok: true };
+  };
+
+  const rejectLeaveRequest = (id: string, approverInstructorId: string): { ok: boolean; error?: string } => {
+    const approver = instructors.find(i => i.id === approverInstructorId);
+    if (!approver || !canApproveStaffRequests(approver.role)) return { ok: false, error: '원장·팀장만 반려할 수 있습니다.' };
+    setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected', resolvedAt: new Date().toISOString(), resolvedBy: approverInstructorId } : r));
+    return { ok: true };
+  };
+
+  // ── 강사 간 대타 요청 ────────────────────────────────────────────
+  const submitSubRequest = (classId: string, reason: string) => {
+    const cls = classes.find(c => c.id === classId);
+    if (!cls) return;
+    setSubRequests(prev => [...prev, {
+      id: `sub_${Date.now()}`, classId, date: cls.date, time: cls.time,
+      requestingInstructorId: cls.instructorId, substituteInstructorId: null,
+      status: 'open', reason, createdAt: new Date().toISOString(), filledAt: null,
+    }]);
+  };
+
+  const acceptSubRequest = (id: string, acceptingInstructorId: string): { ok: boolean; error?: string } => {
+    const req = subRequests.find(r => r.id === id);
+    if (!req || req.status !== 'open') return { ok: false, error: '이미 다른 강사가 수락했거나 취소된 요청입니다.' };
+    setSubRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'filled', substituteInstructorId: acceptingInstructorId, filledAt: new Date().toISOString() } : r));
+    setClasses(prev => prev.map(c => c.id === req.classId ? { ...c, instructorId: acceptingInstructorId } : c));
+    return { ok: true };
+  };
+
+  const cancelSubRequest = (id: string, byInstructorId: string) => {
+    setSubRequests(prev => prev.map(r => (r.id === id && r.requestingInstructorId === byInstructorId && r.status === 'open') ? { ...r, status: 'cancelled' } : r));
   };
 
   // ── 레벨(급수) 테스트 기록 ──────────────────────────────────────
@@ -1160,7 +1357,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       returnRequests, submitReturnRequest, approveReturnRequest, rejectReturnRequest,
       rescheduleClass, markAbsent, absenceRecords, cancelAbsence,
       addEvent, addInstructor, updateInstructor, deleteInstructor, updateInstructorColor,
-      updateSettings, updateMakeupSettings,
+      updateSettings, updateMakeupSettings, updatePayrollSettings,
       addLessonClass, deleteLessonClass, updateLessonClass,
       addDriver, updateDriver, deleteDriver,
       addVehicle, updateVehicle, deleteVehicle, assignStudentToVehicle,
@@ -1173,6 +1370,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       discounts, addDiscount, updateDiscount, deleteDiscount,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,
+      currentInstructorId, setCurrentInstructorId,
+      leaveRequests, submitLeaveRequest, approveLeaveRequest, rejectLeaveRequest,
+      subRequests, submitSubRequest, acceptSubRequest, cancelSubRequest,
     }}>
       {children}
     </StoreContext.Provider>

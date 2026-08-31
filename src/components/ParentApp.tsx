@@ -7,9 +7,10 @@ import type { Enrollment } from '../store/StoreContext';
 import {
   Calendar as CalendarIcon, RefreshCw, Bell, Info, MapPin, Upload, CheckCircle, XCircle,
   Wallet, CalendarClock, Car, ChevronLeft, ChevronRight, TrendingUp, X as XIcon, CreditCard, ShieldAlert,
-  MessageCircle, Clock3, AlertTriangle, BellRing, Sparkles,
+  MessageCircle, Clock3, AlertTriangle, BellRing, Sparkles, Phone,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
+import AddContactButton from './AddContactButton';
 import { playBellSound } from '../lib/playBellSound';
 import { format, addDays, addMonths, startOfMonth, startOfWeek, isAfter, isSameMonth, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -404,6 +405,14 @@ export default function ParentApp() {
               <div className="flex items-center text-xs text-slate-400 mt-0.5">
                 <MapPin className="w-3 h-3 mr-1" /><span>{settings.branchName}</span>
               </div>
+              {settings.academyPhone && (
+                <div className="flex items-center gap-2 mt-1">
+                  <a href={`tel:${settings.academyPhone}`} className="text-xs text-cyan-600 font-medium flex items-center gap-1">
+                    <Phone className="w-3 h-3" /> {settings.academyPhone}
+                  </a>
+                  <AddContactButton name={`${settings.academyName} 대표번호`} phone={settings.academyPhone} />
+                </div>
+              )}
             </div>
             <button onClick={handleOpenNotifications} className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 relative">
               <Bell className="w-4 h-4" />

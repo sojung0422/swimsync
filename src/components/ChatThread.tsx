@@ -3,6 +3,7 @@ import { useStore } from '../store/StoreContext';
 import { Phone, Send, PhoneCall } from 'lucide-react';
 import { format, parseISO, isToday } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import AddContactButton from './AddContactButton';
 
 type ChatThreadProps = {
   studentId: string;
@@ -50,6 +51,7 @@ export default function ChatThread({ studentId, viewerRole, counterpartName, cou
               className="w-8 h-8 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center transition-colors">
               <PhoneCall className="w-3.5 h-3.5" />
             </button>
+            <AddContactButton name={counterpartName} phone={counterpartPhone} compact />
             <a href={`tel:${counterpartPhone}`}
               title="전화 걸기"
               className="w-8 h-8 rounded-full bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 flex items-center justify-center transition-colors">

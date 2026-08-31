@@ -3,6 +3,7 @@ import { useStore, getPrimaryContactPhone } from '../store/StoreContext';
 import { format, isAfter, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Car, MapPin, Users, Clock, Info, ChevronRight, Navigation, Phone } from 'lucide-react';
+import AddContactButton from './AddContactButton';
 
 export default function DriverApp() {
   const { drivers, vehicles, students, classes } = useStore();
@@ -177,10 +178,11 @@ export default function DriverApp() {
                                     <ChevronRight className={`w-4 h-4 text-slate-300 shrink-0 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                                   </button>
                                   {isExpanded && (
-                                    <div className="px-4 pb-3 -mt-1 animate-fade-up">
+                                    <div className="px-4 pb-3 -mt-1 animate-fade-up space-y-1.5">
                                       <a href={`tel:${getPrimaryContactPhone(s)}`} className="flex items-center gap-2 bg-cyan-50 border border-cyan-100 rounded-xl px-3 py-2.5 text-cyan-700 text-sm font-semibold">
                                         <Phone className="w-3.5 h-3.5" /> {getPrimaryContactPhone(s) || '연락처 없음'} (탭하여 전화)
                                       </a>
+                                      <AddContactButton name={`${s.studentName} 학부모`} phone={getPrimaryContactPhone(s)} className="px-1" />
                                     </div>
                                   )}
                                 </div>
@@ -260,6 +262,7 @@ export default function DriverApp() {
                     <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
                       <Phone className="w-3 h-3" /> {driver?.phone}
                     </p>
+                    {driver && <AddContactButton name={driver.name} phone={driver.phone} className="mt-1" />}
                   </div>
                   <div className="text-right">
                     {myVehicles.map(v => (

@@ -1,15 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
-import { useStore, getPrimaryContactPhone, teachesStudent, studentsForInstructor } from '../store/StoreContext';
-import type { MakeupRequest, ClassSession } from '../store/StoreContext';
+import { useStore, getPrimaryContactPhone, teachesStudent, studentsForInstructor, getFreeInstructorsAt } from '../store/StoreContext';
+import type { MakeupRequest, ClassSession, LeaveType } from '../store/StoreContext';
 import {
   Calendar, Clock, Users, BookOpen, CheckCircle2, AlertCircle, UserCircle, RefreshCw,
   Wallet, CalendarClock, Image as ImageIcon, ChevronLeft, ChevronDown, ChevronUp, MessageCircle,
-  MessageSquareText, BellRing,
+  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
 import { playBellSound } from '../lib/playBellSound';
-import { format, addDays, addMonths, startOfWeek, isSameDay, isAfter, parseISO } from 'date-fns';
+import { format, addDays, addMonths, startOfWeek, isSameDay, isAfter, parseISO, differenceInCalendarDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
+
+const LEAVE_LABEL: Record<LeaveType, string> = { annual: '연차', half: '반차', quarter: '반반차', unavailable: '근무 불가' };
 
 const REQUEST_STATUS_META: Record<MakeupRequest['status'], { label: string; color: string }> = {
   pending:            { label: '승인 대기',   color: 'bg-amber-50 text-amber-700 border-amber-200' },
@@ -218,16 +220,26 @@ export default function InstructorApp() {
     classes, students, instructors, makeupRequests, messages, settings, counselingRecords, makeupCancellations,
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
+    leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages'>('schedule');
+  const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDoc, setShowDoc] = useState<string | null>(null);
   const [progressClassId, setProgressClassId] = useState<string | null>(null);
   const [activeThreadStudentId, setActiveThreadStudentId] = useState<string | null>(null);
   const [counselingStudentId, setCounselingStudentId] = useState<string | null>(null);
+  const [leaveDate, setLeaveDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [leaveType, setLeaveType] = useState<LeaveType>('annual');
+  const [leaveReason, setLeaveReason] = useState('');
+  const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [leaveSaved, setLeaveSaved] = useState(false);
+  const [subReasonDraft, setSubReasonDraft] = useState<Record<string, string>>({});
+  const [subActionError, setSubActionError] = useState<string | null>(null);
 
   const instructorId = 'i1';
   const instructor = instructors.find(i => i.id === instructorId);
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const myClasses = classes.filter(c => c.instructorId === instructorId && c.date === selectedDateStr);
 
@@ -241,6 +253,19 @@ export default function InstructorApp() {
   const myStudentIds = new Set(students.filter(s => teachesStudent(instructorId, s)).map(s => s.id));
   const myRequests = makeupRequests.filter(r => myStudentIds.has(r.studentId)).slice().reverse();
   const myPendingRequestCount = myRequests.filter(r => r.status === 'pending').length;
+
+  // 연차/근무불가 신청
+  const myLeaveRequests = leaveRequests.filter(r => r.instructorId === instructorId).slice().reverse();
+  const remainingLeave = instructor ? instructor.annualLeaveTotal - instructor.annualLeaveUsed : 0;
+
+  // 대타 — 내가 요청한 것 / 내가 수락 가능한 다른 강사의 열린 요청
+  const myUpcomingClasses = classes.filter(c => c.instructorId === instructorId && c.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  const mySubRequests = subRequests.filter(r => r.requestingInstructorId === instructorId).slice().reverse();
+  const openSubRequestsForMe = subRequests.filter(r =>
+    r.status === 'open' && r.requestingInstructorId !== instructorId &&
+    getFreeInstructorsAt(r.date, r.time, instructors, classes, r.requestingInstructorId).some(i => i.id === instructorId)
+  );
+  const urgentSubCount = openSubRequestsForMe.filter(r => differenceInCalendarDays(parseISO(r.date), new Date()) <= 2).length;
 
   // 내 강습생의 퇴원/복귀 요청 — 확인해야 최종 처리(퇴원) 또는 신규로 받기(복귀)가 가능함
   const myPendingWithdrawals = withdrawalRequests.filter(r => myStudentIds.has(r.studentId) && r.status === 'pending');
@@ -270,7 +295,6 @@ export default function InstructorApp() {
   const visibleCancelledMakeups = myCancelledMakeups.filter(r => !dismissedCancelIds.has(r.id));
 
   // 내 수업에 새로 배정된 보강 학생 (학부모가 예약하거나 운영진이 승인하는 즉시 여기 반영됨) — 오늘 이후
-  const todayStr = format(new Date(), 'yyyy-MM-dd');
   const upcomingMakeupEntries = classes
     .filter(c => c.instructorId === instructorId && c.date >= todayStr && c.makeupStudentIds.length > 0)
     .flatMap(c => c.makeupStudentIds.map(studentId => ({ cls: c, student: students.find(s => s.id === studentId) })))
@@ -564,36 +588,194 @@ export default function InstructorApp() {
                 )}
               </div>
             ) : (
-              <div className="space-y-3">
-                <h2 className="text-[15px] font-bold text-slate-800 px-1">내 강습생 보강·이월 요청 ({myRequests.length}건)</h2>
-                <p className="text-slate-400 text-xs px-1 -mt-2">최종 승인/거절은 운영 웹 "보강 요청 관리"에서 처리돼요. 여기서는 확인만 가능해요.</p>
-                {myRequests.map(r => {
-                  const student = students.find(s => s.id === r.studentId);
-                  const meta = REQUEST_STATUS_META[r.status];
-                  return (
-                    <div key={r.id} className="bg-white rounded-2xl p-4 border border-slate-100">
-                      <div className="flex items-start gap-3">
-                        <button onClick={() => setShowDoc(r.docPhoto)}
-                          className="w-11 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center">
-                          {r.docPhoto ? <img src={r.docPhoto} className="w-full h-full object-cover" alt="서류" /> : <ImageIcon className="w-4 h-4 text-slate-300" />}
-                        </button>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-slate-800 text-sm font-semibold">{student?.studentName ?? '알 수 없음'}</p>
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${meta.color}`}>{meta.label}</span>
+              <div className="space-y-4">
+                <div className="flex bg-slate-100 rounded-xl p-1 gap-1">
+                  {([['makeup', '보강·이월'], ['leave', '연차·근무'], ['sub', '대타']] as const).map(([val, label]) => (
+                    <button key={val} onClick={() => setRequestsSubTab(val)}
+                      className={`relative flex-1 py-2 rounded-lg text-xs font-semibold transition-colors ${requestsSubTab === val ? 'bg-white text-cyan-700 shadow-sm' : 'text-slate-500'}`}>
+                      {label}
+                      {val === 'sub' && urgentSubCount > 0 && (
+                        <span className="absolute -top-1.5 -right-1 w-4 h-4 rounded-full bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center">{urgentSubCount}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {requestsSubTab === 'makeup' && (
+                  <div className="space-y-3">
+                    <h2 className="text-[15px] font-bold text-slate-800 px-1">내 강습생 보강·이월 요청 ({myRequests.length}건)</h2>
+                    <p className="text-slate-400 text-xs px-1 -mt-2">최종 승인/거절은 운영 웹 "보강 요청 관리"에서 처리돼요. 여기서는 확인만 가능해요.</p>
+                    {myRequests.map(r => {
+                      const student = students.find(s => s.id === r.studentId);
+                      const meta = REQUEST_STATUS_META[r.status];
+                      return (
+                        <div key={r.id} className="bg-white rounded-2xl p-4 border border-slate-100">
+                          <div className="flex items-start gap-3">
+                            <button onClick={() => setShowDoc(r.docPhoto)}
+                              className="w-11 h-11 rounded-xl overflow-hidden border border-slate-200 shrink-0 bg-slate-50 flex items-center justify-center">
+                              {r.docPhoto ? <img src={r.docPhoto} className="w-full h-full object-cover" alt="서류" /> : <ImageIcon className="w-4 h-4 text-slate-300" />}
+                            </button>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-slate-800 text-sm font-semibold">{student?.studentName ?? '알 수 없음'}</p>
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${meta.color}`}>{meta.label}</span>
+                              </div>
+                              <p className="text-slate-400 text-[11px] mt-1 flex items-center gap-1">
+                                {r.preferredResolution === 'carryover' ? <><Wallet className="w-3 h-3" /> 학부모 희망: 이월</> : <><CalendarClock className="w-3 h-3" /> 학부모 희망: 보강</>}
+                              </p>
+                              {r.reason && <p className="text-slate-500 text-xs mt-1">사유: {r.reason}</p>}
+                            </div>
                           </div>
-                          <p className="text-slate-400 text-[11px] mt-1 flex items-center gap-1">
-                            {r.preferredResolution === 'carryover' ? <><Wallet className="w-3 h-3" /> 학부모 희망: 이월</> : <><CalendarClock className="w-3 h-3" /> 학부모 희망: 보강</>}
-                          </p>
-                          {r.reason && <p className="text-slate-500 text-xs mt-1">사유: {r.reason}</p>}
                         </div>
+                      );
+                    })}
+                    {myRequests.length === 0 && (
+                      <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-sm">
+                        접수된 보강·이월 요청이 없습니다.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {requestsSubTab === 'leave' && (
+                  <div className="space-y-4">
+                    <div className="bg-white rounded-2xl p-4 border border-slate-100 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-slate-800 text-sm font-semibold">연차·근무불가 신청</p>
+                        {instructor?.type === '정규' && (
+                          <span className="text-cyan-600 text-xs font-semibold bg-cyan-50 px-2.5 py-1 rounded-full">잔여 연차 {remainingLeave}일</span>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-slate-500 text-xs font-medium mb-1.5">날짜</p>
+                        <input type="date" value={leaveDate} onChange={e => setLeaveDate(e.target.value)}
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors" />
+                      </div>
+                      {instructor?.type === '정규' ? (
+                        <div>
+                          <p className="text-slate-500 text-xs font-medium mb-1.5">종류</p>
+                          <div className="flex gap-2">
+                            {(['annual', 'half', 'quarter'] as const).map(t => (
+                              <button key={t} onClick={() => setLeaveType(t)}
+                                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${leaveType === t ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
+                                {LEAVE_LABEL[t]}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-xs">프리랜서/비정규직은 연차 차감 없이 근무 불가일로만 등록돼요.</p>
+                      )}
+                      <div>
+                        <p className="text-slate-500 text-xs font-medium mb-1.5">사유</p>
+                        <input value={leaveReason} onChange={e => setLeaveReason(e.target.value)} placeholder="예: 개인 사정"
+                          className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors" />
+                      </div>
+                      {leaveError && <p className="text-red-500 text-xs">{leaveError}</p>}
+                      <button onClick={() => {
+                        const type: LeaveType = instructor?.type === '정규' ? leaveType : 'unavailable';
+                        const res = submitLeaveRequest(instructorId, leaveDate, type, leaveReason);
+                        if (!res.ok) setLeaveError(res.error ?? '신청에 실패했습니다.');
+                        else { setLeaveError(null); setLeaveReason(''); setLeaveSaved(true); setTimeout(() => setLeaveSaved(false), 1500); }
+                      }} className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
+                        {leaveSaved ? <><CheckCircle2 className="w-4 h-4" /> 신청 완료</> : '신청하기'}
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      <p className="text-slate-500 text-xs font-semibold px-1">내 신청 내역 ({myLeaveRequests.length}건)</p>
+                      {myLeaveRequests.map(r => (
+                        <div key={r.id} className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center justify-between">
+                          <div>
+                            <p className="text-slate-800 text-sm font-semibold flex items-center gap-1.5">
+                              <CalendarCheck className="w-3.5 h-3.5 text-cyan-600" /> {r.date} · {LEAVE_LABEL[r.leaveType]}
+                            </p>
+                            {r.reason && <p className="text-slate-400 text-xs mt-1">{r.reason}</p>}
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border shrink-0 ${
+                            r.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : r.status === 'rejected' ? 'bg-red-50 text-red-600 border-red-200'
+                            : 'bg-amber-50 text-amber-700 border-amber-200'
+                          }`}>
+                            {r.status === 'approved' ? '승인됨' : r.status === 'rejected' ? '반려됨' : '대기 중'}
+                          </span>
+                        </div>
+                      ))}
+                      {myLeaveRequests.length === 0 && (
+                        <div className="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-sm">
+                          신청 내역이 없습니다.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {requestsSubTab === 'sub' && (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-slate-800 text-sm font-semibold px-1 mb-2">내가 수락할 수 있는 대타 요청</p>
+                      <div className="space-y-2">
+                        {openSubRequestsForMe.map(r => {
+                          const requester = instructors.find(i => i.id === r.requestingInstructorId);
+                          const isUrgent = differenceInCalendarDays(parseISO(r.date), new Date()) <= 2;
+                          return (
+                            <div key={r.id} className={`rounded-2xl p-4 border ${isUrgent ? 'bg-orange-50 border-orange-200' : 'bg-white border-slate-100'}`}>
+                              <div className="flex items-center justify-between">
+                                <p className="text-slate-800 text-sm font-semibold">{requester?.name} 강사님 대타</p>
+                                {isUrgent && <span className="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded-full">마감 임박</span>}
+                              </div>
+                              <p className="text-slate-500 text-xs mt-1">{r.date} {r.time} · {r.reason || '사유 없음'}</p>
+                              <button onClick={() => {
+                                const res = acceptSubRequest(r.id, instructorId);
+                                if (!res.ok) setSubActionError(res.error ?? '수락에 실패했습니다.');
+                                else setSubActionError(null);
+                              }} className="w-full mt-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-colors">
+                                <Hand className="w-3.5 h-3.5" /> 대타 수락하기
+                              </button>
+                            </div>
+                          );
+                        })}
+                        {openSubRequestsForMe.length === 0 && (
+                          <div className="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-sm">
+                            지금 수락 가능한 대타 요청이 없어요.
+                          </div>
+                        )}
+                        {subActionError && <p className="text-red-500 text-xs px-1">{subActionError}</p>}
                       </div>
                     </div>
-                  );
-                })}
-                {myRequests.length === 0 && (
-                  <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-sm">
-                    접수된 보강·이월 요청이 없습니다.
+
+                    <div>
+                      <p className="text-slate-800 text-sm font-semibold px-1 mb-2">내 수업에 대타 요청하기</p>
+                      <div className="space-y-2">
+                        {myUpcomingClasses.slice(0, 8).map(cls => {
+                          const existing = mySubRequests.find(r => r.classId === cls.id && r.status !== 'cancelled');
+                          return (
+                            <div key={cls.id} className="bg-white rounded-2xl p-4 border border-slate-100">
+                              <p className="text-slate-800 text-sm font-semibold">{format(parseISO(cls.date), 'M월 d일 (E)', { locale: ko })} {cls.time}</p>
+                              {existing ? (
+                                <span className={`inline-block mt-2 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${existing.status === 'filled' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                  {existing.status === 'filled' ? '대타 확정됨' : '대타 구하는 중'}
+                                </span>
+                              ) : (
+                                <div className="mt-2 flex items-center gap-2">
+                                  <input value={subReasonDraft[cls.id] ?? ''} onChange={e => setSubReasonDraft(prev => ({ ...prev, [cls.id]: e.target.value }))}
+                                    placeholder="사유 (선택)" className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-cyan-500 transition-colors" />
+                                  <button onClick={() => submitSubRequest(cls.id, subReasonDraft[cls.id] ?? '')}
+                                    className="flex items-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-semibold transition-colors shrink-0">
+                                    <Repeat className="w-3.5 h-3.5" /> 대타 구하기
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                        {myUpcomingClasses.length === 0 && (
+                          <div className="text-center py-8 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-sm">
+                            예정된 수업이 없어요.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

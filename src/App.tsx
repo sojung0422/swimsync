@@ -7,7 +7,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   LayoutDashboard, Users, Smartphone, UserCircle, LogOut,
   FileText, Waves, Bell, Car, CreditCard, Truck, Sparkles,
-  RefreshCw, IdCard, HelpCircle, MessageSquareText, CalendarClock
+  RefreshCw, IdCard, HelpCircle, MessageSquareText, CalendarClock,
+  CalendarCheck, Repeat, ChevronDown
 } from 'lucide-react';
 import AdminSchedule from './components/AdminSchedule';
 import AdminStudents from './components/AdminStudents';
@@ -18,6 +19,8 @@ import AdminMakeups from './components/AdminMakeups';
 import AdminStaff from './components/AdminStaff';
 import AdminCounseling from './components/AdminCounseling';
 import AdminScheduleChanges from './components/AdminScheduleChanges';
+import AdminLeaveRequests from './components/AdminLeaveRequests';
+import AdminSubRequests from './components/AdminSubRequests';
 import InstructorApp from './components/InstructorApp';
 import ParentApp from './components/ParentApp';
 import DriverApp from './components/DriverApp';
@@ -42,6 +45,8 @@ const navGroups = [
       { id: 'payments',      icon: CreditCard,       text: '결제 관리' },
       { id: 'makeups',       icon: RefreshCw,        text: '보강 요청 관리' },
       { id: 'schedule-changes', icon: CalendarClock, text: '일정 변경 요청' },
+      { id: 'leave-requests', icon: CalendarCheck,   text: '연차 승인' },
+      { id: 'sub-requests',   icon: Repeat,           text: '대타 관리' },
       { id: 'notifications', icon: Bell,             text: '공지 발송' },
       { id: 'vehicles',      icon: Car,              text: '차량 관리' },
     ],
@@ -63,7 +68,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'counseling' | 'payments' | 'makeups' | 'schedule-changes' | 'notifications' | 'vehicles'
+  | 'schedule' | 'students' | 'staff' | 'counseling' | 'payments' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles'
   | 'instructor-app' | 'parent-app' | 'driver-app'
   | 'business-plan';
 
@@ -148,6 +153,25 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '거절', description: '요청을 반려해요. 반영되지 않아요.' },
     ],
   },
+  'leave-requests': {
+    title: '연차 승인',
+    description: '강사의 연차·반차·반반차·근무불가 신청을 검토하고 승인하는 화면이에요. 원장·팀장 권한을 가진 계정으로 로그인해야 승인 버튼이 활성화돼요 (사이드바 하단 "로그인 계정" 선택).',
+    features: [
+      { label: '승인 대기 / 처리 완료 탭', description: '아직 처리 안 한 신청과 처리된 신청을 나눠서 봐요.' },
+      { label: '연차 잔여일 표시', description: '정규직 강사는 신청 시 남은 연차 일수를 함께 보여주고, 부족하면 신청 자체가 차단돼요.' },
+      { label: '승인', description: '연차/반차/반반차는 승인 시점에 실제로 연차가 차감돼요. 근무불가(프리랜서 등)는 차감 없이 승인만 돼요.' },
+      { label: '권한 안내', description: '원장·팀장이 아닌 계정으로 보면 승인·반려 버튼 대신 "승인 권한 없음"이 표시돼요.' },
+    ],
+  },
+  'sub-requests': {
+    title: '대타 관리',
+    description: '강사끼리 주고받는 대타 요청 현황을 관리자가 확인하는 화면이에요. 실제 수락은 강사 앱에서 해당 시간에 수업이 없는 강사가 직접 처리해요.',
+    features: [
+      { label: '대기 중 / 확정·취소 탭', description: '아직 수락되지 않은 요청과 결과가 난 요청을 나눠서 봐요.' },
+      { label: '동시 노출 안내', description: '요청이 뜨면 그 시간에 수업이 없는 모든 강사에게 동시에 노출되고, 가장 먼저 수락한 강사로 자동 확정돼요.' },
+      { label: '요청 취소', description: '막힌 요청은 관리자가 직접 취소할 수 있어요.' },
+    ],
+  },
   notifications: {
     title: '공지 발송',
     description: '학부모에게 SMS/앱 푸시 공지를 작성하고 발송하는 화면이에요.',
@@ -215,6 +239,7 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
 
 function AppContent() {
   const { signOut } = useAuth();
+  const { instructors, currentInstructorId, setCurrentInstructorId } = useStore();
   const [active, setActive] = useState<TabId>('schedule');
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
@@ -227,6 +252,15 @@ function AppContent() {
       setShowOnboarding(true);
     }
   }, []);
+
+  // 데모 로그인 시뮬레이터 — 실제 서버 인증이 아니라 "지금 어떤 직원으로 보고 있는지"를 로컬에 기억해
+  // 연차/대타 승인 등 역할 기반 UI 게이팅에 사용함. 처음엔 재직 중인 첫 직원으로 기본 설정.
+  useEffect(() => {
+    if (!currentInstructorId) {
+      const first = instructors.find(i => i.status === 'active');
+      if (first) setCurrentInstructorId(first.id);
+    }
+  }, [currentInstructorId, instructors, setCurrentInstructorId]);
 
   useEffect(() => {
     if (active === 'schedule') return; // 최초 진입 화면은 온보딩 가이드가 이미 설명해줘요.
@@ -281,6 +315,8 @@ function AppContent() {
       case 'payments':       return <AdminPayments />;
       case 'makeups':        return <AdminMakeups />;
       case 'schedule-changes': return <AdminScheduleChanges />;
+      case 'leave-requests': return <AdminLeaveRequests />;
+      case 'sub-requests':   return <AdminSubRequests />;
       case 'notifications':  return <AdminNotifications />;
       case 'vehicles':       return <AdminVehicles />;
       case 'instructor-app': return <InstructorApp />;
@@ -345,6 +381,22 @@ function AppContent() {
 
         {/* Footer */}
         <div className="px-3 pb-5 pt-3 border-t border-slate-100 space-y-2">
+          <div className="px-1">
+            <p className="text-[9px] font-bold uppercase tracking-[0.12em] text-slate-400 mb-1">로그인 계정 (데모)</p>
+            <div className="relative">
+              <select
+                value={currentInstructorId ?? ''}
+                onChange={e => setCurrentInstructorId(e.target.value)}
+                className="w-full appearance-none border border-slate-200 rounded-xl pl-3 pr-8 py-2 text-[12px] font-medium text-slate-700 bg-slate-50 focus:outline-none focus:border-cyan-500 transition-colors cursor-pointer"
+              >
+                {instructors.filter(i => i.status === 'active').map(i => (
+                  <option key={i.id} value={i.id}>{i.name} ({i.role})</option>
+                ))}
+              </select>
+              <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            </div>
+            <p className="text-[9px] text-slate-300 mt-1 leading-tight">실제 로그인 보안이 아닌, 역할별 화면을 확인하기 위한 데모용 전환이에요.</p>
+          </div>
           <OrgSwitcher />
           <button
             onClick={() => { setShowOnboarding(true); setShowTooltip(false); }}
