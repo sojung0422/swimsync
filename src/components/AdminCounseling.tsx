@@ -3,7 +3,7 @@ import { useStore, studentsForInstructor } from '../store/StoreContext';
 import { format, addMonths, subMonths, isAfter, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import {
-  MessageSquareText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, X, AlertCircle, CheckCircle2, Settings2, CalendarDays,
+  MessageSquareText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, X, AlertCircle, CheckCircle2, Settings2, CalendarDays, Users,
 } from 'lucide-react';
 
 function AddRecordModal({ studentId, instructorId, studentName, onClose }: {
@@ -52,6 +52,7 @@ export default function AdminCounseling() {
   const { instructors, students, counselingRecords, settings, updateSettings } = useStore();
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [instructorFilter, setInstructorFilter] = useState<string>('all');
   const [addRecordFor, setAddRecordFor] = useState<{ studentId: string; instructorId: string; studentName: string } | null>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date());
 
@@ -70,8 +71,9 @@ export default function AdminCounseling() {
     return { student: s, records, monthRecords, last, nextDue, overdue };
   });
 
+  const visibleInstructors = teacherInstructors.filter(i => instructorFilter === 'all' || i.id === instructorFilter);
   const totalOverdue = teacherInstructors.reduce((sum, i) => sum + rowsFor(i.id).filter(r => r.overdue).length, 0);
-  const totalMonthRecords = teacherInstructors.reduce((sum, i) => sum + rowsFor(i.id).reduce((s2, r) => s2 + r.monthRecords.length, 0), 0);
+  const totalMonthRecords = visibleInstructors.reduce((sum, i) => sum + rowsFor(i.id).reduce((s2, r) => s2 + r.monthRecords.length, 0), 0);
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -85,6 +87,24 @@ export default function AdminCounseling() {
             <AlertCircle className="w-3.5 h-3.5" /> {totalOverdue}명 상담 필요
           </span>
         )}
+      </div>
+
+      <div className="shrink-0 px-6 py-3 bg-white border-b border-slate-100 flex items-center gap-2.5 flex-wrap">
+        <Users className="w-4 h-4 text-slate-400" />
+        <span className="text-xs font-medium text-slate-500">선생님</span>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button onClick={() => setInstructorFilter('all')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${instructorFilter === 'all' ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            전체
+          </button>
+          {teacherInstructors.map(inst => (
+            <button key={inst.id} onClick={() => setInstructorFilter(inst.id)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${instructorFilter === inst.id ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: instructorFilter === inst.id ? '#fff' : inst.color }} />
+              {inst.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="shrink-0 px-6 py-3 bg-white border-b border-slate-100 flex items-center justify-between flex-wrap gap-3">
@@ -129,7 +149,7 @@ export default function AdminCounseling() {
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-5">
-          {teacherInstructors.map(instructor => {
+          {visibleInstructors.map(instructor => {
             const rows = rowsFor(instructor.id).filter(r => !overdueOnly || r.overdue);
             if (overdueOnly && rows.length === 0) return null;
             const instructorMonthTotal = rows.reduce((sum, r) => sum + r.monthRecords.length, 0);
