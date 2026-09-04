@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useStore, getClassDivision, getAllEnrollments, parseSessionsPerWeek,
-  computeOpenMakeupSlots, isAbsenceCancellable, rankMakeupCandidates,
+  computeOpenMakeupSlots, isAbsenceCancellable, rankMakeupCandidates, computeNextMonthBilling,
 } from '../store/StoreContext';
 import type { Enrollment } from '../store/StoreContext';
 import {
@@ -224,6 +224,9 @@ export default function ParentApp() {
     : makeupSettings.childRequiresDocument;
 
   const paymentPlan = student ? paymentPlans.find(p => p.id === student.paymentPlanId) : undefined;
+  const nextMonthBilling = student && paymentPlan
+    ? computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence)
+    : null;
 
   const myUnpaidRecords = paymentRecords.filter(p => p.studentId === studentId && p.status !== 'paid');
   const myUnpaidTotal = myUnpaidRecords.reduce((sum, p) => sum + (p.targetAmount - p.paidAmount), 0);
@@ -664,6 +667,21 @@ export default function ParentApp() {
                       className="w-full mt-2 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
                       <CreditCard className="w-4 h-4" /> {myUnpaidTotal.toLocaleString()}원 결제하기
                     </button>
+                  </div>
+                )}
+
+                {nextMonthBilling && (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-slate-500 text-xs font-medium">{nextMonthBilling.month} 예상 청구액</p>
+                        <p className="text-cyan-700 text-sm mt-0.5">
+                          {student?.regularDays.join('·')} 수업 <strong>{nextMonthBilling.occurrences}회</strong>
+                        </p>
+                      </div>
+                      <p className="text-slate-800 font-bold text-base">{nextMonthBilling.amount.toLocaleString()}원</p>
+                    </div>
+                    <p className="text-slate-300 text-[10.5px] mt-1">실제 달력의 수업 요일 수를 기준으로 자동 계산돼요. 휴무일은 제외돼요.</p>
                   </div>
                 )}
               </div>

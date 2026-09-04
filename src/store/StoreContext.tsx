@@ -150,6 +150,8 @@ export type AcademySettings = {
   reRegistrationPeriod: { startDay: number; endDay: number }; // 매월 며칠~며칠이 재등록 기간인지 — 학원마다 다르게 설정
   swimLevels: string[]; // 급수/레벨 체계 (예: 초급, 중급, 고급) — 학원마다 다르게 설정
   payrollSettings: PayrollSettings;
+  closedDates: string[]; // 학원 휴무일 ('yyyy-MM-dd') — 다음 달 자동 청구 계산 시 제외
+  skipFifthWeekOccurrence: boolean; // 그 달에 5번째로 돌아오는 요일은 휴무로 처리할지 (5주차 휴무 학원용)
 };
 
 // "주 1회" 같은 수강권 문자열에서 주당 횟수를 추출
@@ -414,6 +416,27 @@ export const computeRemainingSessionsInMonth = (startDate: string, regularDays: 
   return count;
 };
 
+// 다음 달 실제 달력을 기준으로 정규 요일이 몇 번 도는지 세어(휴무일·5주차 옵션 반영) 원비표에서 청구 금액을 자동으로 골라줌
+export const computeNextMonthBilling = (
+  regularDays: string[], sessionRates: number[], closedDates: string[], skipFifthWeekOccurrence: boolean, referenceDate: Date = new Date()
+): { month: string; occurrences: number; amount: number } => {
+  const nextMonthStart = startOfMonth(addMonths(referenceDate, 1));
+  const nextMonthEnd = endOfMonth(nextMonthStart);
+  const closedSet = new Set(closedDates);
+  const occurrenceCountByDay: Record<string, number> = {};
+  let occurrences = 0;
+  for (let d = nextMonthStart; d <= nextMonthEnd; d = addDays(d, 1)) {
+    const dayLabel = Object.entries(DAY_MAP).find(([, v]) => v === getDay(d))?.[0];
+    if (!dayLabel || !regularDays.includes(dayLabel)) continue;
+    occurrenceCountByDay[dayLabel] = (occurrenceCountByDay[dayLabel] ?? 0) + 1;
+    if (closedSet.has(format(d, 'yyyy-MM-dd'))) continue;
+    if (skipFifthWeekOccurrence && occurrenceCountByDay[dayLabel] === 5) continue;
+    occurrences++;
+  }
+  const amount = occurrences > 0 ? (sessionRates[Math.min(occurrences, sessionRates.length) - 1] ?? 0) : 0;
+  return { month: format(nextMonthStart, 'yyyy-MM'), occurrences, amount };
+};
+
 // 같은 가족(모/부 연락처가 일치)으로 등록된 활성 학생 수 — 형제 할인 판단에 사용
 export const computeSiblingCount = (student: Student, allStudents: Student[]): number => {
   const motherKey = student.motherPhone;
@@ -561,6 +584,8 @@ const INITIAL_SETTINGS: AcademySettings = {
     ],
     overtimeHourlyRate: 15000,
   },
+  closedDates: [],
+  skipFifthWeekOccurrence: false,
 };
 
 const INITIAL_DISCOUNTS: Discount[] = [

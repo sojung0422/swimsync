@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useStore, ClassSession, computeOpenMakeupSlots, isRecentlyEnrolled, isRecentlyScheduleChanged } from '../store/StoreContext';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search, CalendarOff } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
@@ -23,6 +23,7 @@ export default function AdminSchedule() {
 
   const [newTimeSlot, setNewTimeSlot] = useState('');
   const [newLevel, setNewLevel] = useState('');
+  const [newClosedDate, setNewClosedDate] = useState('');
   const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName, academyPhone: settings.academyPhone });
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
   const [weekFilterMode, setWeekFilterMode] = useState<'all' | 'individual'>('all');
@@ -679,6 +680,35 @@ export default function AdminSchedule() {
                   }} className="px-3 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">추가</button>
                 </div>
                 <p className="text-slate-400 text-xs mt-2">여기서 정한 레벨 순서대로 강습생 등록 화면과 레벨 테스트 기록에서 선택할 수 있어요.</p>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><CalendarOff size={15} className="text-cyan-600" /> 학원 휴무일 설정</h4>
+                <p className="text-slate-400 text-xs mb-3">여기서 설정한 휴무일·옵션은 학부모 앱의 "다음 달 예상 청구액" 자동 계산에 반영돼요.</p>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {settings.closedDates.length === 0 && <span className="text-slate-300 text-xs py-1.5">등록된 휴무일이 없습니다.</span>}
+                  {settings.closedDates.map(date => (
+                    <button key={date}
+                      onClick={() => updateSettings({ closedDates: settings.closedDates.filter(d => d !== date) })}
+                      title="클릭하면 이 휴무일을 삭제해요"
+                      className="px-3 py-1.5 rounded-lg text-sm font-bold border bg-cyan-600 border-cyan-600 text-white hover:bg-red-500 hover:border-red-500 transition-colors">
+                      {date} ✕
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-2 mb-4">
+                  <input type="date" value={newClosedDate} onChange={e => setNewClosedDate(e.target.value)} className={`${inputCls} w-48`} />
+                  <button onClick={() => {
+                    if (!newClosedDate || settings.closedDates.includes(newClosedDate)) return;
+                    updateSettings({ closedDates: [...settings.closedDates, newClosedDate].sort() });
+                    setNewClosedDate('');
+                  }} className="px-3 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">추가</button>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                  <input type="checkbox" checked={settings.skipFifthWeekOccurrence} className="w-4 h-4 accent-cyan-600"
+                    onChange={e => updateSettings({ skipFifthWeekOccurrence: e.target.checked })} />
+                  매월 5번째로 돌아오는 요일은 휴무 처리 (5주차 휴무 학원용)
+                </label>
               </div>
             </div>
             <div className="mt-8 pt-5 border-t border-slate-100">
