@@ -6,7 +6,7 @@ import {
   Camera, Edit2, Trash2, CreditCard, Phone, BookOpen,
   User, Calendar, Clock, CheckCircle, XCircle,
   AlertCircle, ArrowUpDown, GraduationCap, LayoutGrid, MapPin, Car, FileSpreadsheet,
-  Repeat, PauseCircle, StopCircle, Wallet, Banknote, Hourglass, UserPlus, Bell
+  Repeat, PauseCircle, StopCircle, Wallet, Banknote, Hourglass, UserPlus, Bell, Percent
 } from 'lucide-react';
 import { EmptyStateGuide } from './GuideSystem';
 import BulkImportModal from './BulkImportModal';
@@ -1183,9 +1183,12 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
   const driver = vehicle ? drivers.find(d => d.id === vehicle.driverId) : null;
   const paymentPlan = paymentPlans.find(p => p.id === student.paymentPlanId);
   const status = statusLabel[student.status] ?? statusLabel.active;
-  const { percent: discountPercent, matched: matchedDiscounts } = computeApplicableDiscounts(student, allStudents, discounts);
+  const { percent: discountPercent, matched: matchedDiscounts, customAmountOff } = computeApplicableDiscounts(student, allStudents, discounts);
   const discountBase = paymentPlan?.monthlyPrice || student.paymentAmount;
-  const suggestedAmount = Math.round(discountBase * (1 - discountPercent / 100) / 100) * 100;
+  const suggestedAmount = Math.max(0, Math.round(discountBase * (1 - discountPercent / 100) / 100) * 100 - customAmountOff);
+  const [editingCustomDiscount, setEditingCustomDiscount] = useState(false);
+  const [customKind, setCustomKind] = useState<'percent' | 'amount'>(student.customDiscount?.kind ?? 'percent');
+  const [customValue, setCustomValue] = useState(student.customDiscount?.value ?? 0);
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -1304,12 +1307,15 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
                 {paymentPlan.hasFreeSwim && <span className="text-cyan-500 text-xs">자유수영 포함</span>}
               </div>
             )}
-            {matchedDiscounts.length > 0 && (
+            {(matchedDiscounts.length > 0 || student.customDiscount?.active) && (
               <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 mb-2 space-y-1.5">
-                <p className="text-violet-700 text-xs font-semibold flex items-center gap-1">적용 가능 할인 · 합계 {discountPercent}%</p>
+                <p className="text-violet-700 text-xs font-semibold flex items-center gap-1">적용 가능 할인 · 합계 {discountPercent}%{customAmountOff > 0 && ` + ${customAmountOff.toLocaleString()}원`}</p>
                 {matchedDiscounts.map(d => (
                   <p key={d.id} className="text-violet-500 text-[11px]">{d.name} ({d.percent}%)</p>
                 ))}
+                {student.customDiscount?.active && (
+                  <p className="text-violet-500 text-[11px]">개별 할인 ({student.customDiscount.kind === 'percent' ? `${student.customDiscount.value}%` : `${student.customDiscount.value.toLocaleString()}원`})</p>
+                )}
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-violet-600 text-xs">할인 적용가 <strong>{suggestedAmount.toLocaleString()}원</strong></span>
                   <button onClick={() => updateStudent(student.id, { paymentAmount: suggestedAmount })}
@@ -1319,6 +1325,49 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
                 </div>
               </div>
             )}
+
+            <div className="bg-slate-50 border border-slate-100 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-slate-600 text-xs font-semibold flex items-center gap-1"><Percent className="w-3 h-3" /> 개별 할인 설정</p>
+                {!editingCustomDiscount && (
+                  <button onClick={() => setEditingCustomDiscount(true)} className="text-cyan-600 hover:text-cyan-700 text-[11px] font-medium">
+                    {student.customDiscount ? '수정' : '설정하기'}
+                  </button>
+                )}
+              </div>
+              {!editingCustomDiscount ? (
+                student.customDiscount ? (
+                  <p className="text-slate-500 text-xs">
+                    {student.customDiscount.active ? '적용 중' : '중지됨'} · {student.customDiscount.kind === 'percent' ? `${student.customDiscount.value}% 할인` : `${student.customDiscount.value.toLocaleString()}원 정액 할인`}
+                  </p>
+                ) : (
+                  <p className="text-slate-400 text-xs">이 학생에게만 적용되는 개별 할인이 없습니다.</p>
+                )
+              ) : (
+                <div className="space-y-2">
+                  <div className="flex gap-1.5">
+                    {(['percent', 'amount'] as const).map(k => (
+                      <button key={k} onClick={() => setCustomKind(k)}
+                        className={`flex-1 py-1.5 rounded-lg text-xs font-medium border transition-colors ${customKind === k ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
+                        {k === 'percent' ? '퍼센트(%)' : '정액(원)'}
+                      </button>
+                    ))}
+                  </div>
+                  <input type="number" min={0} value={customValue} onChange={e => setCustomValue(parseInt(e.target.value) || 0)}
+                    className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm text-center focus:outline-none focus:border-cyan-500" />
+                  <div className="flex gap-2">
+                    <button onClick={() => { setEditingCustomDiscount(false); setCustomValue(student.customDiscount?.value ?? 0); }}
+                      className="flex-1 py-1.5 border border-slate-200 rounded-lg text-slate-500 text-xs">취소</button>
+                    <button onClick={() => { updateStudent(student.id, { customDiscount: { kind: customKind, value: customValue, active: true } }); setEditingCustomDiscount(false); }}
+                      className="flex-1 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-medium">저장</button>
+                  </div>
+                  {student.customDiscount && (
+                    <button onClick={() => { updateStudent(student.id, { customDiscount: { ...student.customDiscount!, active: false } }); setEditingCustomDiscount(false); }}
+                      className="w-full py-1.5 text-red-500 hover:bg-red-50 rounded-lg text-xs font-medium transition-colors">할인 중지</button>
+                  )}
+                </div>
+              )}
+            </div>
             <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
               <span className="text-slate-400 text-sm">결제 금액</span>
               <span className="text-slate-700 text-sm font-bold">{student.paymentAmount ? student.paymentAmount.toLocaleString() + '원' : '-'}</span>

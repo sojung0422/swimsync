@@ -84,6 +84,8 @@ export type Student = {
   pauseReason: string;
   expectedReturnDate: string;
   withdrawalReason: string;
+  // 학생별 개별 할인(관리자가 직접 설정) — 기존 규칙 기반(형제/이벤트) 할인과 별도로 추가 적용됨
+  customDiscount?: { kind: 'percent' | 'amount'; value: number; active: boolean };
 };
 
 export const getPrimaryEnrollment = (s: Student): Enrollment => ({
@@ -425,8 +427,8 @@ export const computeSiblingCount = (student: Student, allStudents: Student[]): n
   return Math.max(1, familyIds.size);
 };
 
-// 학생에게 지금 적용 가능한 할인(형제+이벤트)을 계산 — 여러 개면 퍼센트를 합산(최대 100%)
-export const computeApplicableDiscounts = (student: Student, allStudents: Student[], discounts: Discount[], today: Date = new Date()): { percent: number; matched: Discount[] } => {
+// 학생에게 지금 적용 가능한 할인(형제+이벤트+개별 설정)을 계산 — 퍼센트는 합산(최대 100%), 정액 할인은 별도로 반환
+export const computeApplicableDiscounts = (student: Student, allStudents: Student[], discounts: Discount[], today: Date = new Date()): { percent: number; matched: Discount[]; customAmountOff: number } => {
   const todayStr = format(today, 'yyyy-MM-dd');
   const siblingCount = computeSiblingCount(student, allStudents);
   const matched = discounts.filter(d => {
@@ -436,8 +438,14 @@ export const computeApplicableDiscounts = (student: Student, allStudents: Studen
     if (d.endDate && todayStr > d.endDate) return false;
     return true;
   });
-  const percent = Math.min(100, matched.reduce((sum, d) => sum + d.percent, 0));
-  return { percent, matched };
+  let percent = matched.reduce((sum, d) => sum + d.percent, 0);
+  let customAmountOff = 0;
+  const custom = student.customDiscount;
+  if (custom?.active) {
+    if (custom.kind === 'percent') percent += custom.value;
+    else customAmountOff = custom.value;
+  }
+  return { percent: Math.min(100, percent), matched, customAmountOff };
 };
 
 // 스케줄 화면에서 "신규"/"반변경" 배지를 얼마 동안 보여줄지 — 저장 필드 없이 기존 날짜값으로 매번 계산

@@ -497,10 +497,122 @@ function StatsDashboard() {
   );
 }
 
+// ─── 결제 현황 (강사별 통합 조회) ───────────────────────────────────────────────
+
+type PaymentStatusCategory = '미등록' | '신규' | '결제완료' | '미결제' | '연기';
+
+const paymentStatusCategoryMeta: Record<PaymentStatusCategory, { color: string }> = {
+  '미등록': { color: 'bg-slate-100 text-slate-500 border-slate-200' },
+  '신규': { color: 'bg-lime-50 text-lime-700 border-lime-200' },
+  '결제완료': { color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  '미결제': { color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  '연기': { color: 'bg-slate-100 text-slate-500 border-slate-300' },
+};
+
+// 분류 우선순위: 연기 > 미등록(플랜 없음) > 신규(이번 달 등록) > 결제완료 > 미결제
+function paymentStatusCategory(s: import('../store/StoreContext').Student): PaymentStatusCategory {
+  if (s.status === 'deferred') return '연기';
+  if (!s.paymentPlanId) return '미등록';
+  if (s.registrationDate.startsWith(format(new Date(), 'yyyy-MM'))) return '신규';
+  if (s.paymentCompleted) return '결제완료';
+  return '미결제';
+}
+
+function PaymentStatusView() {
+  const { students, instructors, paymentPlans, updateStudent } = useStore();
+  const [instructorFilter, setInstructorFilter] = useState<'all' | string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | PaymentStatusCategory>('all');
+
+  const scoped = students.filter(s => s.status !== 'inactive' && (instructorFilter === 'all' || s.instructorId === instructorFilter));
+  const categorized = scoped.map(s => ({ student: s, category: paymentStatusCategory(s) }));
+  const filtered = categorized.filter(c => categoryFilter === 'all' || c.category === categoryFilter);
+
+  const counts = (['미등록', '신규', '결제완료', '미결제', '연기'] as const).map(cat => ({
+    cat, count: categorized.filter(c => c.category === cat).length,
+  }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-slate-400 text-xs shrink-0">담당 강사</span>
+        <select value={instructorFilter} onChange={e => setInstructorFilter(e.target.value)}
+          className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:outline-none focus:border-cyan-500">
+          <option value="all">전체 강사</option>
+          {instructors.filter(i => i.status === 'active').map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+        </select>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
+        <button onClick={() => setCategoryFilter('all')}
+          className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${categoryFilter === 'all' ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+          전체 {categorized.length}
+        </button>
+        {counts.map(({ cat, count }) => (
+          <button key={cat} onClick={() => setCategoryFilter(cat)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${categoryFilter === cat ? paymentStatusCategoryMeta[cat].color : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            {cat} {count}
+          </button>
+        ))}
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                {['이름', '담당 강사', '구분', '수강 플랜', '월 수강료', '결제일', '갱신일', '분류'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-500">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && (
+                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">해당하는 강습생이 없습니다.</td></tr>
+              )}
+              {filtered.map(({ student: s, category }) => {
+                const plan = paymentPlans.find(p => p.id === s.paymentPlanId);
+                const instructor = instructors.find(i => i.id === s.instructorId);
+                return (
+                  <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
+                          {s.studentName[0]}
+                        </div>
+                        <span className="text-slate-700 text-sm font-medium">{s.studentName}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{instructor?.name ?? '-'}</td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs border ${s.category === 'child' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
+                        {s.category === 'child' ? '아동' : '성인'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 text-sm">{plan?.name ?? '미배정'}</td>
+                    <td className="px-4 py-3 text-slate-700 text-sm font-medium">{s.paymentAmount ? s.paymentAmount.toLocaleString() + '원' : '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{s.paymentDate || '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{s.paymentRenewalDate || '-'}</td>
+                    <td className="px-4 py-3">
+                      <button onClick={() => updateStudent(s.id, { paymentCompleted: !s.paymentCompleted })}
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-semibold border transition-colors ${paymentStatusCategoryMeta[category].color}`}>
+                        {category}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPayments() {
-  const { paymentPlans, students, addPaymentPlan, updatePaymentPlan, deletePaymentPlan, updateStudent } = useStore();
+  const { paymentPlans, students, addPaymentPlan, updatePaymentPlan, deletePaymentPlan } = useStore();
 
   const [planModal, setPlanModal] = useState<{ mode: 'add' | 'edit'; plan?: PaymentPlan } | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
@@ -724,56 +836,7 @@ export default function AdminPayments() {
             </>
           )}
 
-          {activeTab === 'status' && (
-            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50">
-                      {['이름', '구분', '수강 플랜', '월 수강료', '결제일', '갱신일', '결제 상태'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-500">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {activeStudents.length === 0 && (
-                      <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400 text-sm">수강 중인 강습생이 없습니다.</td></tr>
-                    )}
-                    {activeStudents.map(s => {
-                      const plan = paymentPlans.find(p => p.id === s.paymentPlanId);
-                      return (
-                        <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-2">
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-                                {s.studentName[0]}
-                              </div>
-                              <span className="text-slate-700 text-sm font-medium">{s.studentName}</span>
-                            </div>
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className={`px-2 py-0.5 rounded-full text-xs border ${s.category === 'child' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
-                              {s.category === 'child' ? '아동' : '성인'}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-slate-600 text-sm">{plan?.name ?? '미배정'}</td>
-                          <td className="px-4 py-3 text-slate-700 text-sm font-medium">{s.paymentAmount ? s.paymentAmount.toLocaleString() + '원' : '-'}</td>
-                          <td className="px-4 py-3 text-slate-500 text-xs">{s.paymentDate || '-'}</td>
-                          <td className="px-4 py-3 text-slate-500 text-xs">{s.paymentRenewalDate || '-'}</td>
-                          <td className="px-4 py-3">
-                            <button onClick={() => updateStudent(s.id, { paymentCompleted: !s.paymentCompleted })}
-                              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${s.paymentCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
-                              {s.paymentCompleted ? <><CheckCircle className="w-3 h-3" /> 완료</> : <><XCircle className="w-3 h-3" /> 미결제</>}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {activeTab === 'status' && <PaymentStatusView />}
 
           {activeTab === 'discounts' && <DiscountsPanel />}
           {activeTab === 'stats' && <StatsDashboard />}
