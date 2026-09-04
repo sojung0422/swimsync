@@ -440,6 +440,25 @@ export const computeApplicableDiscounts = (student: Student, allStudents: Studen
   return { percent, matched };
 };
 
+// 스케줄 화면에서 "신규"/"반변경" 배지를 얼마 동안 보여줄지 — 저장 필드 없이 기존 날짜값으로 매번 계산
+export const RECENT_CHANGE_WINDOW_DAYS = 14;
+
+// 최근 등록한 신규 학생인지 (registrationDate 기준)
+export const isRecentlyEnrolled = (student: Student, now: Date = new Date()): boolean => {
+  if (!student.registrationDate) return false;
+  const days = differenceInCalendarDays(now, parseISO(student.registrationDate));
+  return days >= 0 && days <= RECENT_CHANGE_WINDOW_DAYS;
+};
+
+// 최근에 요일/시간이 승인 변경된 학생인지 (ScheduleChangeRequest.resolvedAt 기준)
+export const isRecentlyScheduleChanged = (studentId: string, scheduleChangeRequests: ScheduleChangeRequest[], now: Date = new Date()): boolean =>
+  scheduleChangeRequests.some(r => {
+    if (r.studentId !== studentId || r.status !== 'approved' || !r.resolvedAt) return false;
+    // resolvedAt은 'yyyy-MM-dd HH:mm' 형식으로 저장됨 — 날짜 부분만 잘라서 파싱
+    const days = differenceInCalendarDays(now, parseISO(r.resolvedAt.slice(0, 10)));
+    return days >= 0 && days <= RECENT_CHANGE_WINDOW_DAYS;
+  });
+
 // 강사의 근무 요일·시간을 기준으로 특정 월의 총 근무시간을 추정 (파트타임 급여 계산용 — 발행 전 관리자가 직접 조정 가능)
 export const computeMonthlyHours = (instructor: Instructor, month: string): number => {
   const [y, m] = month.split('-').map(Number);

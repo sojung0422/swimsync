@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { useStore, ClassSession, computeOpenMakeupSlots } from '../store/StoreContext';
+import { useStore, ClassSession, computeOpenMakeupSlots, isRecentlyEnrolled, isRecentlyScheduleChanged } from '../store/StoreContext';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
@@ -10,7 +10,7 @@ const modalOverlay = 'fixed inset-0 bg-black/30 backdrop-blur-sm flex items-cent
 
 export default function AdminSchedule() {
   const {
-    classes, instructors, students, events, settings, vehicles, absenceRecords,
+    classes, instructors, students, events, settings, vehicles, absenceRecords, scheduleChangeRequests,
     addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
@@ -90,6 +90,10 @@ export default function AdminSchedule() {
     const count = classes.filter(c => c.date === format(day, 'yyyy-MM-dd') && c.instructorId === selectedInstructorId).length;
     return acc + count;
   }, 0);
+
+  // 전체(요일×강사) 그리드에 표시할 강사 목록 — 재직 중인 강사만
+  const weekInstructors = instructors.filter(i => i.status === 'active');
+  const weekGridMinWidth = 96 + weekDays.length * weekInstructors.length * 118;
 
   return (
     <div className="p-6 min-h-screen bg-slate-50">
@@ -240,78 +244,130 @@ export default function AdminSchedule() {
               )}
             </div>
 
-            <div className="overflow-x-auto">
-              <div className="min-w-[900px]">
-                {/* Day headers */}
-                <div className="grid grid-cols-[88px_repeat(7,1fr)] border-b border-slate-100 bg-slate-50/50">
-                  <div className="p-3 border-r border-slate-100" />
-                  {weekDays.map((day, i) => {
-                    const isToday = isSameDay(day, new Date());
-                    const isSun = i === 0, isSat = i === 6;
-                    // Individual view: show per-day class count for selected instructor
-                    const instDayCount = weekFilterMode === 'individual'
-                      ? classes.filter(c => c.date === format(day, 'yyyy-MM-dd') && c.instructorId === selectedInstructorId).length
-                      : 0;
-                    return (
-                      <div key={i} className={`p-3 text-center border-r border-slate-100 last:border-r-0 ${isToday ? 'bg-cyan-50/60' : ''}`}>
-                        <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'}`}>
-                          {format(day, 'E', { locale: ko })}
-                        </div>
-                        <div className={`text-sm font-black ${isToday ? 'text-cyan-600' : 'text-slate-700'}`}>{format(day, 'MM/dd')}</div>
-                        {weekFilterMode === 'individual' && instDayCount > 0 && (
-                          <div className="mt-1 text-[10px] font-bold text-cyan-600 bg-cyan-100 rounded-full px-1.5 py-0.5 inline-block">{instDayCount}건</div>
-                        )}
-                      </div>
-                    );
-                  })}
+            {weekFilterMode === 'all' ? (
+              <>
+                {/* 색상 범례 */}
+                <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-4 text-[10.5px] text-slate-500 bg-white">
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-lime-400" /> 신규 등록</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> 보강</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-violet-400" /> 요일·시간 변경</span>
                 </div>
-
-                {/* Time rows */}
-                <div className="divide-y divide-slate-100">
-                  {settings.designatedTimes.map(time => (
-                    <div key={time} className="grid grid-cols-[88px_repeat(7,1fr)] min-h-[110px]">
-                      <div className="p-3 border-r border-slate-100 flex items-center justify-center bg-slate-50/30">
-                        <span className="text-[11px] font-black text-slate-400">{time}</span>
-                      </div>
+                <div className="overflow-x-auto">
+                  <div style={{ minWidth: weekGridMinWidth }}>
+                    {/* 요일 헤더 (강사 수만큼 span) */}
+                    <div className="grid border-b border-slate-100 bg-slate-50/50" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                      <div className="p-2 border-r border-slate-100" />
                       {weekDays.map((day, i) => {
-                        const dateStr = format(day, 'yyyy-MM-dd');
                         const isToday = isSameDay(day, new Date());
-                        const dayClasses = classes.filter(c =>
-                          c.date === dateStr && c.time === time &&
-                          (weekFilterMode === 'all' || c.instructorId === selectedInstructorId)
-                        );
+                        const isSun = i === 0, isSat = i === 6;
                         return (
-                          <div key={i} className={`border-r border-slate-100 last:border-r-0 flex flex-col p-1.5 gap-1.5 ${isToday ? 'bg-cyan-50/30' : ''}`}>
-                            {dayClasses.map(cls => {
-                              const instructor = instructors.find(inst => inst.id === cls.instructorId);
-                              const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
-                              const color = instructor?.color || '#0891b2';
-                              if (weekFilterMode === 'all') {
-                                const remaining = remainingSeats(cls);
-                                const hasRoom = remaining > 0;
-                                return (
-                                  <div key={cls.id} onClick={() => setSelectedClass(cls)}
-                                    className="rounded-lg p-2.5 cursor-pointer hover:shadow-md transition-all duration-150 flex flex-col gap-1 border-l-[3px]"
-                                    style={hasRoom
-                                      ? { backgroundColor: '#05966912', borderLeftColor: '#059669', borderTopColor: '#05966930', borderRightColor: '#05966930', borderBottomColor: '#05966930', borderWidth: '1px', borderLeftWidth: '3px' }
-                                      : { backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px' }}>
-                                    <div className="flex justify-between items-center">
-                                      <span className="font-bold text-[11px] truncate mr-1" style={{ color: hasRoom ? '#059669' : color }}>{instructor?.name}</span>
-                                      <span className="text-[10px] font-bold opacity-70 whitespace-nowrap" style={{ color: hasRoom ? '#059669' : color }}>{presentStudents.length}명</span>
-                                    </div>
-                                    {hasRoom && (
-                                      <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full self-start">
-                                        여유 {remaining}자리 · 보강·신규 가능
-                                      </span>
-                                    )}
-                                  </div>
-                                );
-                              } else {
+                          <div key={i} style={{ gridColumn: `span ${weekInstructors.length}` }}
+                            className={`p-2 text-center border-r border-slate-100 ${isToday ? 'bg-cyan-50/60' : ''}`}>
+                            <div className={`text-[10px] font-bold uppercase tracking-wider ${isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'}`}>
+                              {format(day, 'E', { locale: ko })}
+                            </div>
+                            <div className={`text-sm font-black ${isToday ? 'text-cyan-600' : 'text-slate-700'}`}>{format(day, 'MM/dd')}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* 강사 서브헤더 */}
+                    <div className="grid border-b border-slate-200 bg-slate-50/30" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                      <div className="p-1.5 border-r border-slate-100" />
+                      {weekDays.map(day => weekInstructors.map(inst => (
+                        <div key={`${format(day, 'yyyy-MM-dd')}-${inst.id}`} className="p-1.5 flex items-center justify-center gap-1 border-r border-slate-100">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: inst.color }} />
+                          <span className="text-[10px] font-bold text-slate-500 truncate">{inst.name}</span>
+                        </div>
+                      )))}
+                    </div>
+                    {/* 시간대별 행 */}
+                    <div className="divide-y divide-slate-100">
+                      {settings.designatedTimes.map(time => (
+                        <div key={time} className="grid min-h-[78px]" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                          <div className="p-2 border-r border-slate-100 flex items-center justify-center bg-slate-50/30">
+                            <span className="text-[11px] font-black text-slate-400">{time}</span>
+                          </div>
+                          {weekDays.map(day => weekInstructors.map(inst => {
+                            const dateStr = format(day, 'yyyy-MM-dd');
+                            const cls = classes.find(c => c.date === dateStr && c.time === time && c.instructorId === inst.id);
+                            const key = `${dateStr}-${inst.id}`;
+                            if (!cls) return <div key={key} className="border-r border-slate-100 p-1.5" />;
+                            const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
+                            return (
+                              <div key={key} onClick={() => setSelectedClass(cls)}
+                                className="border-r border-slate-100 p-1.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col gap-0.5"
+                                style={{ borderLeft: `3px solid ${inst.color}` }}>
+                                <span className="text-[10px] font-black" style={{ color: inst.color }}>{presentStudents.length}명</span>
+                                {presentStudents.slice(0, 4).map(id => {
+                                  const s = students.find(st => st.id === id);
+                                  const isMakeup = cls.makeupStudentIds.includes(id);
+                                  const isNew = s ? isRecentlyEnrolled(s) : false;
+                                  const isChanged = s ? isRecentlyScheduleChanged(s.id, scheduleChangeRequests) : false;
+                                  const badgeCls = isNew ? 'bg-lime-100 text-lime-700 font-bold' : isChanged ? 'bg-violet-100 text-violet-700 font-bold' : isMakeup ? 'bg-orange-100 text-orange-600 font-bold' : 'text-slate-600';
+                                  return (
+                                    <span key={id} className={`text-[10px] truncate px-1 rounded ${badgeCls}`}>{s?.studentName}</span>
+                                  );
+                                })}
+                                {presentStudents.length > 4 && <span className="text-[9px] text-slate-400 px-1">+{presentStudents.length - 4}명 더</span>}
+                                {presentStudents.length === 0 && <span className="text-[9.5px] text-slate-300 italic">비어있음</span>}
+                              </div>
+                            );
+                          }))}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="overflow-x-auto">
+                <div className="min-w-[900px]">
+                  {/* Day headers */}
+                  <div className="grid grid-cols-[88px_repeat(7,1fr)] border-b border-slate-100 bg-slate-50/50">
+                    <div className="p-3 border-r border-slate-100" />
+                    {weekDays.map((day, i) => {
+                      const isToday = isSameDay(day, new Date());
+                      const isSun = i === 0, isSat = i === 6;
+                      const instDayCount = classes.filter(c => c.date === format(day, 'yyyy-MM-dd') && c.instructorId === selectedInstructorId).length;
+                      return (
+                        <div key={i} className={`p-3 text-center border-r border-slate-100 last:border-r-0 ${isToday ? 'bg-cyan-50/60' : ''}`}>
+                          <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'}`}>
+                            {format(day, 'E', { locale: ko })}
+                          </div>
+                          <div className={`text-sm font-black ${isToday ? 'text-cyan-600' : 'text-slate-700'}`}>{format(day, 'MM/dd')}</div>
+                          {instDayCount > 0 && (
+                            <div className="mt-1 text-[10px] font-bold text-cyan-600 bg-cyan-100 rounded-full px-1.5 py-0.5 inline-block">{instDayCount}건</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Time rows */}
+                  <div className="divide-y divide-slate-100">
+                    {settings.designatedTimes.map(time => (
+                      <div key={time} className="grid grid-cols-[88px_repeat(7,1fr)] min-h-[110px]">
+                        <div className="p-3 border-r border-slate-100 flex items-center justify-center bg-slate-50/30">
+                          <span className="text-[11px] font-black text-slate-400">{time}</span>
+                        </div>
+                        {weekDays.map((day, i) => {
+                          const dateStr = format(day, 'yyyy-MM-dd');
+                          const isToday = isSameDay(day, new Date());
+                          const dayClasses = classes.filter(c => c.date === dateStr && c.time === time && c.instructorId === selectedInstructorId);
+                          return (
+                            <div key={i} className={`border-r border-slate-100 last:border-r-0 flex flex-col p-1.5 gap-1.5 ${isToday ? 'bg-cyan-50/30' : ''}`}>
+                              {dayClasses.map(cls => {
+                                const instructor = instructors.find(inst => inst.id === cls.instructorId);
+                                const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
+                                const color = instructor?.color || '#0891b2';
                                 return (
                                   <div key={cls.id} className="flex flex-col gap-1">
                                     {presentStudents.map(id => {
                                       const s = students.find(st => st.id === id);
                                       const isMakeup = cls.makeupStudentIds.includes(id);
+                                      const isNew = s ? isRecentlyEnrolled(s) : false;
+                                      const isChanged = s ? isRecentlyScheduleChanged(s.id, scheduleChangeRequests) : false;
                                       const vehicle = vehicles.find(v => v.id === s?.vehicleId);
                                       const isHit = searchMatches(s?.studentName);
                                       return (
@@ -319,6 +375,8 @@ export default function AdminSchedule() {
                                           className={`rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold ${isHit ? 'ring-2 ring-amber-400' : ''}`}
                                           style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
                                           {s?.studentName}
+                                          {isNew && <span className="ml-1 text-[9px] bg-lime-100 text-lime-700 px-1 rounded">신규</span>}
+                                          {isChanged && <span className="ml-1 text-[9px] bg-violet-100 text-violet-700 px-1 rounded">반변경</span>}
                                           {isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
                                           <div className="text-[9.5px] font-normal opacity-70 mt-0.5">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
                                         </div>
@@ -337,16 +395,29 @@ export default function AdminSchedule() {
                                     {presentStudents.length === 0 && cls.absentStudentIds.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
                                   </div>
                                 );
-                              }
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ))}
+                              })}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* 요일별/주간 합계 푸터 */}
+                  <div className="grid grid-cols-[88px_repeat(7,1fr)] border-t border-slate-200 bg-slate-50/60">
+                    <div className="p-2.5 border-r border-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-400">합계</div>
+                    {weekDays.map((day, i) => {
+                      const count = classes.filter(c => c.date === format(day, 'yyyy-MM-dd') && c.instructorId === selectedInstructorId).length;
+                      return (
+                        <div key={i} className="p-2.5 text-center border-r border-slate-100 last:border-r-0 text-xs font-bold text-slate-600">
+                          {count > 0 ? `${count}건` : '-'}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
