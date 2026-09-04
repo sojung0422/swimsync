@@ -153,6 +153,7 @@ export type AcademySettings = {
   closedDates: string[]; // 학원 휴무일 ('yyyy-MM-dd') — 다음 달 자동 청구 계산 시 제외
   skipFifthWeekOccurrence: boolean; // 그 달에 5번째로 돌아오는 요일은 휴무로 처리할지 (5주차 휴무 학원용)
   freeSwimSlots: FreeSwimSlot[];
+  leadCategories: string[]; // 상담일지 구분 태그 — 관리자가 추가·삭제 가능
 };
 
 // "주 1회" 같은 수강권 문자열에서 주당 횟수를 추출
@@ -317,6 +318,14 @@ export type NotificationRecord = {
   type: 'event' | 'payment' | 'holiday' | 'custom';
   title: string; content: string;
   recipientIds: string[]; sentAt: string | null;
+  recipientPhones?: string[]; // 아직 등록하지 않은 상담일지 리드 등, 학생 ID가 없는 대상에게 보낼 때 사용
+};
+
+// 상담일지(리드 CRM) — 아직 등록(Student)하지 않은 문의/상담 건을 구분 태그로 관리
+export type LeadRecord = {
+  id: string; name: string; phone: string; category: string; note: string;
+  status: 'open' | 'converted' | 'closed';
+  createdAt: string;
 };
 
 // 정원이 찬 반에 신규/체험 문의가 들어온 경우 등록해두는 대기자 명단 — 자리가 나면 관리자가 확인해 전환한다
@@ -603,9 +612,17 @@ const INITIAL_SETTINGS: AcademySettings = {
     { id: 'fs1', days: ['월', '수', '금'], startTime: '20:00', endTime: '21:00', instructorId: 'i3' },
     { id: 'fs2', days: ['화', '목'], startTime: '19:00', endTime: '20:00', instructorId: 'i3' },
   ],
+  leadCategories: [
+    '정규문의', '정규수강', '대기', '개인', '아쿠아운동필라', '클레임', '부재중', '환불', '재등록', '톡톡',
+    '콜백', '가족수영&자모수영', '방특', '차량', '성인수강', '분실', '성인문의', '탈퇴', '반이동', '결석', '수납', '보강', '체험',
+  ],
 };
 
 const INITIAL_FREE_SWIM_BOOKINGS: FreeSwimBooking[] = [];
+const INITIAL_LEADS: LeadRecord[] = [
+  { id: 'lead1', name: '최지우 학부모', phone: '010-3333-4444', category: '정규문의', note: '초등 1학년, 월수 오후 시간대 희망', status: 'open', createdAt: format(addDays(new Date(), -3), 'yyyy-MM-dd HH:mm') },
+  { id: 'lead2', name: '한서연 학부모', phone: '010-5555-6666', category: '대기', note: '체험 후 정원 마감으로 대기', status: 'open', createdAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm') },
+];
 
 const INITIAL_DISCOUNTS: Discount[] = [
   { id: 'disc1', name: '형제 2인 이상 할인', kind: 'sibling', percent: 5, minSiblingCount: 2, startDate: '', endDate: '', active: true },
@@ -855,6 +872,12 @@ type StoreContextType = {
   freeSwimBookings: FreeSwimBooking[];
   bookFreeSwim: (studentId: string, slotId: string, date: string) => void;
   cancelFreeSwimBooking: (id: string) => void;
+  // 상담일지 (리드 CRM)
+  leads: LeadRecord[];
+  addLead: (l: Omit<LeadRecord, 'id' | 'status' | 'createdAt'>) => void;
+  updateLead: (id: string, updates: Partial<LeadRecord>) => void;
+  deleteLead: (id: string) => void;
+  convertLeadToEnrolled: (id: string) => void;
   // 형제/이벤트 할인
   discounts: Discount[];
   addDiscount: (d: Omit<Discount, 'id'>) => void;
@@ -905,6 +928,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [absenceRecords, setAbsenceRecords] = useState<AbsenceRecord[]>([]);
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>(INITIAL_WAITLIST);
   const [freeSwimBookings, setFreeSwimBookings] = useState<FreeSwimBooking[]>(INITIAL_FREE_SWIM_BOOKINGS);
+  const [leads, setLeads] = useState<LeadRecord[]>(INITIAL_LEADS);
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
   const [levelTestRecords, setLevelTestRecords] = useState<LevelTestRecord[]>(INITIAL_LEVEL_TEST_RECORDS);
@@ -1323,6 +1347,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
   const cancelFreeSwimBooking = (id: string) => setFreeSwimBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
 
+  // ── 상담일지 (리드 CRM) ───────────────────────────────────────
+  const addLead = (l: Omit<LeadRecord, 'id' | 'status' | 'createdAt'>) => {
+    setLeads(prev => [...prev, { ...l, id: `lead_${Date.now()}`, status: 'open', createdAt: format(new Date(), 'yyyy-MM-dd HH:mm') }]);
+  };
+  const updateLead = (id: string, updates: Partial<LeadRecord>) => setLeads(prev => prev.map(l => l.id === id ? { ...l, ...updates } : l));
+  const deleteLead = (id: string) => setLeads(prev => prev.filter(l => l.id !== id));
+  // 정규문의였던 리드가 실제로 등록한 경우 — 정규수강으로 전환(카테고리만 변경, 실제 Student 등록은 기존 흐름대로 별도 진행)
+  const convertLeadToEnrolled = (id: string) => setLeads(prev => prev.map(l => l.id === id ? { ...l, category: '정규수강', status: 'converted' } : l));
+
   // ── 형제/이벤트 할인 ─────────────────────────────────────────
   const addDiscount = (d: Omit<Discount, 'id'>) => setDiscounts(prev => [...prev, { ...d, id: `disc_${Date.now()}` }]);
   const updateDiscount = (id: string, updates: Partial<Discount>) => setDiscounts(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
@@ -1453,6 +1486,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       makeupCancellations,
       waitlistEntries, addWaitlistEntry, markWaitlistNotified, convertWaitlistEntry, cancelWaitlistEntry, deleteWaitlistEntry,
       freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
+      leads, addLead, updateLead, deleteLead, convertLeadToEnrolled,
       discounts, addDiscount, updateDiscount, deleteDiscount,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,

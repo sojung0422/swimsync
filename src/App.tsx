@@ -16,6 +16,8 @@ import AdminNotifications from './components/AdminNotifications';
 import AdminVehicles from './components/AdminVehicles';
 import AdminPayments from './components/AdminPayments';
 import AdminFreeSwim from './components/AdminFreeSwim';
+import AdminCounselingLog from './components/AdminCounselingLog';
+import AdminEnrollmentStats from './components/AdminEnrollmentStats';
 import AdminMakeups from './components/AdminMakeups';
 import AdminStaff from './components/AdminStaff';
 import AdminCounseling from './components/AdminCounseling';
@@ -43,8 +45,10 @@ const navGroups = [
     items: [
       { id: 'schedule', icon: LayoutDashboard, text: '스케줄 관리' },
       { id: 'students-group', icon: Users, text: '강습생 관리', children: [
-        { id: 'students',   text: '강습생 정보' },
-        { id: 'counseling', text: '상담 관리' },
+        { id: 'students',         text: '강습생 정보' },
+        { id: 'counseling',       text: '상담 관리' },
+        { id: 'counseling-log',   text: '상담일지' },
+        { id: 'enrollment-stats', text: '증감 현황' },
       ]},
       { id: 'staff', icon: IdCard, text: '직원 관리' },
       { id: 'payments-group', icon: CreditCard, text: '결제 관리', children: [
@@ -78,7 +82,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'counseling' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles'
+  | 'schedule' | 'students' | 'staff' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles'
   | 'instructor-app' | 'parent-app' | 'driver-app'
   | 'business-plan';
 
@@ -139,6 +143,23 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '수강 플랜 탭', description: '아동/성인, 주 횟수, 자유수영 포함 여부에 따라 요금제를 추가·수정·삭제해요.' },
       { label: '결제 현황 탭', description: '학생별로 이번 달 결제가 완료됐는지 확인해요.' },
       { label: '보강 가능 횟수 정책', description: '주 몇 회 수강 시 보강을 몇 회까지 허용할지 규칙을 만들고, 아동/성인 보강 시 서류(진단서 등) 필요 여부를 설정해요.' },
+    ],
+  },
+  'counseling-log': {
+    title: '상담일지',
+    description: '아직 등록하지 않은 문의·상담 건을 구분 태그로 관리하는 CRM 화면이에요.',
+    features: [
+      { label: '구분(카테고리) 관리', description: '정규문의, 대기, 클레임 등 구분 태그를 자유롭게 추가·삭제할 수 있어요.' },
+      { label: '정규수강 전환', description: '정규문의로 등록된 리드가 실제로 등록하면 "정규수강 전환" 버튼으로 카테고리를 바꿔요.' },
+      { label: '대량 SMS 발송', description: '등록하지 않은 리드들을 체크해서 이벤트·프로모션 문자를 한 번에 보낼 수 있어요.' },
+    ],
+  },
+  'enrollment-stats': {
+    title: '증감 현황',
+    description: '매월 신규 등록·퇴원 현황과 순증감 추이를 확인하는 대시보드예요.',
+    features: [
+      { label: '이번 달 요약', description: '현재 재원생, 이번 달 신규·퇴원·순증감을 한눈에 봐요.' },
+      { label: '월별 추이', description: '최근 6개월간 신규 등록과 퇴원, 순증감을 막대 그래프와 표로 확인해요.' },
     ],
   },
   'free-swim': {
@@ -351,6 +372,8 @@ function AppContent() {
       case 'students':       return <AdminStudents />;
       case 'staff':          return <AdminStaff />;
       case 'counseling':     return <AdminCounseling />;
+      case 'counseling-log':   return <AdminCounselingLog />;
+      case 'enrollment-stats': return <AdminEnrollmentStats />;
       case 'payments':       return <AdminPayments />;
       case 'free-swim':      return <AdminFreeSwim />;
       case 'makeups':        return <AdminMakeups />;

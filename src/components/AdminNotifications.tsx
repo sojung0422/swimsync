@@ -208,6 +208,7 @@ export default function AdminNotifications() {
                   const Icon = meta.icon;
                   const isExpanded = expandedId === n.id;
                   const recipientNames = n.recipientIds.map(id => students.find(s => s.id === id)?.studentName).filter(Boolean);
+                  const recipientCount = n.recipientPhones?.length ? n.recipientPhones.length : n.recipientIds.length;
 
                   return (
                     <div key={n.id} className="px-6 py-4">
@@ -231,7 +232,7 @@ export default function AdminNotifications() {
                           </div>
                           <div className="flex items-center gap-3 mt-1">
                             <span className="text-slate-400 text-xs flex items-center gap-1">
-                              <Users className="w-3 h-3" /> {n.recipientIds.length}명
+                              <Users className="w-3 h-3" /> {recipientCount}명
                             </span>
                             <span className="text-slate-400 text-xs">{n.createdAt}</span>
                             {n.sentAt && <span className="text-slate-400 text-xs">발송: {n.sentAt}</span>}
@@ -240,7 +241,7 @@ export default function AdminNotifications() {
                           {isExpanded && (
                             <div className="mt-3 space-y-2 animate-fade-up">
                               <p className="text-slate-600 text-sm bg-slate-50 rounded-xl p-3 leading-relaxed">{n.content}</p>
-                              <p className="text-slate-400 text-xs">수신자: {recipientNames.join(', ')}</p>
+                              <p className="text-slate-400 text-xs">수신자: {n.recipientPhones?.length ? n.recipientPhones.join(', ') : recipientNames.join(', ')}</p>
                             </div>
                           )}
                         </div>
