@@ -34,21 +34,27 @@ import OrgSwitcher from './components/OrgSwitcher';
 import { Loader2 } from 'lucide-react';
 import { isSupabaseConfigured } from './lib/supabaseClient';
 
+// 대분류(items) 안에 children이 있으면 사이드바에서 접이식 하위 메뉴(중분류)로 렌더링됨.
+// children이 없는 항목은 기존처럼 바로 그 탭으로 이동하는 단독 메뉴.
 const navGroups = [
   {
     label: '관리자 도구',
     items: [
-      { id: 'schedule',      icon: LayoutDashboard, text: '스케줄 관리' },
-      { id: 'students',      icon: Users,            text: '강습생 관리' },
-      { id: 'staff',         icon: IdCard,           text: '직원 관리' },
-      { id: 'counseling',    icon: MessageSquareText, text: '상담 관리' },
-      { id: 'payments',      icon: CreditCard,       text: '결제 관리' },
-      { id: 'makeups',       icon: RefreshCw,        text: '보강 요청 관리' },
-      { id: 'schedule-changes', icon: CalendarClock, text: '일정 변경 요청' },
-      { id: 'leave-requests', icon: CalendarCheck,   text: '연차 승인' },
-      { id: 'sub-requests',   icon: Repeat,           text: '대타 관리' },
-      { id: 'notifications', icon: Bell,             text: '공지 발송' },
-      { id: 'vehicles',      icon: Car,              text: '차량 관리' },
+      { id: 'schedule', icon: LayoutDashboard, text: '스케줄 관리' },
+      { id: 'students-group', icon: Users, text: '강습생 관리', children: [
+        { id: 'students',   text: '강습생 정보' },
+        { id: 'counseling', text: '상담 관리' },
+      ]},
+      { id: 'staff', icon: IdCard, text: '직원 관리' },
+      { id: 'payments', icon: CreditCard, text: '결제 관리' },
+      { id: 'requests-group', icon: RefreshCw, text: '요청 관리', children: [
+        { id: 'makeups',          text: '보강 요청 관리' },
+        { id: 'schedule-changes', text: '일정 변경 요청' },
+        { id: 'leave-requests',   text: '연차 승인' },
+        { id: 'sub-requests',     text: '대타 관리' },
+      ]},
+      { id: 'notifications', icon: Bell, text: '공지 발송' },
+      { id: 'vehicles',      icon: Car,  text: '차량 관리' },
     ],
   },
   {
@@ -237,14 +243,34 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
   },
 };
 
+// 특정 탭 id를 자식으로 갖는 대분류(parent) id를 찾음 — 없으면 undefined
+const findParentIdFor = (tabId: string): string | undefined => {
+  for (const group of navGroups) {
+    for (const item of group.items) {
+      if ('children' in item && item.children.some(c => c.id === tabId)) return item.id;
+    }
+  }
+  return undefined;
+};
+
 function AppContent() {
   const { signOut } = useAuth();
   const { instructors, currentInstructorId, setCurrentInstructorId } = useStore();
   const [active, setActive] = useState<TabId>('schedule');
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(() => {
+    const p = findParentIdFor('schedule');
+    return new Set(p ? [p] : []);
+  });
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [guideOpenTab, setGuideOpenTab] = useState<TabId | null>(null);
   const scheduleButtonRef = useRef<HTMLButtonElement>(null);
+
+  // 하위 메뉴에 있는 탭으로 이동하면(딥링크 등 어떤 경로로든) 그 대분류를 자동으로 펼침
+  useEffect(() => {
+    const parentId = findParentIdFor(active);
+    if (parentId) setExpandedParents(prev => new Set(prev).add(parentId));
+  }, [active]);
 
   useEffect(() => {
     const seen = window.localStorage.getItem('swimsync-onboarding-seen');
@@ -356,7 +382,51 @@ function AppContent() {
                 {label}
               </p>
               <div className="space-y-0.5">
-                {items.map(({ id, icon: Icon, text }) => {
+                {items.map((item) => {
+                  const { id, icon: Icon, text } = item;
+                  const hasChildren = 'children' in item && item.children.length > 0;
+
+                  if (hasChildren) {
+                    const isExpanded = expandedParents.has(id);
+                    const childActive = item.children.some(c => c.id === active);
+                    return (
+                      <div key={id}>
+                        <button
+                          onClick={() => setExpandedParents(prev => {
+                            const next = new Set(prev);
+                            if (next.has(id)) next.delete(id); else next.add(id);
+                            return next;
+                          })}
+                          className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 ${
+                            childActive ? 'text-cyan-700 font-semibold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                          }`}
+                        >
+                          <Icon size={15} className={`shrink-0 ${childActive ? 'text-cyan-600' : 'text-slate-400'}`} />
+                          <span className="flex-1 text-left">{text}</span>
+                          <ChevronDown size={13} className={`shrink-0 text-slate-300 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-0.5 ml-[26px] pl-2.5 border-l border-slate-100 space-y-0.5">
+                            {item.children.map(child => {
+                              const on = active === child.id;
+                              return (
+                                <button
+                                  key={child.id}
+                                  onClick={() => setActive(child.id as TabId)}
+                                  className={`w-full text-left px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150 ${
+                                    on ? 'bg-cyan-50 text-cyan-700 font-semibold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                                  }`}
+                                >
+                                  {child.text}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+
                   const on = active === id;
                   return (
                     <button
