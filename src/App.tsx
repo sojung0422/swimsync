@@ -15,6 +15,7 @@ import AdminStudents from './components/AdminStudents';
 import AdminNotifications from './components/AdminNotifications';
 import AdminVehicles from './components/AdminVehicles';
 import AdminPayments from './components/AdminPayments';
+import AdminFreeSwim from './components/AdminFreeSwim';
 import AdminMakeups from './components/AdminMakeups';
 import AdminStaff from './components/AdminStaff';
 import AdminCounseling from './components/AdminCounseling';
@@ -46,7 +47,10 @@ const navGroups = [
         { id: 'counseling', text: '상담 관리' },
       ]},
       { id: 'staff', icon: IdCard, text: '직원 관리' },
-      { id: 'payments', icon: CreditCard, text: '결제 관리' },
+      { id: 'payments-group', icon: CreditCard, text: '결제 관리', children: [
+        { id: 'payments',  text: '결제 현황' },
+        { id: 'free-swim', text: '자유수영 관리' },
+      ]},
       { id: 'requests-group', icon: RefreshCw, text: '요청 관리', children: [
         { id: 'makeups',          text: '보강 요청 관리' },
         { id: 'schedule-changes', text: '일정 변경 요청' },
@@ -74,7 +78,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'counseling' | 'payments' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles'
+  | 'schedule' | 'students' | 'staff' | 'counseling' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles'
   | 'instructor-app' | 'parent-app' | 'driver-app'
   | 'business-plan';
 
@@ -135,6 +139,15 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '수강 플랜 탭', description: '아동/성인, 주 횟수, 자유수영 포함 여부에 따라 요금제를 추가·수정·삭제해요.' },
       { label: '결제 현황 탭', description: '학생별로 이번 달 결제가 완료됐는지 확인해요.' },
       { label: '보강 가능 횟수 정책', description: '주 몇 회 수강 시 보강을 몇 회까지 허용할지 규칙을 만들고, 아동/성인 보강 시 서류(진단서 등) 필요 여부를 설정해요.' },
+    ],
+  },
+  'free-swim': {
+    title: '자유수영 관리',
+    description: '성인 자유수영 가능 시간대를 등록하고, 회원들의 예약 현황을 확인하는 화면이에요.',
+    features: [
+      { label: '시간대 등록', description: '요일(다중 선택)·시간·담당 강사를 골라 자유수영 가능 시간대를 추가해요.' },
+      { label: '자유수영 대상 회원', description: '자유수영 포함 플랜으로 등록된 회원 수를 보여줘요. 이 회원들만 학부모 앱에서 예약할 수 있어요.' },
+      { label: '예약 현황', description: '누가, 언제, 어느 시간대를 예약했는지 한눈에 확인해요. 담당 강사에게도 예약 내역이 표시돼요.' },
     ],
   },
   makeups: {
@@ -339,6 +352,7 @@ function AppContent() {
       case 'staff':          return <AdminStaff />;
       case 'counseling':     return <AdminCounseling />;
       case 'payments':       return <AdminPayments />;
+      case 'free-swim':      return <AdminFreeSwim />;
       case 'makeups':        return <AdminMakeups />;
       case 'schedule-changes': return <AdminScheduleChanges />;
       case 'leave-requests': return <AdminLeaveRequests />;

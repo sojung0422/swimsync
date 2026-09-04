@@ -20,7 +20,7 @@ const blankForm = (): StaffForm => ({
 
 // ─── 급여 정산 ──────────────────────────────────────────────────────────────
 
-function PayslipModal({ instructor, record, onClose }: { instructor: Instructor; record: { month: string; payType: '정규' | '파트'; baseAmount: number; hourlyRate: number; hoursWorked: number; incentiveAmount: number; overtimeHours: number; overtimeAmount: number; totalAmount: number; issuedAt: string }; onClose: () => void }) {
+function PayslipModal({ instructor, record, onClose }: { instructor: Instructor; record: { month: string; payType: '정규' | '파트'; baseAmount: number; hourlyRate: number; hoursWorked: number; incentiveAmount: number; overtimeHours: number; overtimeAmount: number; campIncentive: number; survivalSwimIncentive: number; privateLessonFee: number; totalAmount: number; issuedAt: string }; onClose: () => void }) {
   const { settings } = useStore();
   return (
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4 print:bg-white print:static">
@@ -53,6 +53,15 @@ function PayslipModal({ instructor, record, onClose }: { instructor: Instructor;
             )}
             {record.overtimeHours > 0 && (
               <div className="flex justify-between"><span className="text-slate-500">추가 근무 ({record.overtimeHours}시간)</span><span className="text-slate-800 font-medium">+{record.overtimeAmount.toLocaleString()}원</span></div>
+            )}
+            {record.campIncentive > 0 && (
+              <div className="flex justify-between"><span className="text-slate-500">방학특강 수당</span><span className="text-slate-800 font-medium">+{record.campIncentive.toLocaleString()}원</span></div>
+            )}
+            {record.survivalSwimIncentive > 0 && (
+              <div className="flex justify-between"><span className="text-slate-500">생존수영 수당</span><span className="text-slate-800 font-medium">+{record.survivalSwimIncentive.toLocaleString()}원</span></div>
+            )}
+            {record.privateLessonFee > 0 && (
+              <div className="flex justify-between"><span className="text-slate-500">개인 수업 지도료</span><span className="text-slate-800 font-medium">+{record.privateLessonFee.toLocaleString()}원</span></div>
             )}
           </div>
           <div className="border-t-2 border-slate-800 pt-4 flex justify-between items-center">
@@ -132,6 +141,9 @@ function PayrollView() {
   const [hoursDraft, setHoursDraft] = useState<Record<string, number>>({});
   const [incentiveDraft, setIncentiveDraft] = useState<Record<string, number>>({});
   const [overtimeDraft, setOvertimeDraft] = useState<Record<string, number>>({});
+  const [campDraft, setCampDraft] = useState<Record<string, number>>({});
+  const [survivalDraft, setSurvivalDraft] = useState<Record<string, number>>({});
+  const [privateLessonDraft, setPrivateLessonDraft] = useState<Record<string, number>>({});
 
   const activeInstructors = instructors.filter(i => i.status === 'active');
 
@@ -159,7 +171,10 @@ function PayrollView() {
             const incentiveAmount = incentiveDraft[inst.id] ?? 0;
             const overtimeHours = overtimeDraft[inst.id] ?? 0;
             const overtimeAmount = Math.round(overtimeHours * settings.payrollSettings.overtimeHourlyRate);
-            const totalAmount = baseAmount + incentiveAmount + overtimeAmount;
+            const campIncentive = campDraft[inst.id] ?? 0;
+            const survivalSwimIncentive = survivalDraft[inst.id] ?? 0;
+            const privateLessonFee = privateLessonDraft[inst.id] ?? 0;
+            const totalAmount = baseAmount + incentiveAmount + overtimeAmount + campIncentive + survivalSwimIncentive + privateLessonFee;
             const issued = payrollRecords.find(p => p.instructorId === inst.id && p.month === month);
             const isExpanded = expandedId === inst.id;
             return (
@@ -208,8 +223,31 @@ function PayrollView() {
                         <span className="text-slate-400 text-xs">시간</span>
                       </div>
                     </div>
+                    <div className="flex flex-wrap items-center gap-4 pt-2 border-t border-slate-100">
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500 font-medium">방학특강 수당</label>
+                        <input type="number" min={0} step={1000} value={campIncentive}
+                          onChange={e => setCampDraft(prev => ({ ...prev, [inst.id]: parseInt(e.target.value) || 0 }))}
+                          className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-right" />
+                        <span className="text-slate-400 text-xs">원</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500 font-medium">생존수영 수당</label>
+                        <input type="number" min={0} step={1000} value={survivalSwimIncentive}
+                          onChange={e => setSurvivalDraft(prev => ({ ...prev, [inst.id]: parseInt(e.target.value) || 0 }))}
+                          className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-right" />
+                        <span className="text-slate-400 text-xs">원</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-slate-500 font-medium">개인 수업 지도료</label>
+                        <input type="number" min={0} step={1000} value={privateLessonFee}
+                          onChange={e => setPrivateLessonDraft(prev => ({ ...prev, [inst.id]: parseInt(e.target.value) || 0 }))}
+                          className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-right" />
+                        <span className="text-slate-400 text-xs">원</span>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
-                      <button onClick={() => issuePayroll(inst.id, month, { hoursOverride: inst.type === '파트' ? hoursDraft[inst.id] : undefined, incentiveAmount, overtimeHours })}
+                      <button onClick={() => issuePayroll(inst.id, month, { hoursOverride: inst.type === '파트' ? hoursDraft[inst.id] : undefined, incentiveAmount, overtimeHours, campIncentive, survivalSwimIncentive, privateLessonFee })}
                         className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-medium transition-colors">
                         <Wallet className="w-3.5 h-3.5" /> {issued ? '재발행' : '명세서 발행'}
                       </button>
@@ -234,7 +272,7 @@ function PayrollView() {
 }
 
 export default function AdminStaff() {
-  const { instructors, addInstructor, updateInstructor, deleteInstructor } = useStore();
+  const { instructors, addInstructor, updateInstructor, deleteInstructor, payrollRecords } = useStore();
   const [mode, setMode] = useState<'info' | 'payroll'>('info');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resigned'>('active');
   const [nameFilter, setNameFilter] = useState('');
@@ -340,6 +378,32 @@ export default function AdminStaff() {
       {/* ── 우측: 상세 폼 ── */}
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-3xl mx-auto p-6">
+          {/* 상단 직원별 빠른 선택 스트립 */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 -mt-1">
+            {instructors.filter(i => i.status === 'active').map(inst => (
+              <button key={inst.id} onClick={() => selectStaff(inst.id)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-xl border shrink-0 transition-colors ${selectedId === inst.id ? 'bg-cyan-50 border-cyan-300' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0" style={{ backgroundColor: `${inst.color}20`, color: inst.color }}>{inst.name[0]}</div>
+                <span className={`text-sm font-medium whitespace-nowrap ${selectedId === inst.id ? 'text-cyan-700' : 'text-slate-600'}`}>{inst.name}</span>
+              </button>
+            ))}
+          </div>
+
+          {selectedId && (() => {
+            const totalPaid = payrollRecords.filter(p => p.instructorId === selectedId).reduce((sum, p) => sum + p.totalAmount, 0);
+            const issuedMonths = payrollRecords.filter(p => p.instructorId === selectedId).length;
+            return (
+              <div className="bg-gradient-to-br from-cyan-600 to-blue-700 rounded-2xl p-5 mb-5 text-white flex items-center justify-between">
+                <div>
+                  <p className="text-cyan-100 text-xs font-medium">이 직원에게 지급된 누적 금액</p>
+                  <p className="text-2xl font-bold mt-1">{totalPaid.toLocaleString()}원</p>
+                  <p className="text-cyan-100 text-xs mt-1">{issuedMonths}개월분 명세서 발행</p>
+                </div>
+                <Wallet className="w-9 h-9 text-cyan-200/60" />
+              </div>
+            );
+          })()}
+
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-slate-800 font-bold text-lg">{selectedId ? '직원 정보 수정' : '신규 직원 등록'}</h2>
             <div className="flex items-center gap-2">

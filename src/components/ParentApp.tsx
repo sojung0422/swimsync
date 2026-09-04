@@ -15,6 +15,20 @@ import { playBellSound } from '../lib/playBellSound';
 import { format, addDays, addMonths, startOfMonth, startOfWeek, isAfter, isSameMonth, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
+const FREE_SWIM_DAY_MAP: Record<string, number> = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
+
+// 자유수영 슬롯의 요일 중 오늘 이후로 가장 가까운 날짜 몇 개를 예약 후보로 제시
+function nextMatchingDates(days: string[], count: number, from: Date = new Date()): string[] {
+  const results: string[] = [];
+  let d = addDays(from, 1);
+  while (results.length < count) {
+    const wd = Object.entries(FREE_SWIM_DAY_MAP).find(([, v]) => v === d.getDay())?.[0];
+    if (wd && days.includes(wd)) results.push(format(d, 'yyyy-MM-dd'));
+    d = addDays(d, 1);
+  }
+  return results;
+}
+
 // ─── 달력 선택 컴포넌트 ────────────────────────────────────────────────────────
 
 function MiniCalendar({ month, onMonthChange, markedDates, selectedDate, selectedDates, onSelectDate }: {
@@ -163,7 +177,7 @@ export default function ParentApp() {
     classes, instructors, students, events, settings, paymentPlans, paymentRecords, lessonClasses, notifications,
     rescheduleClass, markAbsent, makeupRequests, submitMakeupRequest, markPaymentPaid, scheduleChangeRequests,
     makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
-    absenceRecords, cancelAbsence,
+    absenceRecords, cancelAbsence, freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
@@ -227,6 +241,7 @@ export default function ParentApp() {
   const nextMonthBilling = student && paymentPlan
     ? computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence)
     : null;
+  const myFreeSwimBookings = freeSwimBookings.filter(b => b.studentId === studentId && b.status === 'booked');
 
   const myUnpaidRecords = paymentRecords.filter(p => p.studentId === studentId && p.status !== 'paid');
   const myUnpaidTotal = myUnpaidRecords.reduce((sum, p) => sum + (p.targetAmount - p.paidAmount), 0);
@@ -686,6 +701,44 @@ export default function ParentApp() {
                 )}
               </div>
             </div>
+
+            {/* 자유수영 예약 (자유수영 포함 플랜만) */}
+            {paymentPlan?.hasFreeSwim && (
+              <div>
+                <h2 className="text-[15px] font-bold text-slate-800 mb-3">자유수영</h2>
+                <div className="space-y-2.5">
+                  {myFreeSwimBookings.map(b => {
+                    const slot = settings.freeSwimSlots.find(s => s.id === b.slotId);
+                    return (
+                      <div key={b.id} className="bg-white rounded-2xl p-4 shadow-sm border border-cyan-200 flex items-center justify-between">
+                        <div>
+                          <p className="text-slate-700 text-sm font-semibold">{format(parseISO(b.date), 'M월 d일 (E)', { locale: ko })} {slot?.startTime}~{slot?.endTime}</p>
+                          <p className="text-emerald-600 text-xs mt-0.5">예약 완료</p>
+                        </div>
+                        <button onClick={() => cancelFreeSwimBooking(b.id)} className="text-red-500 text-xs font-medium hover:underline shrink-0">예약 취소</button>
+                      </div>
+                    );
+                  })}
+                  {settings.freeSwimSlots.map(slot => (
+                    <div key={slot.id} className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100">
+                      <p className="text-slate-700 text-sm font-semibold">{slot.days.join('·')} {slot.startTime}~{slot.endTime}</p>
+                      <p className="text-slate-400 text-xs mt-0.5 mb-2">{instructors.find(i => i.id === slot.instructorId)?.name} 강사</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {nextMatchingDates(slot.days, 4).map(date => (
+                          <button key={date} onClick={() => bookFreeSwim(studentId, slot.id, date)}
+                            className="px-2.5 py-1.5 bg-cyan-50 hover:bg-cyan-100 border border-cyan-200 text-cyan-700 rounded-lg text-xs font-medium transition-colors">
+                            {format(parseISO(date), 'M/d(E)', { locale: ko })} 예약
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {settings.freeSwimSlots.length === 0 && (
+                    <p className="text-slate-400 text-xs py-2 text-center">아직 등록된 자유수영 시간대가 없어요.</p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* My makeup/carryover requests (서류 기반 보강·이월 요청 현황) */}
             {(myPendingRequests.length > 0 || myResolvedRequests.length > 0) && (

@@ -152,6 +152,7 @@ export type AcademySettings = {
   payrollSettings: PayrollSettings;
   closedDates: string[]; // 학원 휴무일 ('yyyy-MM-dd') — 다음 달 자동 청구 계산 시 제외
   skipFifthWeekOccurrence: boolean; // 그 달에 5번째로 돌아오는 요일은 휴무로 처리할지 (5주차 휴무 학원용)
+  freeSwimSlots: FreeSwimSlot[];
 };
 
 // "주 1회" 같은 수강권 문자열에서 주당 횟수를 추출
@@ -256,6 +257,16 @@ export type PaymentPlan = {
   sessionRates: number[]; // 등록일 기준 그 달 남은 횟수(1회~14회)별 일할 청구 금액 — 인덱스 0 = 1회
 };
 
+// 성인 자유수영 가능 시간대 — 관리자가 등록해두면 hasFreeSwim 플랜 학생이 학부모 앱에서 이 중 골라 예약함
+export type FreeSwimSlot = {
+  id: string; days: string[]; startTime: string; endTime: string; instructorId: string;
+};
+
+export type FreeSwimBooking = {
+  id: string; studentId: string; slotId: string; date: string;
+  status: 'booked' | 'cancelled'; createdAt: string;
+};
+
 // 원생이 2주 이상 결석(장기 결석) 후 다시 등록을 요청하는 경우 — 강사·데스크 확인 후에만 자리 재배정
 export type ReturnRequest = {
   id: string; studentId: string; enrollmentId: string;
@@ -332,6 +343,8 @@ export type PayrollRecord = {
   payType: '정규' | '파트';
   baseAmount: number; hourlyRate: number; hoursWorked: number;
   incentiveAmount: number; overtimeHours: number; overtimeAmount: number;
+  // 방학특강/생존수영/개인지도 — 계절 이벤트 시스템과 무관하게 관리자가 그 달 금액을 직접 입력하는 수기 항목
+  campIncentive: number; survivalSwimIncentive: number; privateLessonFee: number;
   totalAmount: number; issuedAt: string; note: string;
 };
 
@@ -586,7 +599,13 @@ const INITIAL_SETTINGS: AcademySettings = {
   },
   closedDates: [],
   skipFifthWeekOccurrence: false,
+  freeSwimSlots: [
+    { id: 'fs1', days: ['월', '수', '금'], startTime: '20:00', endTime: '21:00', instructorId: 'i3' },
+    { id: 'fs2', days: ['화', '목'], startTime: '19:00', endTime: '20:00', instructorId: 'i3' },
+  ],
 };
+
+const INITIAL_FREE_SWIM_BOOKINGS: FreeSwimBooking[] = [];
 
 const INITIAL_DISCOUNTS: Discount[] = [
   { id: 'disc1', name: '형제 2인 이상 할인', kind: 'sibling', percent: 5, minSiblingCount: 2, startDate: '', endDate: '', active: true },
@@ -832,6 +851,10 @@ type StoreContextType = {
   convertWaitlistEntry: (id: string) => void;
   cancelWaitlistEntry: (id: string) => void;
   deleteWaitlistEntry: (id: string) => void;
+  // 자유수영 예약
+  freeSwimBookings: FreeSwimBooking[];
+  bookFreeSwim: (studentId: string, slotId: string, date: string) => void;
+  cancelFreeSwimBooking: (id: string) => void;
   // 형제/이벤트 할인
   discounts: Discount[];
   addDiscount: (d: Omit<Discount, 'id'>) => void;
@@ -839,7 +862,7 @@ type StoreContextType = {
   deleteDiscount: (id: string) => void;
   // 강사 급여 정산
   payrollRecords: PayrollRecord[];
-  issuePayroll: (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number }) => void;
+  issuePayroll: (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => void;
   // 레벨(급수) 테스트
   levelTestRecords: LevelTestRecord[];
   recordLevelTest: (studentId: string, instructorId: string, resultLevel: string, passed: boolean, note: string) => void;
@@ -881,6 +904,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [makeupCancellations, setMakeupCancellations] = useState<MakeupCancellationNotice[]>([]);
   const [absenceRecords, setAbsenceRecords] = useState<AbsenceRecord[]>([]);
   const [waitlistEntries, setWaitlistEntries] = useState<WaitlistEntry[]>(INITIAL_WAITLIST);
+  const [freeSwimBookings, setFreeSwimBookings] = useState<FreeSwimBooking[]>(INITIAL_FREE_SWIM_BOOKINGS);
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
   const [levelTestRecords, setLevelTestRecords] = useState<LevelTestRecord[]>(INITIAL_LEVEL_TEST_RECORDS);
@@ -1293,18 +1317,27 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const cancelWaitlistEntry = (id: string) => setWaitlistEntries(prev => prev.map(w => w.id === id ? { ...w, status: 'cancelled' } : w));
   const deleteWaitlistEntry = (id: string) => setWaitlistEntries(prev => prev.filter(w => w.id !== id));
 
+  // ── 자유수영 예약 ────────────────────────────────────────────
+  const bookFreeSwim = (studentId: string, slotId: string, date: string) => {
+    setFreeSwimBookings(prev => [...prev, { id: `fsb_${Date.now()}`, studentId, slotId, date, status: 'booked', createdAt: format(new Date(), 'yyyy-MM-dd HH:mm') }]);
+  };
+  const cancelFreeSwimBooking = (id: string) => setFreeSwimBookings(prev => prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+
   // ── 형제/이벤트 할인 ─────────────────────────────────────────
   const addDiscount = (d: Omit<Discount, 'id'>) => setDiscounts(prev => [...prev, { ...d, id: `disc_${Date.now()}` }]);
   const updateDiscount = (id: string, updates: Partial<Discount>) => setDiscounts(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
   const deleteDiscount = (id: string) => setDiscounts(prev => prev.filter(d => d.id !== id));
 
   // ── 강사 급여 정산 ────────────────────────────────────────────
-  const issuePayroll = (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number }) => {
+  const issuePayroll = (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => {
     const inst = instructors.find(i => i.id === instructorId);
     if (!inst) return;
     const incentiveAmount = opts?.incentiveAmount ?? 0;
     const overtimeHours = opts?.overtimeHours ?? 0;
     const overtimeAmount = Math.round(overtimeHours * settings.payrollSettings.overtimeHourlyRate);
+    const campIncentive = opts?.campIncentive ?? 0;
+    const survivalSwimIncentive = opts?.survivalSwimIncentive ?? 0;
+    const privateLessonFee = opts?.privateLessonFee ?? 0;
     let baseAmount = 0;
     let hoursWorked = 0;
     if (inst.type === '정규') {
@@ -1318,10 +1351,10 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       hoursWorked = computed.hours;
       baseAmount = computed.amount;
     }
-    const totalAmount = baseAmount + incentiveAmount + overtimeAmount;
+    const totalAmount = baseAmount + incentiveAmount + overtimeAmount + campIncentive + survivalSwimIncentive + privateLessonFee;
     setPayrollRecords(prev => [
       ...prev.filter(p => !(p.instructorId === instructorId && p.month === month)),
-      { id: `pay_${Date.now()}`, instructorId, month, payType: inst.type, baseAmount, hourlyRate: inst.hourlyRate, hoursWorked, incentiveAmount, overtimeHours, overtimeAmount, totalAmount, issuedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), note: '' },
+      { id: `pay_${Date.now()}`, instructorId, month, payType: inst.type, baseAmount, hourlyRate: inst.hourlyRate, hoursWorked, incentiveAmount, overtimeHours, overtimeAmount, campIncentive, survivalSwimIncentive, privateLessonFee, totalAmount, issuedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), note: '' },
     ]);
   };
 
@@ -1419,6 +1452,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       submitMakeupRequest, approveMakeupRequestAsSlot, approveMakeupRequestAsCarryover, rejectMakeupRequest, cancelScheduledMakeup,
       makeupCancellations,
       waitlistEntries, addWaitlistEntry, markWaitlistNotified, convertWaitlistEntry, cancelWaitlistEntry, deleteWaitlistEntry,
+      freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
       discounts, addDiscount, updateDiscount, deleteDiscount,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,

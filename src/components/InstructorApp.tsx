@@ -4,7 +4,7 @@ import type { MakeupRequest, ClassSession, LeaveType } from '../store/StoreConte
 import {
   Calendar, Clock, Users, BookOpen, CheckCircle2, AlertCircle, UserCircle, RefreshCw,
   Wallet, CalendarClock, Image as ImageIcon, ChevronLeft, ChevronDown, ChevronUp, MessageCircle,
-  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand,
+  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand, Waves,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
 import { playBellSound } from '../lib/playBellSound';
@@ -220,7 +220,7 @@ export default function InstructorApp() {
     classes, students, instructors, makeupRequests, messages, settings, counselingRecords, makeupCancellations,
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
-    leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest,
+    leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
@@ -242,6 +242,10 @@ export default function InstructorApp() {
   const todayStr = format(new Date(), 'yyyy-MM-dd');
   const selectedDateStr = format(selectedDate, 'yyyy-MM-dd');
   const myClasses = classes.filter(c => c.instructorId === instructorId && c.date === selectedDateStr);
+
+  // 내가 담당하는 자유수영 시간대에, 선택한 날짜에 예약된 회원
+  const myFreeSwimSlotIds = new Set(settings.freeSwimSlots.filter(s => s.instructorId === instructorId).map(s => s.id));
+  const myFreeSwimBookingsToday = freeSwimBookings.filter(b => b.status === 'booked' && b.date === selectedDateStr && myFreeSwimSlotIds.has(b.slotId));
 
   const weekStart = startOfWeek(selectedDate, { weekStartsOn: 0 });
   const weekDays = Array.from({ length: 7 }).map((_, i) => addDays(weekStart, i));
@@ -435,6 +439,27 @@ export default function InstructorApp() {
                           <span className="text-slate-400 text-[11px]">{format(parseISO(cls.date), 'M/d (E)', { locale: ko })} {cls.time}</span>
                         </button>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {myFreeSwimBookingsToday.length > 0 && (
+                  <div className="bg-cyan-50 border border-cyan-200 rounded-2xl p-4">
+                    <div className="flex items-center gap-2 mb-2.5">
+                      <Waves className="w-4 h-4 text-cyan-600 shrink-0" />
+                      <span className="text-cyan-700 text-sm font-bold">오늘의 자유수영 예약 {myFreeSwimBookingsToday.length}건</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {myFreeSwimBookingsToday.map(b => {
+                        const student = students.find(s => s.id === b.studentId);
+                        const slot = settings.freeSwimSlots.find(s => s.id === b.slotId);
+                        return (
+                          <div key={b.id} className="flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-cyan-100">
+                            <span className="text-slate-800 text-xs font-semibold">{student?.studentName ?? '알 수 없음'}</span>
+                            <span className="text-slate-400 text-[11px]">{slot?.startTime}~{slot?.endTime}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
