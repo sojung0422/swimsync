@@ -314,7 +314,7 @@ export default function AdminSchedule() {
                             const key = `${dateStr}-${inst.id}`;
                             const arrivingChanges = getArrivingChanges(dayLabel, time, inst.id);
                             if (!cls) {
-                              if (arrivingChanges.length === 0) return <div key={key} className="border-r border-slate-100 p-1.5" />;
+                              if (arrivingChanges.length === 0) return <div key={key} className="border-r border-slate-100 p-1.5 bg-slate-100/70" />;
                               return (
                                 <div key={key} className="border-r border-slate-100 p-1.5 flex flex-col gap-0.5 bg-blue-50">
                                   {arrivingChanges.map(r => {
@@ -327,11 +327,12 @@ export default function AdminSchedule() {
                             const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
                             const hasArriving = arrivingChanges.length > 0;
                             const hasDeparting = presentStudents.some(id => !!getDepartingChange(dayLabel, time, inst.id, id));
-                            const cellBg = hasArriving ? 'bg-blue-50' : hasDeparting ? 'bg-slate-100' : '';
+                            // 기본 상태(특이사항 없음)에는 강사 지정 색을 채도 낮춰 옅게 깔아 어느 강사 칸인지 배경만으로도 구분되게 함
+                            const cellBgColor = hasArriving ? '#eff6ff' : hasDeparting ? '#f1f5f9' : `${inst.color}14`;
                             return (
                               <div key={key} onClick={() => setSelectedClass(cls)}
-                                className={`border-r border-slate-100 p-1.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col gap-0.5 ${cellBg}`}
-                                style={{ borderLeft: `3px solid ${inst.color}` }}>
+                                className="border-r border-slate-100 p-1.5 cursor-pointer hover:brightness-95 transition-all flex flex-col gap-0.5"
+                                style={{ borderLeft: `3px solid ${inst.color}`, backgroundColor: cellBgColor }}>
                                 <span className="text-[10px] font-black" style={{ color: inst.color }}>{presentStudents.length}명</span>
                                 {presentStudents.slice(0, 4).map(id => {
                                   const s = students.find(st => st.id === id);

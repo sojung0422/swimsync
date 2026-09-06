@@ -1,5 +1,5 @@
 import { useState, useRef, Fragment } from 'react';
-import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth } from '../store/StoreContext';
+import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth, getClassOfferings } from '../store/StoreContext';
 import type { Student, Enrollment, WaitlistEntry } from '../store/StoreContext';
 import {
   Search, Plus, X, ChevronLeft, List, Settings,
@@ -170,7 +170,7 @@ const defaultForm = (): FormData => ({
 function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
   initial?: Student; prefill?: Partial<FormData>; onClose: () => void; onSave: (data: FormData) => void; title: string;
 }) {
-  const { instructors, lessonClasses, settings, vehicles, drivers, paymentPlans } = useStore();
+  const { instructors, lessonClasses, settings, vehicles, drivers, paymentPlans, students: allStudents } = useStore();
   const [form, setForm] = useState<FormData>(
     initial ? {
       studentName: initial.studentName, nickname: initial.nickname || '', parentName: initial.parentName,
@@ -195,8 +195,22 @@ function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
   );
   const fileRef = useRef<HTMLInputElement>(null);
   const [section, setSection] = useState<'basic' | 'lesson' | 'payment'>('basic');
+  const [showSeatFinder, setShowSeatFinder] = useState(false);
 
   const set = (key: keyof FormData, val: unknown) => setForm(prev => ({ ...prev, [key]: val }));
+
+  // 빈자리 찾기 — 이미 운영 중인 반·강사·요일·시간 조합 중 여유 자리가 있는 곳만 후보로 보여주고, 선택 시 강습 정보를 한 번에 채움
+  const openOfferings = getClassOfferings(null, allStudents, instructors)
+    .filter(o => o.remaining > 0)
+    .sort((a, b) => a.time.localeCompare(b.time));
+  const applyOffering = (o: ReturnType<typeof getClassOfferings>[number]) => {
+    set('lessonClassId', o.lessonClassId);
+    set('instructorId', o.instructorId);
+    set('regularDays', o.days);
+    set('regularTime', o.time);
+    if (o.paymentPlanId) set('paymentPlanId', o.paymentPlanId);
+    setShowSeatFinder(false);
+  };
 
   const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -393,6 +407,37 @@ function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
 
             {section === 'lesson' && (
               <div className="space-y-3">
+                <div className="bg-cyan-50/40 border border-cyan-100 rounded-xl p-3.5">
+                  <button type="button" onClick={() => setShowSeatFinder(p => !p)}
+                    className="w-full flex items-center justify-between text-left">
+                    <span className="flex items-center gap-1.5 text-sm font-semibold text-cyan-700">
+                      <Search className="w-4 h-4" /> 빈자리에서 바로 찾기
+                    </span>
+                    <span className="text-cyan-600 text-xs font-medium">{showSeatFinder ? '접기' : `여유 있는 반 ${openOfferings.length}곳 보기`}</span>
+                  </button>
+                  {showSeatFinder && (
+                    <div className="mt-3 space-y-1.5 max-h-56 overflow-y-auto animate-fade-up">
+                      {openOfferings.length === 0 ? (
+                        <p className="text-slate-400 text-xs py-2 text-center">현재 여유 자리가 있는 반이 없습니다.</p>
+                      ) : openOfferings.map(o => {
+                        const lc = lessonClasses.find(l => l.id === o.lessonClassId);
+                        const inst = instructors.find(i => i.id === o.instructorId);
+                        const isSelected = form.lessonClassId === o.lessonClassId && form.instructorId === o.instructorId && form.regularTime === o.time;
+                        return (
+                          <button key={`${o.lessonClassId}_${o.instructorId}_${o.time}`} type="button" onClick={() => applyOffering(o)}
+                            className={`w-full text-left rounded-lg border px-3 py-2 transition-colors ${isSelected ? 'bg-cyan-100 border-cyan-400' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                            <div className="flex items-center justify-between">
+                              <span className="text-slate-800 text-sm font-semibold">{lc?.name ?? '반 정보 없음'}</span>
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200">여유 {o.remaining}자리</span>
+                            </div>
+                            <span className="text-slate-400 text-xs">{inst?.name ?? '-'} 강사 · {o.days.join('·')} {o.time}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelCls}>강습반</label>

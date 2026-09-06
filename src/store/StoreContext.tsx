@@ -108,27 +108,29 @@ export const teachesStudent = (instructorId: string, s: Student): boolean =>
 export const studentsForInstructor = (instructorId: string, students: Student[]): Student[] =>
   students.filter(s => s.status === 'active' && teachesStudent(instructorId, s));
 
-// 같은 반(lessonClassId) 안에서 실제로 운영 중인 요일·시간·담당강사·수강플랜 조합(오퍼링) 목록 — 반 변경 후보로 제시할 때 사용.
+// 실제로 운영 중인 반·요일·시간·담당강사·수강플랜 조합(오퍼링) 목록 — 반 변경 후보 및 신규 등록 시 빈자리 찾기에 사용.
 // 이미 그 조합으로 수강 중인 학생이 있는 시간대만 후보로 인정한다(신규로 비어있는 시간대는 후보에서 제외).
-export type ClassOffering = { instructorId: string; days: string[]; time: string; paymentPlanId: string; capacity: number; occupied: number; remaining: number };
-export const getClassOfferings = (lessonClassId: string, students: Student[], instructors: Instructor[]): ClassOffering[] => {
-  const byKey = new Map<string, { instructorId: string; days: Set<string>; time: string; occupied: number; planCounts: Record<string, number> }>();
+// lessonClassId를 넘기면 그 반으로만 한정하고, null이면 전체 반을 대상으로 조회한다.
+export type ClassOffering = { lessonClassId: string; instructorId: string; days: string[]; time: string; paymentPlanId: string; capacity: number; occupied: number; remaining: number };
+export const getClassOfferings = (lessonClassId: string | null, students: Student[], instructors: Instructor[]): ClassOffering[] => {
+  const byKey = new Map<string, { lessonClassId: string; instructorId: string; days: Set<string>; time: string; occupied: number; planCounts: Record<string, number> }>();
   for (const s of students) {
     if (s.status !== 'active') continue;
     for (const e of getAllEnrollments(s)) {
-      if (e.status !== 'active' || e.lessonClassId !== lessonClassId) continue;
-      const key = `${e.instructorId}_${e.regularTime}`;
-      const entry = byKey.get(key) ?? { instructorId: e.instructorId, days: new Set<string>(), time: e.regularTime, occupied: 0, planCounts: {} };
+      if (e.status !== 'active') continue;
+      if (lessonClassId !== null && e.lessonClassId !== lessonClassId) continue;
+      const key = `${e.lessonClassId}_${e.instructorId}_${e.regularTime}`;
+      const entry = byKey.get(key) ?? { lessonClassId: e.lessonClassId, instructorId: e.instructorId, days: new Set<string>(), time: e.regularTime, occupied: 0, planCounts: {} };
       e.regularDays.forEach(d => entry.days.add(d));
       entry.occupied += 1;
       if (e.paymentPlanId) entry.planCounts[e.paymentPlanId] = (entry.planCounts[e.paymentPlanId] ?? 0) + 1;
       byKey.set(key, entry);
     }
   }
-  return Array.from(byKey.values()).map(({ instructorId, days, time, occupied, planCounts }) => {
+  return Array.from(byKey.values()).map(({ lessonClassId: lcId, instructorId, days, time, occupied, planCounts }) => {
     const capacity = instructors.find(i => i.id === instructorId)?.maxCapacity ?? 5;
     const paymentPlanId = Object.entries(planCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
-    return { instructorId, days: Array.from(days), time, paymentPlanId, capacity, occupied, remaining: capacity - occupied };
+    return { lessonClassId: lcId, instructorId, days: Array.from(days), time, paymentPlanId, capacity, occupied, remaining: capacity - occupied };
   });
 };
 
