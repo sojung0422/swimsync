@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { ScheduleChangeRequest } from '../store/StoreContext';
 import {
-  Clock, CheckCircle2, XCircle, AlertCircle, CalendarClock, ArrowRight, RefreshCw,
+  Clock, CheckCircle2, XCircle, AlertCircle, CalendarClock, ArrowRight, RefreshCw, Banknote,
 } from 'lucide-react';
 
 function RequestCard({ request }: { request: ScheduleChangeRequest }) {
-  const { students, approveScheduleChangeRequest, rejectScheduleChangeRequest } = useStore();
+  const { students, instructors, approveScheduleChangeRequest, rejectScheduleChangeRequest } = useStore();
   const student = students.find(s => s.id === request.studentId);
+  const fromInstructor = instructors.find(i => i.id === request.currentInstructorId);
+  const toInstructor = instructors.find(i => i.id === request.requestedInstructorId);
+  const instructorChanged = request.currentInstructorId !== request.requestedInstructorId;
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl p-5">
@@ -20,6 +23,11 @@ function RequestCard({ request }: { request: ScheduleChangeRequest }) {
                 수강 횟수 변경
               </span>
             )}
+            {request.isPriceChange && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-amber-50 text-amber-700 border-amber-200 flex items-center gap-1">
+                <Banknote className="w-2.5 h-2.5" /> 금액 변동
+              </span>
+            )}
             {request.status !== 'pending' && (
               <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${request.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-600 border-red-200'}`}>
                 {request.status === 'approved' ? '승인됨' : '거절됨'}
@@ -29,17 +37,21 @@ function RequestCard({ request }: { request: ScheduleChangeRequest }) {
 
           <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
             <span className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5">
-              {request.currentDays.join('·')} {request.currentTime} · {request.currentPassType}
+              {request.currentDays.join('·')} {request.currentTime} · {request.currentPassType}{instructorChanged && ` · ${fromInstructor?.name ?? '?'} 강사`}
             </span>
             <ArrowRight className="w-3.5 h-3.5 text-slate-300 shrink-0" />
             <span className="bg-cyan-50 border border-cyan-200 text-cyan-700 rounded-lg px-2.5 py-1.5 font-medium">
-              {request.requestedDays.join('·')} {request.requestedTime} · {request.requestedPassType}
+              {request.requestedDays.join('·')} {request.requestedTime} · {request.requestedPassType}{instructorChanged && ` · ${toInstructor?.name ?? '?'} 강사`}
             </span>
           </div>
 
-          {request.isFrequencyChange && (
+          <p className="text-slate-500 text-xs mt-2">
+            금액: {request.priceBefore.toLocaleString()}원 → <strong className={request.isPriceChange ? 'text-amber-600' : 'text-slate-700'}>{request.priceAfter.toLocaleString()}원</strong>
+          </p>
+
+          {request.isPriceChange && (
             <p className="text-cyan-600 text-[11px] mt-2 flex items-center gap-1">
-              <CalendarClock className="w-3 h-3 shrink-0" /> 수강 횟수 변경 건 — 승인 시 <strong>{request.effectiveDate}부터</strong> 자동 적용돼요 (그 전까지는 기존 일정 유지)
+              <CalendarClock className="w-3 h-3 shrink-0" /> 금액이 달라지는 변경 건 — 승인 시 <strong>{request.effectiveDate}부터</strong> 적용돼요 (그 전까지는 기존 일정 유지)
             </p>
           )}
 
@@ -76,7 +88,7 @@ export default function AdminScheduleChanges() {
       <div className="shrink-0 px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
         <div>
           <h1 className="text-lg font-bold text-slate-800">일정 변경 요청 관리</h1>
-          <p className="text-slate-400 text-xs mt-0.5">요일·시간 변경은 승인 즉시 적용되고, 수강 횟수 변경은 승인되면 다음 달 1일부터 자동 적용돼요</p>
+          <p className="text-slate-400 text-xs mt-0.5">금액 변동이 없는 요일·시간 변경은 이번 달 중 원하는 날짜부터, 금액이 달라지는 변경은 다음 달 중 학부모가 고른 날짜부터 승인 시 적용돼요</p>
         </div>
         {pending.length > 0 && (
           <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">

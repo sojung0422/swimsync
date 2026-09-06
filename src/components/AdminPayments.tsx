@@ -108,9 +108,17 @@ function PlanFormModal({ initial, onClose, onSave, title }: {
   const [monthlyPrice, setMonthlyPrice] = useState(initial?.monthlyPrice ?? 120000);
   const [description, setDescription] = useState(initial?.description ?? '');
   const [sessionRates, setSessionRates] = useState<number[]>(initial?.sessionRates ?? computeLinearSessionRates(initial?.monthlyPrice ?? 120000, initial?.sessionsPerWeek ?? 2));
+  const [timeOverrides, setTimeOverrides] = useState<{ time: string; monthlyPrice: number; sessionRates: number[] }[]>(initial?.timePriceOverrides ?? []);
+  const [newOverrideTime, setNewOverrideTime] = useState('20:00');
+  const [newOverridePrice, setNewOverridePrice] = useState(monthlyPrice + 20000);
 
   const recalcRates = () => setSessionRates(computeLinearSessionRates(monthlyPrice, sessionsPerWeek));
   const updateRate = (idx: number, val: number) => setSessionRates(rates => rates.map((r, i) => i === idx ? val : r));
+  const addTimeOverride = () => {
+    if (timeOverrides.some(o => o.time === newOverrideTime)) return;
+    setTimeOverrides(prev => [...prev, { time: newOverrideTime, monthlyPrice: newOverridePrice, sessionRates: computeLinearSessionRates(newOverridePrice, sessionsPerWeek) }].sort((a, b) => a.time.localeCompare(b.time)));
+  };
+  const removeTimeOverride = (time: string) => setTimeOverrides(prev => prev.filter(o => o.time !== time));
 
   const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors";
   const labelCls = "block text-xs font-medium text-slate-500 mb-1";
@@ -197,9 +205,35 @@ function PlanFormModal({ initial, onClose, onSave, title }: {
             </div>
           </div>
 
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={labelCls + ' mb-0'}>시간대별 추가 요금 (예: 야간 시간 할증)</label>
+            </div>
+            <p className="text-slate-400 text-xs mb-2">여기에 등록한 시간대는 같은 주당 횟수라도 다른 월 금액이 적용돼요. 반 변경 시 이 금액 차이 때문에 이동이 제한될 수 있어요.</p>
+            <div className="space-y-1.5 mb-2">
+              {timeOverrides.map(o => (
+                <div key={o.time} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+                  <span className="text-slate-700 text-xs font-semibold">{o.time}</span>
+                  <span className="text-slate-600 text-xs">{o.monthlyPrice.toLocaleString()}원/월</span>
+                  <button type="button" onClick={() => removeTimeOverride(o.time)} className="text-slate-300 hover:text-red-500 transition-colors">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              ))}
+              {timeOverrides.length === 0 && <p className="text-slate-300 text-xs py-1">등록된 시간대별 추가 요금이 없습니다.</p>}
+            </div>
+            <div className="flex items-center gap-2">
+              <input type="time" value={newOverrideTime} onChange={e => setNewOverrideTime(e.target.value)}
+                className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs" />
+              <input type="number" min={0} step={1000} value={newOverridePrice} onChange={e => setNewOverridePrice(parseInt(e.target.value) || 0)}
+                className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right" placeholder="월 금액" />
+              <button type="button" onClick={addTimeOverride} className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-medium transition-colors shrink-0">추가</button>
+            </div>
+          </div>
+
           <div className="flex gap-3">
             <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
-            <button onClick={() => { if (!name.trim()) return; onSave({ name: name.trim(), category, hasFreeSwim, sessionsPerWeek, monthlyPrice, description, sessionRates }); onClose(); }}
+            <button onClick={() => { if (!name.trim()) return; onSave({ name: name.trim(), category, hasFreeSwim, sessionsPerWeek, monthlyPrice, description, sessionRates, timePriceOverrides: timeOverrides }); onClose(); }}
               className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">
               저장
             </button>

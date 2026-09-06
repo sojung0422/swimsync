@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  useStore, getClassDivision, getAllEnrollments, parseSessionsPerWeek,
+  useStore, getClassDivision, getAllEnrollments,
   computeOpenMakeupSlots, isAbsenceCancellable, rankMakeupCandidates, computeNextMonthBilling,
+  getClassOfferings, resolvePlanPricing,
 } from '../store/StoreContext';
 import type { Enrollment } from '../store/StoreContext';
 import {
@@ -12,7 +13,7 @@ import {
 import ChatThread from './ChatThread';
 import AddContactButton from './AddContactButton';
 import { playBellSound } from '../lib/playBellSound';
-import { format, addDays, addMonths, startOfMonth, startOfWeek, isAfter, isSameMonth, parseISO } from 'date-fns';
+import { format, addDays, addMonths, startOfMonth, endOfMonth, startOfWeek, isAfter, isSameMonth, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 const FREE_SWIM_DAY_MAP: Record<string, number> = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
@@ -74,96 +75,130 @@ function MiniCalendar({ month, onMonthChange, markedDates, selectedDate, selecte
   );
 }
 
-// ─── 요일·시간·수강 횟수 변경 신청 모달 ────────────────────────────────────────
+// ─── 반(요일·시간) 변경 신청 모달 ────────────────────────────────────────
 
-const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
-const PASS_TYPES = ['주 1회', '주 2회', '주 3회', '주 5회'];
+function offeringKey(o: { instructorId: string; time: string }) { return `${o.instructorId}_${o.time}`; }
 
 function ScheduleChangeModal({ studentId, enrollment, lessonClassName, onClose }: {
   studentId: string; enrollment: Enrollment; lessonClassName: string; onClose: () => void;
 }) {
-  const { settings, submitScheduleChangeRequest } = useStore();
-  const [days, setDays] = useState<string[]>(enrollment.regularDays);
-  const [time, setTime] = useState(enrollment.regularTime);
-  const [passType, setPassType] = useState(enrollment.passType);
+  const { students, instructors, paymentPlans, submitScheduleChangeRequest } = useStore();
+  const student = students.find(s => s.id === studentId);
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [effectiveDate, setEffectiveDate] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
-  const toggleDay = (d: string) => setDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
+  const currentKey = offeringKey({ instructorId: enrollment.instructorId, time: enrollment.regularTime });
+  const currentPlan = paymentPlans.find(p => p.id === enrollment.paymentPlanId);
+  const priceBefore = currentPlan ? resolvePlanPricing(currentPlan, enrollment.regularTime).monthlyPrice : (student?.paymentAmount ?? 0);
 
-  const isFrequencyChange = parseSessionsPerWeek(enrollment.passType) !== parseSessionsPerWeek(passType);
-  // 요일/시간 변경은 언제든 신청 가능(당월 즉시 적용). 수강 횟수 변경은 신청 시점 제약 없이 접수하되, 승인되면 다음 달 1일부터 자동 적용된다.
-  const nextMonthLabel = format(addMonths(startOfMonth(new Date()), 1), 'M월 d일', { locale: ko });
-  const noChange = days.length === enrollment.regularDays.length
-    && days.every(d => enrollment.regularDays.includes(d))
-    && time === enrollment.regularTime && passType === enrollment.passType;
+  const offerings = student ? getClassOfferings(enrollment.lessonClassId, students, instructors).filter(o => offeringKey(o) !== currentKey) : [];
+  const selected = offerings.find(o => offeringKey(o) === selectedKey) ?? null;
+  const selectedPlan = selected ? paymentPlans.find(p => p.id === selected.paymentPlanId) : null;
+  const priceAfter = selected && selectedPlan ? resolvePlanPricing(selectedPlan, selected.time).monthlyPrice : null;
+  const isPriceChange = priceAfter !== null && priceAfter !== priceBefore;
+
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const thisMonthEnd = format(endOfMonth(new Date()), 'yyyy-MM-dd');
+  const nextMonthStart = format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd');
+  const nextMonthEnd = format(endOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd');
+  const dateMin = isPriceChange ? nextMonthStart : todayStr;
+  const dateMax = isPriceChange ? nextMonthEnd : thisMonthEnd;
+
+  // 후보를 고르면 금액 변동 여부에 따라 선택 가능한 시작일 범위로 기본값을 맞춰줌
+  const selectOffering = (key: string) => {
+    setSelectedKey(key);
+    setEffectiveDate('');
+  };
+
+  const canSubmit = !!selected && !!selectedPlan && priceAfter !== null && !!effectiveDate && effectiveDate >= dateMin && effectiveDate <= dateMax;
 
   const handleSubmit = () => {
-    if (noChange || days.length === 0) return;
+    if (!student || !selected || !selectedPlan || priceAfter === null || !canSubmit) return;
     submitScheduleChangeRequest({
       studentId, enrollmentId: enrollment.id,
-      currentDays: enrollment.regularDays, currentTime: enrollment.regularTime, currentPassType: enrollment.passType,
-      requestedDays: days, requestedTime: time, requestedPassType: passType,
+      currentDays: enrollment.regularDays, currentTime: enrollment.regularTime, currentPassType: enrollment.passType, currentInstructorId: enrollment.instructorId,
+      requestedDays: selected.days, requestedTime: selected.time, requestedPassType: `주 ${selected.days.length}회`, requestedInstructorId: selected.instructorId,
+      requestedPaymentPlanId: selectedPlan.id, priceBefore, priceAfter, isPriceChange, effectiveDate,
     });
     setSubmitted(true);
-    setTimeout(onClose, 1400);
+    setTimeout(onClose, 1600);
   };
 
   return (
     <div className="absolute inset-0 bg-black/50 z-50 flex flex-col justify-end">
       <div className="bg-white rounded-t-3xl p-6 max-h-[88%] flex flex-col animate-slide-up-modal overflow-y-auto">
         <div className="flex justify-between items-center mb-5">
-          <h3 className="text-lg font-bold text-slate-800">요일·시간 변경 신청</h3>
+          <h3 className="text-lg font-bold text-slate-800">반 변경 신청</h3>
           <button onClick={onClose} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
         </div>
 
         {submitted ? (
           <div className="py-10 text-center">
             <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-3" />
-            <p className="text-slate-700 font-semibold">변경 요청을 보냈어요</p>
-            <p className="text-slate-400 text-sm mt-1">학원에서 확인 후 반영해드려요.</p>
+            <p className="text-slate-700 font-semibold">반 변경 신청을 보냈어요</p>
+            <p className="text-slate-400 text-sm mt-1">담당 선생님과 학원에 안내됐어요. 학원 확인(승인) 후 반영돼요.</p>
           </div>
         ) : (
           <>
             <p className="text-slate-400 text-xs mb-4">{lessonClassName} · 현재 {enrollment.regularDays.join('·')} {enrollment.regularTime} · {enrollment.passType}</p>
 
             <div className="mb-4">
-              <p className="text-slate-500 text-xs font-semibold mb-2">요일 선택</p>
-              <div className="flex gap-1.5 flex-wrap">
-                {DAYS.map(d => (
-                  <button key={d} onClick={() => toggleDay(d)}
-                    className={`flex-1 min-w-[38px] py-2.5 rounded-xl text-sm font-medium border transition-colors ${days.includes(d) ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                    {d}
-                  </button>
-                ))}
-              </div>
+              <p className="text-slate-500 text-xs font-semibold mb-2">변경 가능한 요일·시간</p>
+              {offerings.length === 0 ? (
+                <p className="text-slate-400 text-xs py-3 text-center bg-slate-50 rounded-xl border border-slate-100">현재 이 반에는 옮길 수 있는 다른 요일·시간이 없어요. 학원으로 문의해주세요.</p>
+              ) : (
+                <div className="space-y-2">
+                  {offerings.map(o => {
+                    const inst = instructors.find(i => i.id === o.instructorId);
+                    const plan = paymentPlans.find(p => p.id === o.paymentPlanId);
+                    const price = plan ? resolvePlanPricing(plan, o.time).monthlyPrice : null;
+                    const full = o.remaining <= 0;
+                    const key = offeringKey(o);
+                    const isSel = selectedKey === key;
+                    return (
+                      <button key={key} disabled={full || price === null} onClick={() => selectOffering(key)}
+                        className={`w-full text-left rounded-xl border px-3.5 py-3 transition-colors ${isSel ? 'bg-cyan-50 border-cyan-400' : full || price === null ? 'bg-slate-50 border-slate-100 opacity-50 cursor-not-allowed' : 'bg-white border-slate-200 hover:bg-slate-50'}`}>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-800 text-sm font-semibold">{o.days.join('·')} {o.time}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${full ? 'bg-red-50 text-red-500 border-red-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                            {full ? '정원 마감' : `여유 ${o.remaining}자리`}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-slate-400 text-xs">{inst?.name ?? '-'} 강사 · 주 {o.days.length}회</span>
+                          <span className="text-slate-500 text-xs font-medium">{price !== null ? `${price.toLocaleString()}원/월` : '가격 정보 없음'}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            <div className="mb-4">
-              <p className="text-slate-500 text-xs font-semibold mb-2">시간</p>
-              <select value={time} onChange={e => setTime(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors bg-white">
-                {settings.designatedTimes.map(t => <option key={t}>{t}</option>)}
-              </select>
-            </div>
+            {selected && selectedPlan && priceAfter !== null && (
+              <>
+                <div className={`rounded-xl px-3.5 py-3 mb-4 text-xs border ${isPriceChange ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-cyan-50 text-cyan-700 border-cyan-200'}`}>
+                  <p className="font-semibold mb-1">변경될 금액: {priceBefore.toLocaleString()}원 → {priceAfter.toLocaleString()}원 {isPriceChange ? '(변동 있음)' : '(변동 없음)'}</p>
+                  {isPriceChange ? (
+                    <p>금액이 달라지는 변경은 이번 달에는 적용이 어려워요. <strong>다음 달({format(parseISO(nextMonthStart), 'M월', { locale: ko })}) 중 시작일</strong>을 선택해주세요.</p>
+                  ) : (
+                    <p>금액 변동이 없는 요일·시간 변경이라 <strong>이번 달 중 원하는 날짜</strong>부터 바로 시작할 수 있어요.</p>
+                  )}
+                </div>
 
-            <div className="mb-4">
-              <p className="text-slate-500 text-xs font-semibold mb-2">수강권 (주당 횟수)</p>
-              <select value={passType} onChange={e => setPassType(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors bg-white">
-                {PASS_TYPES.map(p => <option key={p}>{p}</option>)}
-              </select>
-            </div>
-
-            {isFrequencyChange && (
-              <div className="rounded-xl px-3.5 py-3 mb-4 flex items-start gap-2 text-xs bg-cyan-50 text-cyan-700 border border-cyan-200">
-                <Clock3 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <p>수강 횟수를 바꾸는 요청은 신청은 언제든 할 수 있지만, 승인되면 <strong>{nextMonthLabel}부터</strong> 자동으로 적용돼요. 그 전까지는 지금 수강권 그대로 유지돼요.</p>
-              </div>
+                <div className="mb-4">
+                  <p className="text-slate-500 text-xs font-semibold mb-2">변경 시작일</p>
+                  <input type="date" value={effectiveDate} min={dateMin} max={dateMax}
+                    onChange={e => setEffectiveDate(e.target.value)}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors bg-white" />
+                </div>
+              </>
             )}
 
-            <button onClick={handleSubmit} disabled={noChange || days.length === 0}
+            <button onClick={handleSubmit} disabled={!canSubmit}
               className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors">
-              변경 신청하기
+              최종 확인 · 반 변경 신청하기
             </button>
           </>
         )}

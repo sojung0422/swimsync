@@ -108,6 +108,30 @@ export const teachesStudent = (instructorId: string, s: Student): boolean =>
 export const studentsForInstructor = (instructorId: string, students: Student[]): Student[] =>
   students.filter(s => s.status === 'active' && teachesStudent(instructorId, s));
 
+// 같은 반(lessonClassId) 안에서 실제로 운영 중인 요일·시간·담당강사·수강플랜 조합(오퍼링) 목록 — 반 변경 후보로 제시할 때 사용.
+// 이미 그 조합으로 수강 중인 학생이 있는 시간대만 후보로 인정한다(신규로 비어있는 시간대는 후보에서 제외).
+export type ClassOffering = { instructorId: string; days: string[]; time: string; paymentPlanId: string; capacity: number; occupied: number; remaining: number };
+export const getClassOfferings = (lessonClassId: string, students: Student[], instructors: Instructor[]): ClassOffering[] => {
+  const byKey = new Map<string, { instructorId: string; days: Set<string>; time: string; occupied: number; planCounts: Record<string, number> }>();
+  for (const s of students) {
+    if (s.status !== 'active') continue;
+    for (const e of getAllEnrollments(s)) {
+      if (e.status !== 'active' || e.lessonClassId !== lessonClassId) continue;
+      const key = `${e.instructorId}_${e.regularTime}`;
+      const entry = byKey.get(key) ?? { instructorId: e.instructorId, days: new Set<string>(), time: e.regularTime, occupied: 0, planCounts: {} };
+      e.regularDays.forEach(d => entry.days.add(d));
+      entry.occupied += 1;
+      if (e.paymentPlanId) entry.planCounts[e.paymentPlanId] = (entry.planCounts[e.paymentPlanId] ?? 0) + 1;
+      byKey.set(key, entry);
+    }
+  }
+  return Array.from(byKey.values()).map(({ instructorId, days, time, occupied, planCounts }) => {
+    const capacity = instructors.find(i => i.id === instructorId)?.maxCapacity ?? 5;
+    const paymentPlanId = Object.entries(planCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
+    return { instructorId, days: Array.from(days), time, paymentPlanId, capacity, occupied, remaining: capacity - occupied };
+  });
+};
+
 export type ClassSession = {
   id: string; date: string; time: string; instructorId: string;
   studentIds: string[]; makeupStudentIds: string[]; absentStudentIds: string[];
@@ -183,15 +207,23 @@ export type MakeupCancellationNotice = {
   id: string; studentId: string; classId: string; createdAt: string;
 };
 
-// 학부모가 요청하는 정기 요일/시간/수강 횟수 변경 — 학원이 웹에서 확인 후 승인해야 실제 반영됨
+// 학부모가 요청하는 정기 요일/시간/수강 횟수(반) 변경 — 학원이 웹에서 확인 후 승인해야 실제 반영됨
 export type ScheduleChangeRequest = {
   id: string; studentId: string; enrollmentId: string; // 'primary' 또는 additionalEnrollments의 id
-  currentDays: string[]; currentTime: string; currentPassType: string;
-  requestedDays: string[]; requestedTime: string; requestedPassType: string;
-  isFrequencyChange: boolean; // 주당 횟수가 바뀌는 요청인지 — true면 이번 달이 아니라 effectiveDate(다음 달 1일)부터 적용됨
-  effectiveDate: string; // 'yyyy-MM-dd' — 요일/시간만 바뀌는 요청은 승인 즉시(오늘), 횟수 변경은 다음 달 1일
+  currentDays: string[]; currentTime: string; currentPassType: string; currentInstructorId: string;
+  requestedDays: string[]; requestedTime: string; requestedPassType: string; requestedInstructorId: string;
+  requestedPaymentPlanId: string; // 승인 시 이 값으로 paymentPlanId를 교체(빈 문자열이면 기존 유지)
+  priceBefore: number; priceAfter: number; // 학부모 앱에서 안내한 변경 전/후 월 금액(승인 시 paymentAmount에 반영)
+  isFrequencyChange: boolean; // 주당 횟수가 바뀌는 요청인지 — 배지 표시용
+  isPriceChange: boolean; // 금액이 달라지는 변경인지(횟수 변경뿐 아니라 동일 횟수라도 시간대별 금액 차이가 있는 경우 포함)
+  effectiveDate: string; // 'yyyy-MM-dd' — 학부모가 직접 선택. 금액 변동이 없으면 이번 달, 있으면 다음 달 중에서 선택
   status: 'pending' | 'approved' | 'rejected';
   requestedAt: string; resolvedAt: string;
+};
+
+// 강사에게 개별적으로 전달하는 알림(반변경 등) — 학생 대상 NotificationRecord와 달리 강사 ID를 직접 대상으로 함
+export type InstructorNotice = {
+  id: string; instructorId: string; title: string; content: string; createdAt: string;
 };
 
 // 결석 취소 가능 기간 추적 — 결석을 누른 시점 기준 3일 이내에는 취소 가능하지만,
@@ -256,6 +288,14 @@ export type PaymentPlan = {
   hasFreeSwim: boolean; sessionsPerWeek: number;
   monthlyPrice: number; description: string;
   sessionRates: number[]; // 등록일 기준 그 달 남은 횟수(1회~14회)별 일할 청구 금액 — 인덱스 0 = 1회
+  // 특정 시간대(예: 야간)에 추가 요금이 붙는 경우 — 없으면 시간에 상관없이 monthlyPrice/sessionRates 그대로 사용
+  timePriceOverrides?: { time: string; monthlyPrice: number; sessionRates: number[] }[];
+};
+
+// 플랜의 특정 시간대 금액을 조회 — timePriceOverrides에 일치하는 시간이 있으면 그 값을, 없으면 기본값을 반환
+export const resolvePlanPricing = (plan: PaymentPlan, time: string): { monthlyPrice: number; sessionRates: number[] } => {
+  const override = plan.timePriceOverrides?.find(o => o.time === time);
+  return override ? { monthlyPrice: override.monthlyPrice, sessionRates: override.sessionRates } : { monthlyPrice: plan.monthlyPrice, sessionRates: plan.sessionRates };
 };
 
 // 성인 자유수영 가능 시간대 — 관리자가 등록해두면 hasFreeSwim 플랜 학생이 학부모 앱에서 이 중 골라 예약함
@@ -792,9 +832,10 @@ type StoreContextType = {
   updateCounselingRecord: (id: string, updates: Partial<CounselingRecord>) => void;
   deleteCounselingRecord: (id: string) => void;
   scheduleChangeRequests: ScheduleChangeRequest[];
-  submitScheduleChangeRequest: (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange' | 'effectiveDate'>) => void;
+  submitScheduleChangeRequest: (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange'>) => void;
   approveScheduleChangeRequest: (id: string) => void;
   rejectScheduleChangeRequest: (id: string) => void;
+  instructorNotices: InstructorNotice[];
   // Student ops
   addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => void;
   updateStudent: (id: string, updates: Partial<Student>) => void;
@@ -920,6 +961,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [counselingRecords, setCounselingRecords] = useState<CounselingRecord[]>(INITIAL_COUNSELING_RECORDS);
   const [scheduleChangeRequests, setScheduleChangeRequests] = useState<ScheduleChangeRequest[]>([]);
+  const [instructorNotices, setInstructorNotices] = useState<InstructorNotice[]>([]);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
@@ -1134,34 +1176,50 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     if (req) pushSystemAlert(req.studentId, '[복귀 신청 반려]', '요청하신 복귀 신청이 반려되었습니다. 자세한 사항은 학원으로 문의해주세요.');
   };
 
-  // ── ScheduleChangeRequest (학부모 요일·시간·수강횟수 변경 요청) ───────
-  const submitScheduleChangeRequest = (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange' | 'effectiveDate'>) => {
+  // ── 강사 개별 알림 ──────────────────────────────────────────────
+  const pushInstructorNotice = (instructorId: string, title: string, content: string) => {
+    setInstructorNotices(prev => [...prev, { id: `in_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, instructorId, title, content, createdAt: format(new Date(), 'yyyy-MM-dd HH:mm') }]);
+  };
+
+  // ── ScheduleChangeRequest (학부모 반/요일·시간·수강횟수 변경 요청) ───────
+  const submitScheduleChangeRequest = (r: Omit<ScheduleChangeRequest, 'id' | 'status' | 'requestedAt' | 'resolvedAt' | 'isFrequencyChange'>) => {
     const isFrequencyChange = parseSessionsPerWeek(r.currentPassType) !== parseSessionsPerWeek(r.requestedPassType);
-    // 요일/시간만 바뀌는 요청은 당월(승인 즉시) 적용, 수강 횟수가 바뀌는 요청은 다음 달 1일부터 자동 적용되도록 예약
-    const effectiveDate = isFrequencyChange
-      ? format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd')
-      : format(new Date(), 'yyyy-MM-dd');
     setScheduleChangeRequests(prev => [...prev, {
-      ...r, id: `sc_${Date.now()}`, isFrequencyChange, effectiveDate, status: 'pending',
+      ...r, id: `sc_${Date.now()}`, isFrequencyChange, status: 'pending',
       requestedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
     }]);
+    const summary = `${r.requestedDays.join('·')} ${r.requestedTime}(${r.priceAfter.toLocaleString()}원)로 반 변경 신청이 접수되었습니다. 관리자 승인 후 ${r.effectiveDate}부터 적용됩니다.`;
+    pushInstructorNotice(r.currentInstructorId, '[반변경 신청 — 담당 학생 이동 예정]', summary);
+    if (r.requestedInstructorId !== r.currentInstructorId) {
+      pushInstructorNotice(r.requestedInstructorId, '[반변경 신청 — 신규 학생 배정 예정]', summary);
+    }
   };
   const approveScheduleChangeRequest = (id: string) => {
     const req = scheduleChangeRequests.find(r => r.id === id);
     if (!req) return;
     updateEnrollment(req.studentId, req.enrollmentId, {
       regularDays: req.requestedDays, regularTime: req.requestedTime, passType: req.requestedPassType,
+      instructorId: req.requestedInstructorId,
+      ...(req.requestedPaymentPlanId ? { paymentPlanId: req.requestedPaymentPlanId } : {}),
     }, req.effectiveDate);
+    if (req.enrollmentId === 'primary' && req.isPriceChange) {
+      setStudents(prev => prev.map(s => s.id === req.studentId ? { ...s, paymentAmount: req.priceAfter } : s));
+    }
     setScheduleChangeRequests(prev => prev.map(r => r.id === id
       ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
-    const whenLabel = req.isFrequencyChange ? `${req.effectiveDate}부터 ` : '';
-    pushSystemAlert(req.studentId, '[일정 변경 승인]', `${whenLabel}${req.requestedDays.join('·')} ${req.requestedTime} · ${req.requestedPassType}(으)로 변경이 승인되었습니다.`);
+    const whenLabel = req.isPriceChange ? `${req.effectiveDate}부터 ` : '';
+    pushSystemAlert(req.studentId, '[반 변경 승인]', `${whenLabel}${req.requestedDays.join('·')} ${req.requestedTime} · ${req.requestedPassType}(으)로 변경이 승인되었습니다.`);
+    const approvedSummary = `${req.requestedDays.join('·')} ${req.requestedTime} 반변경이 관리자 승인되어 ${req.effectiveDate}부터 확정되었습니다.`;
+    pushInstructorNotice(req.currentInstructorId, '[반변경 승인 완료]', approvedSummary);
+    if (req.requestedInstructorId !== req.currentInstructorId) {
+      pushInstructorNotice(req.requestedInstructorId, '[반변경 승인 완료]', approvedSummary);
+    }
   };
   const rejectScheduleChangeRequest = (id: string) => {
     const req = scheduleChangeRequests.find(r => r.id === id);
     setScheduleChangeRequests(prev => prev.map(r => r.id === id
       ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
-    if (req) pushSystemAlert(req.studentId, '[일정 변경 반려]', '요청하신 일정 변경 신청이 반려되었습니다. 자세한 사항은 학원으로 문의해주세요.');
+    if (req) pushSystemAlert(req.studentId, '[반 변경 반려]', '요청하신 반 변경 신청이 반려되었습니다. 자세한 사항은 학원으로 문의해주세요.');
   };
 
   // ── Class ────────────────────────────────────────────────────
@@ -1469,6 +1527,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       messages, sendMessage,
       counselingRecords, addCounselingRecord, updateCounselingRecord, deleteCounselingRecord,
       scheduleChangeRequests, submitScheduleChangeRequest, approveScheduleChangeRequest, rejectScheduleChangeRequest,
+      instructorNotices,
       addStudent, updateStudent, deleteStudent, extendStudentClasses, deferStudentClasses,
       addEnrollment, updateEnrollment, cancelEnrollment, pauseEnrollmentLongTerm,
       withdrawalRequests, submitWithdrawalRequest, approveWithdrawalRequest, rejectWithdrawalRequest,

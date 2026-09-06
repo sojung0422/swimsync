@@ -220,7 +220,7 @@ export default function InstructorApp() {
     classes, students, instructors, makeupRequests, messages, settings, counselingRecords, makeupCancellations,
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
-    leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings,
+    leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings, instructorNotices,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
@@ -297,6 +297,20 @@ export default function InstructorApp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [myCancelledMakeups.map(r => r.id).join(',')]);
   const visibleCancelledMakeups = myCancelledMakeups.filter(r => !dismissedCancelIds.has(r.id));
+
+  // 반변경 신청/승인 안내 — 담당 학생이 내게서 나가거나(전) 내게로 새로 배정될 때(후) 표시됨
+  const myInstructorNotices = instructorNotices.filter(n => n.instructorId === instructorId).slice().reverse();
+  const noticeBellRef = useRef<Set<string>>(new Set());
+  const [dismissedNoticeIds, setDismissedNoticeIds] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const unplayed = myInstructorNotices.filter(n => !noticeBellRef.current.has(n.id));
+    if (unplayed.length > 0) {
+      playBellSound();
+      unplayed.forEach(n => noticeBellRef.current.add(n.id));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myInstructorNotices.map(n => n.id).join(',')]);
+  const visibleInstructorNotices = myInstructorNotices.filter(n => !dismissedNoticeIds.has(n.id));
 
   // 내 수업에 새로 배정된 보강 학생 (학부모가 예약하거나 운영진이 승인하는 즉시 여기 반영됨) — 오늘 이후
   const upcomingMakeupEntries = classes
@@ -406,6 +420,19 @@ export default function InstructorApp() {
           <div className="px-4 py-5">
             {activeTab === 'schedule' ? (
               <div className="space-y-4">
+                {visibleInstructorNotices.map(n => (
+                  <div key={n.id} className="bg-indigo-50 border border-indigo-200 rounded-2xl p-4 flex items-start gap-3">
+                    <Repeat className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-indigo-700 text-sm font-bold">{n.title}</p>
+                      <p className="text-indigo-600 text-xs mt-1 leading-relaxed">{n.content}</p>
+                      <button onClick={() => setDismissedNoticeIds(prev => new Set(prev).add(n.id))}
+                        className="text-xs font-semibold text-indigo-500 hover:text-indigo-700 mt-2 transition-colors">
+                        확인했어요
+                      </button>
+                    </div>
+                  </div>
+                ))}
                 {visibleCancelledMakeups.map(r => {
                   const student = students.find(s => s.id === r.studentId);
                   const cls = classes.find(c => c.id === r.classId);

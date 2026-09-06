@@ -56,6 +56,22 @@ export default function AdminSchedule() {
     return computeOpenMakeupSlots(cls, instructor?.maxCapacity ?? 5, absenceRecords);
   };
 
+  // 아직 반영되지 않은 반변경 — 승인 대기중이거나, 이미 승인됐지만 효력일(effectiveDate)이 아직 안 지난 경우
+  const isUpcomingChange = (r: { status: string; effectiveDate: string }) =>
+    r.status === 'pending' || (r.status === 'approved' && r.effectiveDate > todayStr);
+  // 반변경으로 인해 이 칸에서 곧 빠질 예정인 학생 — 이름·칸을 회색으로 표시
+  const getDepartingChange = (dayLabel: string, time: string, instructorId: string, studentId: string) =>
+    scheduleChangeRequests.find(r =>
+      isUpcomingChange(r) && r.studentId === studentId &&
+      r.currentInstructorId === instructorId && r.currentTime === time && r.currentDays.includes(dayLabel)
+    );
+  // 반변경으로 인해 이 칸에 곧 들어올 예정인 학생 — 파란색 예약 표시로 안내
+  const getArrivingChanges = (dayLabel: string, time: string, instructorId: string) =>
+    scheduleChangeRequests.filter(r =>
+      isUpcomingChange(r) &&
+      r.requestedInstructorId === instructorId && r.requestedTime === time && r.requestedDays.includes(dayLabel)
+    );
+
   const getClassesForDate = (date: Date) => classes.filter(c => c.date === format(date, 'yyyy-MM-dd'));
   const getEventsForDate  = (date: Date) => {
     const d = format(date, 'yyyy-MM-dd');
@@ -252,6 +268,8 @@ export default function AdminSchedule() {
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-lime-400" /> 신규 등록</span>
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> 보강</span>
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-violet-400" /> 요일·시간 변경</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> 반변경 예정(퇴실)</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-400" /> 반변경 예정(입실)</span>
                 </div>
                 <div className="overflow-x-auto">
                   <div style={{ minWidth: weekGridMinWidth }}>
@@ -291,13 +309,28 @@ export default function AdminSchedule() {
                           </div>
                           {weekDays.map(day => weekInstructors.map(inst => {
                             const dateStr = format(day, 'yyyy-MM-dd');
+                            const dayLabel = format(day, 'E', { locale: ko });
                             const cls = classes.find(c => c.date === dateStr && c.time === time && c.instructorId === inst.id);
                             const key = `${dateStr}-${inst.id}`;
-                            if (!cls) return <div key={key} className="border-r border-slate-100 p-1.5" />;
+                            const arrivingChanges = getArrivingChanges(dayLabel, time, inst.id);
+                            if (!cls) {
+                              if (arrivingChanges.length === 0) return <div key={key} className="border-r border-slate-100 p-1.5" />;
+                              return (
+                                <div key={key} className="border-r border-slate-100 p-1.5 flex flex-col gap-0.5 bg-blue-50">
+                                  {arrivingChanges.map(r => {
+                                    const s = students.find(st => st.id === r.studentId);
+                                    return <span key={r.id} className="text-[10px] truncate px-1 rounded border border-dashed border-blue-400 text-blue-700 font-bold bg-blue-100">{s?.studentName}(예정)</span>;
+                                  })}
+                                </div>
+                              );
+                            }
                             const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
+                            const hasArriving = arrivingChanges.length > 0;
+                            const hasDeparting = presentStudents.some(id => !!getDepartingChange(dayLabel, time, inst.id, id));
+                            const cellBg = hasArriving ? 'bg-blue-50' : hasDeparting ? 'bg-slate-100' : '';
                             return (
                               <div key={key} onClick={() => setSelectedClass(cls)}
-                                className="border-r border-slate-100 p-1.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col gap-0.5"
+                                className={`border-r border-slate-100 p-1.5 cursor-pointer hover:bg-slate-50 transition-colors flex flex-col gap-0.5 ${cellBg}`}
                                 style={{ borderLeft: `3px solid ${inst.color}` }}>
                                 <span className="text-[10px] font-black" style={{ color: inst.color }}>{presentStudents.length}명</span>
                                 {presentStudents.slice(0, 4).map(id => {
@@ -305,13 +338,18 @@ export default function AdminSchedule() {
                                   const isMakeup = cls.makeupStudentIds.includes(id);
                                   const isNew = s ? isRecentlyEnrolled(s) : false;
                                   const isChanged = s ? isRecentlyScheduleChanged(s.id, scheduleChangeRequests) : false;
-                                  const badgeCls = isNew ? 'bg-lime-100 text-lime-700 font-bold' : isChanged ? 'bg-violet-100 text-violet-700 font-bold' : isMakeup ? 'bg-orange-100 text-orange-600 font-bold' : 'text-slate-600';
+                                  const isDeparting = s ? !!getDepartingChange(dayLabel, time, inst.id, s.id) : false;
+                                  const badgeCls = isDeparting ? 'bg-slate-200 text-slate-400 line-through' : isNew ? 'bg-lime-100 text-lime-700 font-bold' : isChanged ? 'bg-violet-100 text-violet-700 font-bold' : isMakeup ? 'bg-orange-100 text-orange-600 font-bold' : 'text-slate-600';
                                   return (
                                     <span key={id} className={`text-[10px] truncate px-1 rounded ${badgeCls}`}>{s?.studentName}</span>
                                   );
                                 })}
                                 {presentStudents.length > 4 && <span className="text-[9px] text-slate-400 px-1">+{presentStudents.length - 4}명 더</span>}
                                 {presentStudents.length === 0 && <span className="text-[9.5px] text-slate-300 italic">비어있음</span>}
+                                {arrivingChanges.map(r => {
+                                  const s = students.find(st => st.id === r.studentId);
+                                  return <span key={r.id} className="text-[10px] truncate px-1 rounded border border-dashed border-blue-400 text-blue-700 font-bold bg-blue-100">{s?.studentName}(예정)</span>;
+                                })}
                               </div>
                             );
                           }))}
@@ -354,8 +392,10 @@ export default function AdminSchedule() {
                         </div>
                         {weekDays.map((day, i) => {
                           const dateStr = format(day, 'yyyy-MM-dd');
+                          const dayLabel = format(day, 'E', { locale: ko });
                           const isToday = isSameDay(day, new Date());
                           const dayClasses = classes.filter(c => c.date === dateStr && c.time === time && c.instructorId === selectedInstructorId);
+                          const arrivingChanges = getArrivingChanges(dayLabel, time, selectedInstructorId);
                           return (
                             <div key={i} className={`border-r border-slate-100 last:border-r-0 flex flex-col p-1.5 gap-1.5 ${isToday ? 'bg-cyan-50/30' : ''}`}>
                               {dayClasses.map(cls => {
@@ -369,16 +409,20 @@ export default function AdminSchedule() {
                                       const isMakeup = cls.makeupStudentIds.includes(id);
                                       const isNew = s ? isRecentlyEnrolled(s) : false;
                                       const isChanged = s ? isRecentlyScheduleChanged(s.id, scheduleChangeRequests) : false;
+                                      const isDeparting = s ? !!getDepartingChange(dayLabel, time, selectedInstructorId, s.id) : false;
                                       const vehicle = vehicles.find(v => v.id === s?.vehicleId);
                                       const isHit = searchMatches(s?.studentName);
                                       return (
                                         <div key={id} onClick={() => setSelectedClass(cls)}
-                                          className={`rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold ${isHit ? 'ring-2 ring-amber-400' : ''}`}
-                                          style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
+                                          className={`rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold ${isHit ? 'ring-2 ring-amber-400' : ''} ${isDeparting ? 'line-through' : ''}`}
+                                          style={isDeparting
+                                            ? { backgroundColor: '#f1f5f9', borderLeftColor: '#94a3b8', borderTopColor: '#e2e8f0', borderRightColor: '#e2e8f0', borderBottomColor: '#e2e8f0', borderWidth: '1px', borderLeftWidth: '3px', color: '#94a3b8' }
+                                            : { backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
                                           {s?.studentName}
-                                          {isNew && <span className="ml-1 text-[9px] bg-lime-100 text-lime-700 px-1 rounded">신규</span>}
-                                          {isChanged && <span className="ml-1 text-[9px] bg-violet-100 text-violet-700 px-1 rounded">반변경</span>}
-                                          {isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
+                                          {isDeparting && <span className="ml-1 text-[9px] bg-slate-200 text-slate-500 px-1 rounded no-underline inline-block">반변경 예정(퇴실)</span>}
+                                          {!isDeparting && isNew && <span className="ml-1 text-[9px] bg-lime-100 text-lime-700 px-1 rounded">신규</span>}
+                                          {!isDeparting && isChanged && <span className="ml-1 text-[9px] bg-violet-100 text-violet-700 px-1 rounded">반변경</span>}
+                                          {!isDeparting && isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
                                           <div className="text-[9.5px] font-normal opacity-70 mt-0.5">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
                                         </div>
                                       );
@@ -394,6 +438,15 @@ export default function AdminSchedule() {
                                       );
                                     })}
                                     {presentStudents.length === 0 && cls.absentStudentIds.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
+                                  </div>
+                                );
+                              })}
+                              {arrivingChanges.map(r => {
+                                const s = students.find(st => st.id === r.studentId);
+                                return (
+                                  <div key={r.id} className="rounded-lg px-2 py-1.5 border-l-[3px] border-dashed border-blue-400 bg-blue-50 text-blue-700 text-[11px] font-bold">
+                                    {s?.studentName}
+                                    <span className="ml-1 text-[9px] bg-blue-100 text-blue-700 px-1 rounded inline-block">반변경 예정(입실)</span>
                                   </div>
                                 );
                               })}
