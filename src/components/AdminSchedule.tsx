@@ -341,8 +341,14 @@ export default function AdminSchedule() {
                                   const isChanged = s ? isRecentlyScheduleChanged(s.id, scheduleChangeRequests) : false;
                                   const isDeparting = s ? !!getDepartingChange(dayLabel, time, inst.id, s.id) : false;
                                   const badgeCls = isDeparting ? 'bg-slate-200 text-slate-400 line-through' : isNew ? 'bg-lime-100 text-lime-700 font-bold' : isChanged ? 'bg-violet-100 text-violet-700 font-bold' : isMakeup ? 'bg-orange-100 text-orange-600 font-bold' : 'text-slate-600';
+                                  const vehicle = vehicles.find(v => v.id === s?.vehicleId);
                                   return (
-                                    <span key={id} className={`text-[10px] truncate px-1 rounded ${badgeCls}`}>{s?.studentName}</span>
+                                    <span key={id} className="block">
+                                      <span className={`text-[10px] truncate px-1 rounded ${badgeCls}`}>{s?.studentName}</span>
+                                      {s?.category === 'child' && (
+                                        <span className="block text-[9px] text-slate-400 px-1 truncate">{s.age}세 · {s.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</span>
+                                      )}
+                                    </span>
                                   );
                                 })}
                                 {presentStudents.length > 4 && <span className="text-[9px] text-slate-400 px-1">+{presentStudents.length - 4}명 더</span>}
