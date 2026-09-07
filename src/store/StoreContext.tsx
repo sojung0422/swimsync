@@ -452,13 +452,39 @@ const INITIAL_INSTRUCTORS: Instructor[] = [
     position: '수석강사', department: '강습팀', workDays: ['월', '수', '금', '토'], workTimeStart: '13:00', workTimeEnd: '20:00',
     dutyNote: '고급반/경기반 담당', vehicleNumber: '', address: '', memo: '', status: 'active',
     monthlySalary: 3200000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 0 },
+  { id: 'i4', name: '정하나', nickname: '', maxCapacity: 5, type: '정규', color: '#7c3aed', jobType: '강사', role: '주임',
+    phone: '010-5555-1111', officePhone: '02-555-1234', extNumber: '103', hireDate: '2023-09-01',
+    position: '주임', department: '강습팀', workDays: ['화', '목', '토'], workTimeStart: '14:00', workTimeEnd: '19:00',
+    dutyNote: '초급반 보조 총괄', vehicleNumber: '', address: '', memo: '', status: 'active',
+    monthlySalary: 2600000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 2 },
+  { id: 'i5', name: '최민서', nickname: '', maxCapacity: 5, type: '파트', color: '#db2777', jobType: '강사', role: '사원',
+    phone: '010-5555-2222', officePhone: '', extNumber: '', hireDate: '2025-02-01',
+    position: '강사', department: '강습팀', workDays: ['월', '화', '목'], workTimeStart: '15:00', workTimeEnd: '21:00',
+    dutyNote: '', vehicleNumber: '', address: '', memo: '', status: 'active',
+    monthlySalary: 0, hourlyRate: 22000,
+    rateSlots: [
+      { id: 'rs2', days: ['월', '화', '목'], startTime: '15:00', endTime: '18:00', hourlyRate: 22000 },
+      { id: 'rs3', days: ['화', '목'], startTime: '19:00', endTime: '21:00', hourlyRate: 32000 },
+    ],
+    annualLeaveTotal: 0, annualLeaveUsed: 0 },
+  { id: 'i6', name: '김도윤', nickname: '', maxCapacity: 0, type: '정규', color: '#64748b', jobType: '데스크', role: '데스크',
+    phone: '010-5555-3333', officePhone: '02-555-1234', extNumber: '100', hireDate: '2024-01-05',
+    position: '데스크 담당', department: '운영팀', workDays: ['월', '화', '수', '목', '금'], workTimeStart: '13:00', workTimeEnd: '21:00',
+    dutyNote: '접수·상담 응대', vehicleNumber: '', address: '', memo: '', status: 'active',
+    monthlySalary: 2400000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 4 },
+  { id: 'i7', name: '이도현', nickname: '', maxCapacity: 0, type: '정규', color: '#0d9488', jobType: '관리', role: '차량',
+    phone: '010-5555-4444', officePhone: '02-555-1234', extNumber: '104', hireDate: '2023-11-20',
+    position: '차량 관리자', department: '운영팀', workDays: ['월', '화', '수', '목', '금', '토'], workTimeStart: '13:30', workTimeEnd: '18:30',
+    dutyNote: '차량 배차·노선 관리', vehicleNumber: '', address: '', memo: '', status: 'active',
+    monthlySalary: 2500000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 0 },
 ];
 
 export const INITIAL_LESSON_CLASSES: LessonClass[] = [
   { id: 'lc1', name: '초급반 A', description: '수영 기초 과정 (오전)', defaultTime: '15:00', capacity: 5, eligibilityCondition: '만 5~9세, 수영 초경험자' },
-  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)', defaultTime: '15:00', capacity: 5, eligibilityCondition: '만 5~9세, 수영 초경험자' },
-  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전', defaultTime: '16:00', capacity: 6, eligibilityCondition: '자유형 25m 완주 가능자' },
+  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)', defaultTime: '15:00', capacity: 4, eligibilityCondition: '만 5~9세, 수영 초경험자' },
+  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전', defaultTime: '16:00', capacity: 5, eligibilityCondition: '자유형 25m 완주 가능자' },
   { id: 'lc4', name: '고급반', description: '경기 준비 및 고급 영법', defaultTime: '17:00', capacity: 6, eligibilityCondition: '4영법 모두 가능자' },
+  { id: 'lc5', name: '성인반', description: '성인 수영 강습', defaultTime: '19:00', capacity: 8, eligibilityCondition: '성인 (만 19세 이상)' },
 ];
 
 // "주 N회" 문자열과 월 기준 정가로부터 1회~14회 일할 청구 요금표를 선형 비례로 자동 계산 (관리자가 이후 개별 조정 가능)
@@ -617,10 +643,15 @@ const INITIAL_VEHICLES: Vehicle[] = [
 
 const INITIAL_PAYMENT_PLANS: PaymentPlan[] = [
   { id: 'pp1', name: '정규 주1회 탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 1, monthlyPrice: 160000, description: '아동 기본 수영 강습 (주 1회, 차량 탑승 포함)', sessionRates: computeLinearSessionRates(160000, 1) },
-  { id: 'pp2', name: '정규 주2회 탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 285000, description: '아동 기본 수영 강습 (주 2회, 차량 탑승 포함)', sessionRates: computeLinearSessionRates(285000, 2) },
+  {
+    id: 'pp2', name: '정규 주2회 탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 285000, description: '아동 기본 수영 강습 (주 2회, 차량 탑승 포함)', sessionRates: computeLinearSessionRates(285000, 2),
+    // 야간(20시) 수업은 동일 주 2회라도 할증 요금 적용 — 반 변경 시 시간대별 금액 차이 시연용
+    timePriceOverrides: [{ time: '20:00', monthlyPrice: 320000, sessionRates: computeLinearSessionRates(320000, 2) }],
+  },
   { id: 'pp3', name: '정규 주2회 미탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 2, monthlyPrice: 275000, description: '아동 기본 수영 강습 (주 2회, 차량 미탑승)', sessionRates: computeLinearSessionRates(275000, 2) },
   { id: 'pp4', name: '성인 주3회', category: 'adult', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 130000, description: '성인 기초 수영 (주 3회)', sessionRates: computeLinearSessionRates(130000, 3) },
   { id: 'pp5', name: '성인 주5회+자유수영', category: 'adult', hasFreeSwim: true, sessionsPerWeek: 5, monthlyPrice: 180000, description: '성인 집중 + 자유수영 포함', sessionRates: computeLinearSessionRates(180000, 5) },
+  { id: 'pp6', name: '정규 주3회 탑승', category: 'child', hasFreeSwim: false, sessionsPerWeek: 3, monthlyPrice: 400000, description: '아동 기본 수영 강습 (주 3회, 차량 탑승 포함)', sessionRates: computeLinearSessionRates(400000, 3) },
 ];
 
 const INITIAL_SETTINGS: AcademySettings = {
@@ -648,8 +679,8 @@ const INITIAL_SETTINGS: AcademySettings = {
     ],
     overtimeHourlyRate: 15000,
   },
-  closedDates: [],
-  skipFifthWeekOccurrence: false,
+  closedDates: [format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-') + '15'],
+  skipFifthWeekOccurrence: true,
   freeSwimSlots: [
     { id: 'fs1', days: ['월', '수', '금'], startTime: '20:00', endTime: '21:00', instructorId: 'i3' },
     { id: 'fs2', days: ['화', '목'], startTime: '19:00', endTime: '20:00', instructorId: 'i3' },
@@ -660,10 +691,13 @@ const INITIAL_SETTINGS: AcademySettings = {
   ],
 };
 
-const INITIAL_FREE_SWIM_BOOKINGS: FreeSwimBooking[] = [];
+const INITIAL_FREE_SWIM_BOOKINGS: FreeSwimBooking[] = [
+  { id: 'fsb1', studentId: 's7', slotId: 'fs1', date: format(addDays(new Date(), 4), 'yyyy-MM-dd'), status: 'booked', createdAt: format(addDays(new Date(), -2), 'yyyy-MM-dd HH:mm') },
+];
 const INITIAL_LEADS: LeadRecord[] = [
-  { id: 'lead1', name: '최지우 학부모', phone: '010-3333-4444', category: '정규문의', note: '초등 1학년, 월수 오후 시간대 희망', status: 'open', createdAt: format(addDays(new Date(), -3), 'yyyy-MM-dd HH:mm') },
+  { id: 'lead1', name: '최지우 학부모', phone: '010-2233-4455', category: '정규문의', note: '초등 1학년, 월수 오후 시간대 희망', status: 'open', createdAt: format(addDays(new Date(), -3), 'yyyy-MM-dd HH:mm') },
   { id: 'lead2', name: '한서연 학부모', phone: '010-5555-6666', category: '대기', note: '체험 후 정원 마감으로 대기', status: 'open', createdAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm') },
+  { id: 'lead3', name: '오지안 학부모', phone: '010-6677-8899', category: '정규수강', note: '문의 후 초급반 A 정규 등록으로 전환됨', status: 'converted', createdAt: format(addDays(new Date(), -20), 'yyyy-MM-dd HH:mm') },
 ];
 
 const INITIAL_DISCOUNTS: Discount[] = [
@@ -671,11 +705,30 @@ const INITIAL_DISCOUNTS: Discount[] = [
   { id: 'disc2', name: '형제 3인 이상 할인', kind: 'sibling', percent: 10, minSiblingCount: 3, startDate: '', endDate: '', active: true },
 ];
 
-const INITIAL_WAITLIST: WaitlistEntry[] = [];
-const INITIAL_PAYROLL_RECORDS: PayrollRecord[] = [];
-const INITIAL_LEVEL_TEST_RECORDS: LevelTestRecord[] = [];
-const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [];
-const INITIAL_SUB_REQUESTS: SubRequest[] = [];
+const INITIAL_WAITLIST: WaitlistEntry[] = [
+  { id: 'wl1', studentName: '정하윤', parentPhone: '010-7788-9900', lessonClassId: 'lc2', desiredDays: ['화', '목'], desiredTime: '15:00',
+    category: 'child', note: '체험 후 정원 마감으로 대기 등록', status: 'waiting',
+    requestedAt: format(addDays(new Date(), -6), 'yyyy-MM-dd HH:mm'), notifiedAt: '' },
+];
+const INITIAL_PAYROLL_RECORDS: PayrollRecord[] = [
+  { id: 'payroll1', instructorId: 'i1', month: format(addMonths(new Date(), -1), 'yyyy-MM'), payType: '정규',
+    baseAmount: 2800000, hourlyRate: 0, hoursWorked: 0,
+    incentiveAmount: 20000, overtimeHours: 3, overtimeAmount: 45000,
+    campIncentive: 150000, survivalSwimIncentive: 200000, privateLessonFee: 80000,
+    totalAmount: 2800000 + 20000 + 45000 + 150000 + 200000 + 80000,
+    issuedAt: format(addDays(startOfMonth(new Date()), -3), 'yyyy-MM-dd HH:mm'), note: '' },
+];
+const INITIAL_LEVEL_TEST_RECORDS: LevelTestRecord[] = [
+  { id: 'lvl1', studentId: 's1', instructorId: 'i1', testDate: format(addDays(new Date(), -12), 'yyyy-MM-dd'),
+    previousLevel: '초급', resultLevel: '중급', passed: true, note: '자유형 25m 완주 성공',
+    createdAt: format(addDays(new Date(), -12), 'yyyy-MM-dd HH:mm') },
+];
+const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
+  { id: 'leave1', instructorId: 'i4', date: format(addDays(new Date(), -8), 'yyyy-MM-dd'), leaveType: 'annual', reason: '개인 사유',
+    status: 'approved', requestedAt: format(addDays(new Date(), -10), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addDays(new Date(), -9), 'yyyy-MM-dd HH:mm'), resolvedBy: 'i3' },
+  { id: 'leave2', instructorId: 'i3', date: format(addDays(new Date(), 5), 'yyyy-MM-dd'), leaveType: 'half', reason: '병원 진료',
+    status: 'pending', requestedAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm'), resolvedAt: null, resolvedBy: null },
+];
 
 export const getMakeupLimitForSessions = (policies: MakeupPolicyRule[], sessionsPerWeek: number): number =>
   policies.find(p => p.sessionsPerWeek === sessionsPerWeek)?.maxMakeups ?? 2;
@@ -684,31 +737,31 @@ const INITIAL_STUDENTS: Student[] = [
   {
     id: 's1', studentNumber: '2025-001', nickname: '',
     parentName: '김어머니', studentName: '김민준',
-    age: 8, birthDate: '2016-03-15', registrationDate: '2025-01-10', gender: '남',
+    age: 10, birthDate: '2016-03-15', registrationDate: '2025-01-10', gender: '남',
     lessonClassId: 'lc1', level: '초급', region: '서울시 강남구',
     phone: '', motherPhone: '010-1111-2222', fatherPhone: '', smsRecipients: ['mother'],
     passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
     instructorId: 'i1', regularDays: ['월', '수'], regularTime: '15:00',
     notes: '물을 조금 무서워함', progress: '자유형 발차기', status: 'active',
-    paymentAmount: 120000, paymentDate: '2025-01-10', paymentRenewalDate: '2025-02-10',
+    paymentAmount: 285000, paymentDate: format(addDays(new Date(), -20), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 10), 'yyyy-MM-dd'),
     paymentCompleted: true, studentPhoto: '',
     address: '서울시 강남구 역삼동 123-45', vehicleId: 'v1',
-    category: 'child', paymentPlanId: 'pp1', division: '정규반',
+    category: 'child', paymentPlanId: 'pp2', division: '정규반',
     additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   },
   {
     id: 's2', studentNumber: '2025-002', nickname: '',
     parentName: '이아버지', studentName: '이서연',
-    age: 10, birthDate: '2014-07-22', registrationDate: '2025-01-15', gender: '여',
+    age: 12, birthDate: '2014-07-22', registrationDate: '2025-01-15', gender: '여',
     lessonClassId: 'lc3', level: '중급', region: '서울시 서초구',
-    phone: '', motherPhone: '', fatherPhone: '010-3333-4444', smsRecipients: ['father'],
-    passType: '주 3회', totalClasses: 12, rescheduleLimit: 2, usedReschedules: 1,
+    phone: '', motherPhone: '010-3333-9999', fatherPhone: '010-3333-4444', smsRecipients: ['father', 'mother'],
+    passType: '주 3회', totalClasses: 12, rescheduleLimit: 3, usedReschedules: 1,
     instructorId: 'i1', regularDays: ['월', '수', '금'], regularTime: '16:00',
     notes: '자유형 호흡 교정 필요', progress: '배영 50m 완주', status: 'active',
-    paymentAmount: 150000, paymentDate: '2025-01-15', paymentRenewalDate: '2025-02-15',
+    paymentAmount: 400000, paymentDate: format(addDays(new Date(), -15), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 15), 'yyyy-MM-dd'),
     paymentCompleted: true, studentPhoto: '',
     address: '서울시 서초구 방배동 67-89', vehicleId: 'v1',
-    category: 'child', paymentPlanId: 'pp2', division: '정규반',
+    category: 'child', paymentPlanId: 'pp6', division: '정규반',
     additionalEnrollments: [
       {
         id: 'enr_s2_1', lessonClassId: 'lc4', instructorId: 'i3',
@@ -722,16 +775,107 @@ const INITIAL_STUDENTS: Student[] = [
   {
     id: 's3', studentNumber: '2025-003', nickname: '',
     parentName: '박어머니', studentName: '박지호',
-    age: 7, birthDate: '2017-11-05', registrationDate: '2025-02-01', gender: '남',
+    age: 8, birthDate: '2017-11-05', registrationDate: '2025-02-01', gender: '남',
     lessonClassId: 'lc2', level: '초급', region: '서울시 송파구',
     phone: '', motherPhone: '010-5555-6666', fatherPhone: '', smsRecipients: ['mother'],
     passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
     instructorId: 'i2', regularDays: ['화', '목'], regularTime: '15:00',
     notes: '활발함', progress: '음파 호흡법', status: 'active',
-    paymentAmount: 120000, paymentDate: '2025-02-01', paymentRenewalDate: '2025-03-01',
+    paymentAmount: 285000, paymentDate: format(addDays(new Date(), -50), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), -20), 'yyyy-MM-dd'),
     paymentCompleted: false, studentPhoto: '',
     address: '서울시 송파구 잠실동 456-78', vehicleId: 'v2',
+    category: 'child', paymentPlanId: 'pp2', division: '유치부',
+    customDiscount: { kind: 'percent', value: 5, active: true },
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
+  },
+  {
+    id: 's4', studentNumber: '2026-004', nickname: '',
+    parentName: '김어머니', studentName: '김수아',
+    age: 8, birthDate: '2018-05-20', registrationDate: format(addDays(new Date(), -5), 'yyyy-MM-dd'), gender: '여',
+    lessonClassId: 'lc1', level: '초급', region: '서울시 강남구',
+    phone: '', motherPhone: '010-1111-2222', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i4', regularDays: ['화', '목'], regularTime: '16:00',
+    notes: '김민준 동생', progress: '물 적응 단계', status: 'active',
+    paymentAmount: 275000, paymentDate: format(addDays(new Date(), -5), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 25), 'yyyy-MM-dd'),
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 강남구 역삼동 123-45', vehicleId: '',
+    category: 'child', paymentPlanId: 'pp3', division: '정규반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
+  },
+  {
+    id: 's5', studentNumber: '2025-005', nickname: '',
+    parentName: '오아버지', studentName: '오채원',
+    age: 9, birthDate: '2017-02-10', registrationDate: '2025-03-01', gender: '여',
+    lessonClassId: 'lc1', level: '초급', region: '서울시 강남구',
+    phone: '', motherPhone: '', fatherPhone: '010-2222-7777', smsRecipients: ['father'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i1', regularDays: ['월', '수'], regularTime: '15:00',
+    notes: '', progress: '음파 호흡법', status: 'active',
+    paymentAmount: 285000, paymentDate: format(addDays(new Date(), -18), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 12), 'yyyy-MM-dd'),
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 강남구 도곡동 12-3', vehicleId: 'v1',
+    category: 'child', paymentPlanId: 'pp2', division: '정규반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
+  },
+  {
+    id: 's6', studentNumber: '2025-006', nickname: '',
+    parentName: '', studentName: '김하늘',
+    age: 29, birthDate: '1997-04-12', registrationDate: '2025-04-01', gender: '여',
+    lessonClassId: 'lc5', level: '중급', region: '서울시 강남구',
+    phone: '010-8888-1111', motherPhone: '', fatherPhone: '', smsRecipients: ['self'],
+    passType: '주 3회', totalClasses: 12, rescheduleLimit: 3, usedReschedules: 0,
+    instructorId: 'i3', regularDays: ['월', '수', '금'], regularTime: '19:00',
+    notes: '', progress: '자유형·배영 가능', status: 'active',
+    paymentAmount: 130000, paymentDate: format(addDays(new Date(), -10), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 20), 'yyyy-MM-dd'),
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 강남구 대치동 45-6', vehicleId: '',
+    category: 'adult', paymentPlanId: 'pp4', division: '성인반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
+  },
+  {
+    id: 's7', studentNumber: '2025-007', nickname: '',
+    parentName: '', studentName: '이준호',
+    age: 34, birthDate: '1992-01-08', registrationDate: '2025-05-01', gender: '남',
+    lessonClassId: 'lc5', level: '고급', region: '서울시 서초구',
+    phone: '010-8888-2222', motherPhone: '', fatherPhone: '', smsRecipients: ['self'],
+    passType: '주 5회', totalClasses: 20, rescheduleLimit: 4, usedReschedules: 0,
+    instructorId: 'i3', regularDays: ['월', '화', '수', '목', '금'], regularTime: '18:00',
+    notes: '자유수영 병행 희망', progress: '4영법 모두 가능', status: 'active',
+    paymentAmount: 180000, paymentDate: format(addDays(new Date(), -8), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 22), 'yyyy-MM-dd'),
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 서초구 반포동 78-9', vehicleId: '',
+    category: 'adult', paymentPlanId: 'pp5', division: '성인반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
+  },
+  {
+    id: 's8', studentNumber: '2025-008', nickname: '',
+    parentName: '최어머니', studentName: '최도윤',
+    age: 10, birthDate: '2016-08-01', registrationDate: '2025-06-01', gender: '남',
+    lessonClassId: 'lc2', level: '초급', region: '서울시 송파구',
+    phone: '', motherPhone: '010-9988-7766', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 1회', totalClasses: 4, rescheduleLimit: 1, usedReschedules: 0,
+    instructorId: 'i2', regularDays: ['토'], regularTime: '14:00',
+    notes: '해외 출장으로 장기 휴강 중', progress: '', status: 'deferred',
+    paymentAmount: 160000, paymentDate: format(addDays(new Date(), -60), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), -30), 'yyyy-MM-dd'),
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 송파구 문정동 34-5', vehicleId: 'v2',
     category: 'child', paymentPlanId: 'pp1', division: '유치부',
+    additionalEnrollments: [], pauseReason: '해외 출장', expectedReturnDate: format(addDays(new Date(), 60), 'yyyy-MM-dd'), withdrawalReason: '',
+  },
+  {
+    id: 's9', studentNumber: '2025-009', nickname: '',
+    parentName: '한어머니', studentName: '한소율',
+    age: 9, birthDate: '2016-12-01', registrationDate: '2025-08-01', gender: '여',
+    lessonClassId: 'lc1', level: '중급', region: '서울시 강남구',
+    phone: '', motherPhone: '010-4433-2211', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i5', regularDays: ['화', '목'], regularTime: '20:00',
+    notes: '야간반 (직장인 부모 하원 시간 맞춤)', progress: '자유형 25m 가능', status: 'active',
+    paymentAmount: 320000, paymentDate: format(addDays(new Date(), -22), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), 8), 'yyyy-MM-dd'),
+    paymentCompleted: true, studentPhoto: '',
+    address: '서울시 강남구 삼성동 90-1', vehicleId: '',
+    category: 'child', paymentPlanId: 'pp2', division: '정규반',
     additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   },
 ];
@@ -785,6 +929,43 @@ const generateMockClasses = () => {
 };
 
 const INITIAL_CLASSES = generateMockClasses();
+
+// 대타 요청 예시 — i1(김수영)의 며칠 뒤 수업 하나를 대상으로 이미 열려 있는(아직 수락 전) 대타 요청
+const upcomingI1Class = INITIAL_CLASSES.find(c => c.instructorId === 'i1' && c.date === format(addDays(new Date(), 3), 'yyyy-MM-dd'))
+  ?? INITIAL_CLASSES.find(c => c.instructorId === 'i1' && c.date > format(new Date(), 'yyyy-MM-dd'));
+const INITIAL_SUB_REQUESTS: SubRequest[] = upcomingI1Class ? [
+  { id: 'sub1', classId: upcomingI1Class.id, date: upcomingI1Class.date, time: upcomingI1Class.time,
+    requestingInstructorId: 'i1', substituteInstructorId: null, status: 'open', reason: '개인 사정',
+    createdAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm'), filledAt: null },
+] : [];
+
+// 반변경 신청 예시 — 김민준이 같은 반(초급반 A) 안에서 야간 시간대로 이동 신청 (금액 변동 있어 다음 달부터 적용 대기중)
+const INITIAL_SCHEDULE_CHANGE_REQUESTS: ScheduleChangeRequest[] = [
+  {
+    id: 'sc1', studentId: 's1', enrollmentId: 'primary',
+    currentDays: ['월', '수'], currentTime: '15:00', currentPassType: '주 2회', currentInstructorId: 'i1',
+    requestedDays: ['화', '목'], requestedTime: '20:00', requestedPassType: '주 2회', requestedInstructorId: 'i5',
+    requestedPaymentPlanId: 'pp2', priceBefore: 285000, priceAfter: 320000,
+    isFrequencyChange: false, isPriceChange: true,
+    effectiveDate: format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd'),
+    status: 'pending', requestedAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm'), resolvedAt: '',
+  },
+];
+
+const INITIAL_INSTRUCTOR_NOTICES: InstructorNotice[] = [
+  { id: 'in1', instructorId: 'i1', title: '[반변경 신청 — 담당 학생 이동 예정]',
+    content: '화·목 20:00(320,000원)로 반 변경 신청이 접수되었습니다. 관리자 승인 후 적용됩니다.',
+    createdAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm') },
+  { id: 'in2', instructorId: 'i5', title: '[반변경 신청 — 신규 학생 배정 예정]',
+    content: '화·목 20:00(320,000원)로 반 변경 신청이 접수되었습니다. 관리자 승인 후 적용됩니다.',
+    createdAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm') },
+];
+
+const INITIAL_WITHDRAWAL_REQUESTS: WithdrawalRequest[] = [
+  { id: 'wr1', studentId: 's8', enrollmentId: 'primary', reason: '해외 이주 예정', requestedBy: 'parent',
+    status: 'pending', requestedAt: format(addDays(new Date(), -2), 'yyyy-MM-dd HH:mm'), resolvedAt: '' },
+];
+
 const INITIAL_EVENTS: AcademyEvent[] = [
   { id: 'e1', date: format(new Date(), 'yyyy-MM-dd'), endDate: format(new Date(), 'yyyy-MM-dd'), title: '수영장 정기 소독', type: 'notice' },
   { id: 'e2', date: format(addDays(new Date(), 2), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 5), 'yyyy-MM-dd'), title: '여름방학 특강 접수', type: 'event' },
@@ -795,11 +976,12 @@ const INITIAL_NOTIFICATIONS: NotificationRecord[] = [
 
 const monthsAgo = (n: number) => format(addDays(startOfMonth(new Date()), -30 * n), 'yyyy-MM');
 const INITIAL_PAYMENT_RECORDS: PaymentRecord[] = [
-  { id: 'pr1', studentId: 's1', enrollmentId: 'primary', billingMonth: monthsAgo(1), targetAmount: 120000, paidAmount: 120000, paidAt: format(addDays(new Date(), -35), 'yyyy-MM-dd'), method: 'card', status: 'paid', note: '' },
-  { id: 'pr2', studentId: 's1', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 120000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '' },
-  { id: 'pr3', studentId: 's2', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 150000, paidAmount: 150000, paidAt: format(addDays(new Date(), -10), 'yyyy-MM-dd'), method: 'transfer', status: 'paid', note: '' },
+  { id: 'pr1', studentId: 's1', enrollmentId: 'primary', billingMonth: monthsAgo(1), targetAmount: 285000, paidAmount: 285000, paidAt: format(addDays(new Date(), -50), 'yyyy-MM-dd'), method: 'card', status: 'paid', note: '' },
+  { id: 'pr2', studentId: 's1', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 285000, paidAmount: 285000, paidAt: format(addDays(new Date(), -20), 'yyyy-MM-dd'), method: 'card', status: 'paid', note: '' },
+  { id: 'pr3', studentId: 's2', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 400000, paidAmount: 400000, paidAt: format(addDays(new Date(), -15), 'yyyy-MM-dd'), method: 'transfer', status: 'paid', note: '' },
   { id: 'pr4', studentId: 's2', enrollmentId: 'enr_s2_1', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 60000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '고급반 추가 수강' },
-  { id: 'pr5', studentId: 's3', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 120000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '' },
+  { id: 'pr5', studentId: 's3', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 285000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '' },
+  { id: 'pr6', studentId: 's4', enrollmentId: 'primary', billingMonth: format(new Date(), 'yyyy-MM'), targetAmount: 275000, paidAmount: 0, paidAt: '', method: '', status: 'unpaid', note: '신규 등록' },
 ];
 
 const INITIAL_COUNSELING_RECORDS: CounselingRecord[] = [
@@ -962,9 +1144,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(INITIAL_PAYMENT_RECORDS);
   const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
   const [counselingRecords, setCounselingRecords] = useState<CounselingRecord[]>(INITIAL_COUNSELING_RECORDS);
-  const [scheduleChangeRequests, setScheduleChangeRequests] = useState<ScheduleChangeRequest[]>([]);
-  const [instructorNotices, setInstructorNotices] = useState<InstructorNotice[]>([]);
-  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>([]);
+  const [scheduleChangeRequests, setScheduleChangeRequests] = useState<ScheduleChangeRequest[]>(INITIAL_SCHEDULE_CHANGE_REQUESTS);
+  const [instructorNotices, setInstructorNotices] = useState<InstructorNotice[]>(INITIAL_INSTRUCTOR_NOTICES);
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>(INITIAL_WITHDRAWAL_REQUESTS);
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
