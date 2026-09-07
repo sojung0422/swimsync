@@ -485,7 +485,7 @@ export default function AdminSchedule() {
         {/* Day View */}
         {view === 'day' && (
           <div className="overflow-x-auto">
-            <div className="min-w-[700px]">
+            <div style={{ minWidth: 110 + instructors.length * 360 }}>
               <div className="grid border-b border-slate-100 bg-slate-50/50" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
                 <div className="p-3 border-r border-slate-100 text-slate-400 text-xs font-bold text-center">시간</div>
                 {instructors.map(inst => (
@@ -516,34 +516,34 @@ export default function AdminSchedule() {
                                   여유 {remaining}자리 · 보강·신규 가능
                                 </span>
                               )}
-                              {presentStudents.map(id => {
-                                const s = students.find(st => st.id === id);
-                                const isMakeup = cls.makeupStudentIds.includes(id);
-                                const vehicle = vehicles.find(v => v.id === s?.vehicleId);
-                                const isHit = searchMatches(s?.studentName);
-                                return (
-                                  <div key={id} onClick={() => setSelectedClass(cls)}
-                                    className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] cursor-pointer hover:shadow-sm transition-all ${isHit ? 'ring-2 ring-amber-400' : ''}`}
-                                    style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
-                                    {s?.studentName}
-                                    {isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
-                                    <div className="text-[9.5px] font-normal opacity-70 mt-0.5">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
-                                  </div>
-                                );
-                              })}
-                              {absentStudents.map(id => {
-                                const s = students.find(st => st.id === id);
-                                const vehicle = vehicles.find(v => v.id === s?.vehicleId);
-                                const isHit = searchMatches(s?.studentName);
-                                return (
-                                  <div key={id} onClick={() => setSelectedClass(cls)}
-                                    className={`px-2.5 py-2 rounded-lg text-[11px] font-bold border-l-[3px] border-red-400 bg-red-50 text-red-500 cursor-pointer hover:shadow-sm transition-all line-through decoration-red-300 ${isHit ? 'ring-2 ring-amber-400' : ''}`}>
-                                    {s?.studentName}
-                                    <span className="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span>
-                                    <div className="text-[9.5px] font-normal opacity-70 mt-0.5 no-underline">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
-                                  </div>
-                                );
-                              })}
+                              <div className="flex flex-wrap gap-1.5 content-start">
+                                {presentStudents.map(id => {
+                                  const s = students.find(st => st.id === id);
+                                  const isMakeup = cls.makeupStudentIds.includes(id);
+                                  const vehicle = vehicles.find(v => v.id === s?.vehicleId);
+                                  const isHit = searchMatches(s?.studentName);
+                                  return (
+                                    <div key={id} onClick={() => setSelectedClass(cls)}
+                                      className={`w-[108px] shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold border-l-[3px] cursor-pointer hover:shadow-sm transition-all ${isHit ? 'ring-2 ring-amber-400' : ''}`}
+                                      style={{ backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
+                                      <div className="truncate">{s?.studentName}{isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}</div>
+                                      <div className="text-[9.5px] font-normal opacity-70 mt-0.5 truncate">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
+                                    </div>
+                                  );
+                                })}
+                                {absentStudents.map(id => {
+                                  const s = students.find(st => st.id === id);
+                                  const vehicle = vehicles.find(v => v.id === s?.vehicleId);
+                                  const isHit = searchMatches(s?.studentName);
+                                  return (
+                                    <div key={id} onClick={() => setSelectedClass(cls)}
+                                      className={`w-[108px] shrink-0 px-2 py-1.5 rounded-lg text-[11px] font-bold border-l-[3px] border-red-400 bg-red-50 text-red-500 cursor-pointer hover:shadow-sm transition-all line-through decoration-red-300 ${isHit ? 'ring-2 ring-amber-400' : ''}`}>
+                                      <div className="truncate">{s?.studentName}<span className="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span></div>
+                                      <div className="text-[9.5px] font-normal opacity-70 mt-0.5 no-underline truncate">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
                               {presentStudents.length === 0 && absentStudents.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
                             </div>
                           ) : <div className="h-full flex items-center justify-center text-slate-200 text-sm">—</div>}
