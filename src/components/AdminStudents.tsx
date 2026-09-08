@@ -168,7 +168,7 @@ const defaultForm = (): FormData => ({
 });
 
 function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
-  initial?: Student; prefill?: Partial<FormData>; onClose: () => void; onSave: (data: FormData) => void; title: string;
+  initial?: Student; prefill?: Partial<FormData>; onClose: () => void; onSave: (data: FormData) => { ok: boolean; error?: string } | void; title: string;
 }) {
   const { instructors, lessonClasses, settings, vehicles, drivers, paymentPlans, students: allStudents } = useStore();
   const [form, setForm] = useState<FormData>(
@@ -234,10 +234,13 @@ function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
     ? selectedPlan.sessionRates[Math.min(remainingSessions, 14) - 1]
     : null;
 
+  const [saveError, setSaveError] = useState<string | null>(null);
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!form.studentName.trim()) return;
-    onSave(form);
+    const result = onSave(form);
+    if (result && !result.ok) { setSaveError(result.error ?? '저장할 수 없습니다.'); return; }
+    onClose();
   };
 
   const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors bg-white";
@@ -586,7 +589,11 @@ function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
             )}
           </div>
 
-          <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4 flex gap-3">
+          <div className="sticky bottom-0 bg-white border-t border-slate-100 p-4">
+            {saveError && (
+              <p className="text-red-600 bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-xs mb-3">{saveError}</p>
+            )}
+            <div className="flex gap-3">
             {section !== 'basic' && (
               <button type="button" onClick={() => setSection(section === 'payment' ? 'lesson' : 'basic')}
                 className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-100 transition-colors">
@@ -603,6 +610,7 @@ function StudentFormModal({ initial, prefill, onClose, onSave, title }: {
                 {initial ? '수정 완료' : '강습생 등록'}
               </button>
             )}
+            </div>
           </div>
         </form>
       </div>
@@ -1863,9 +1871,9 @@ function WaitlistView() {
           }}
           onClose={() => setRegisterTarget(null)}
           onSave={data => {
-            addStudent(data as Parameters<typeof addStudent>[0]);
-            convertWaitlistEntry(registerTarget.id);
-            setRegisterTarget(null);
+            const result = addStudent(data as Parameters<typeof addStudent>[0]);
+            if (result.ok) convertWaitlistEntry(registerTarget.id);
+            return result;
           }}
         />
       )}
@@ -1900,10 +1908,7 @@ export default function AdminStudents() {
     else setSearchResults(results);
   };
 
-  const handleRegister = (data: FormData) => {
-    addStudent(data as Parameters<typeof addStudent>[0]);
-    setShowRegister(false);
-  };
+  const handleRegister = (data: FormData) => addStudent(data as Parameters<typeof addStudent>[0]);
 
   const handleEdit = (data: FormData) => {
     if (!editingStudent) return;

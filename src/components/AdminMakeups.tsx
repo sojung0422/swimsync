@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, getClassDivision, computeOpenMakeupSlots } from '../store/StoreContext';
+import { useStore, getClassDivision, computeOpenMakeupSlots, computeMakeupCapacity } from '../store/StoreContext';
 import type { MakeupRequest } from '../store/StoreContext';
 import { format, parseISO, isAfter } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -27,7 +27,7 @@ function AssignSlotModal({ request, onClose }: { request: MakeupRequest; onClose
     .filter(c => isAfter(parseISO(c.date), today))
     .map(c => {
       const instructor = instructors.find(i => i.id === c.instructorId);
-      const remaining = computeOpenMakeupSlots(c, instructor?.maxCapacity ?? 5, absenceRecords);
+      const remaining = computeOpenMakeupSlots(c, instructor ? computeMakeupCapacity(instructor) : 5, absenceRecords);
       const division = getClassDivision(c, students);
       return { c, instructor, remaining, division };
     })

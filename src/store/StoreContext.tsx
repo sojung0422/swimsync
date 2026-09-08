@@ -17,7 +17,9 @@ export type RateSlot = {
 
 export type Instructor = {
   id: string; name: string; nickname: string;
-  maxCapacity: number; type: '정규' | '파트'; color: string;
+  maxCapacity: number; // 신규 등록 시 정원 상한(정규 정원)
+  makeupExtraCapacity: number; // 정규 정원 외에 보강생만 추가로 받을 수 있는 자리 수 — 신규 등록에는 못 씀
+  type: '정규' | '파트'; color: string;
   jobType: '강사' | '데스크' | '원장' | '관리';
   role: StaffRole; // 승인 권한 등급 (연차/대타 승인은 원장·팀장만)
   phone: string; officePhone: string; extNumber: string;
@@ -132,6 +134,16 @@ export const getClassOfferings = (lessonClassId: string | null, students: Studen
     const paymentPlanId = Object.entries(planCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? '';
     return { lessonClassId: lcId, instructorId, days: Array.from(days), time, paymentPlanId, capacity, occupied, remaining: capacity - occupied };
   });
+};
+
+// 신규 등록/반배정 시 정원 확인 — 그 반의 (담당강사+시간) 조합에 이미 정규 정원(maxCapacity)만큼 찼는지 확인.
+// 보강 전용 추가 자리(makeupExtraCapacity)는 신규 등록에는 쓸 수 없으므로 여기서는 포함하지 않는다.
+export const checkRegistrationCapacity = (lessonClassId: string, instructorId: string, regularTime: string, students: Student[], instructors: Instructor[]): { ok: boolean; remaining: number } => {
+  const instructor = instructors.find(i => i.id === instructorId);
+  const capacity = instructor?.maxCapacity ?? 5;
+  const match = getClassOfferings(lessonClassId, students, instructors).find(o => o.instructorId === instructorId && o.time === regularTime);
+  const remaining = match ? match.remaining : capacity;
+  return { ok: remaining > 0, remaining };
 };
 
 export type ClassSession = {
@@ -273,6 +285,10 @@ export const computeOpenMakeupSlots = (cls: ClassSession, capacity: number, abse
   const current = cls.studentIds.length + cls.makeupStudentIds.length - finalizedAbsentCount;
   return capacity - current;
 };
+
+// 보강 배정 시 허용되는 상한 — 정규 정원(maxCapacity) + 보강 전용 추가 자리(makeupExtraCapacity).
+// 신규 등록은 항상 maxCapacity까지만 허용되므로 이 값과 구분해서 써야 함.
+export const computeMakeupCapacity = (instructor: Instructor): number => instructor.maxCapacity + instructor.makeupExtraCapacity;
 
 // ── New Types ─────────────────────────────────────────────────
 export type Driver = {
@@ -435,29 +451,29 @@ export type SubRequest = {
 
 // ── Initial Data ──────────────────────────────────────────────
 const INITIAL_INSTRUCTORS: Instructor[] = [
-  { id: 'i1', name: '김수영', nickname: '', maxCapacity: 5, type: '정규', color: '#0891b2', jobType: '강사', role: '팀장',
+  { id: 'i1', name: '김수영', nickname: '', maxCapacity: 5, makeupExtraCapacity: 1, type: '정규', color: '#0891b2', jobType: '강사', role: '팀장',
     phone: '010-2222-3333', officePhone: '02-555-1234', extNumber: '101', hireDate: '2023-03-01',
     position: '팀장', department: '강습팀', workDays: ['월', '화', '수', '목', '금'], workTimeStart: '13:00', workTimeEnd: '21:00',
     dutyNote: '초급반 총괄', vehicleNumber: '', address: '', memo: '', status: 'active',
     monthlySalary: 2800000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 0 },
-  { id: 'i2', name: '이바다', nickname: '', maxCapacity: 4, type: '파트', color: '#059669', jobType: '강사', role: '프리랜서',
+  { id: 'i2', name: '이바다', nickname: '', maxCapacity: 4, makeupExtraCapacity: 1, type: '파트', color: '#059669', jobType: '강사', role: '프리랜서',
     phone: '010-3333-4444', officePhone: '', extNumber: '', hireDate: '2024-06-01',
     position: '강사', department: '강습팀', workDays: ['화', '목', '토'], workTimeStart: '14:00', workTimeEnd: '18:00',
     dutyNote: '', vehicleNumber: '', address: '', memo: '', status: 'active',
     monthlySalary: 0, hourlyRate: 25000,
     rateSlots: [{ id: 'rs1', days: ['화', '목', '토'], startTime: '14:00', endTime: '18:00', hourlyRate: 25000 }],
     annualLeaveTotal: 0, annualLeaveUsed: 0 },
-  { id: 'i3', name: '박돌고래', nickname: '', maxCapacity: 6, type: '정규', color: '#d97706', jobType: '강사', role: '원장',
+  { id: 'i3', name: '박돌고래', nickname: '', maxCapacity: 6, makeupExtraCapacity: 2, type: '정규', color: '#d97706', jobType: '강사', role: '원장',
     phone: '010-4444-5555', officePhone: '02-555-1234', extNumber: '102', hireDate: '2022-01-15',
     position: '수석강사', department: '강습팀', workDays: ['월', '수', '금', '토'], workTimeStart: '13:00', workTimeEnd: '20:00',
     dutyNote: '고급반/경기반 담당', vehicleNumber: '', address: '', memo: '', status: 'active',
     monthlySalary: 3200000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 0 },
-  { id: 'i4', name: '정하나', nickname: '', maxCapacity: 5, type: '정규', color: '#7c3aed', jobType: '강사', role: '주임',
+  { id: 'i4', name: '정하나', nickname: '', maxCapacity: 5, makeupExtraCapacity: 1, type: '정규', color: '#7c3aed', jobType: '강사', role: '주임',
     phone: '010-5555-1111', officePhone: '02-555-1234', extNumber: '103', hireDate: '2023-09-01',
     position: '주임', department: '강습팀', workDays: ['화', '목', '토'], workTimeStart: '14:00', workTimeEnd: '19:00',
     dutyNote: '초급반 보조 총괄', vehicleNumber: '', address: '', memo: '', status: 'active',
     monthlySalary: 2600000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 2 },
-  { id: 'i5', name: '최민서', nickname: '', maxCapacity: 5, type: '파트', color: '#db2777', jobType: '강사', role: '사원',
+  { id: 'i5', name: '최민서', nickname: '', maxCapacity: 5, makeupExtraCapacity: 1, type: '파트', color: '#db2777', jobType: '강사', role: '사원',
     phone: '010-5555-2222', officePhone: '', extNumber: '', hireDate: '2025-02-01',
     position: '강사', department: '강습팀', workDays: ['월', '화', '목'], workTimeStart: '15:00', workTimeEnd: '21:00',
     dutyNote: '', vehicleNumber: '', address: '', memo: '', status: 'active',
@@ -467,12 +483,12 @@ const INITIAL_INSTRUCTORS: Instructor[] = [
       { id: 'rs3', days: ['화', '목'], startTime: '19:00', endTime: '21:00', hourlyRate: 32000 },
     ],
     annualLeaveTotal: 0, annualLeaveUsed: 0 },
-  { id: 'i6', name: '김도윤', nickname: '', maxCapacity: 0, type: '정규', color: '#64748b', jobType: '데스크', role: '데스크',
+  { id: 'i6', name: '김도윤', nickname: '', maxCapacity: 0, makeupExtraCapacity: 0, type: '정규', color: '#64748b', jobType: '데스크', role: '데스크',
     phone: '010-5555-3333', officePhone: '02-555-1234', extNumber: '100', hireDate: '2024-01-05',
     position: '데스크 담당', department: '운영팀', workDays: ['월', '화', '수', '목', '금'], workTimeStart: '13:00', workTimeEnd: '21:00',
     dutyNote: '접수·상담 응대', vehicleNumber: '', address: '', memo: '', status: 'active',
     monthlySalary: 2400000, hourlyRate: 0, rateSlots: [], annualLeaveTotal: 15, annualLeaveUsed: 4 },
-  { id: 'i7', name: '이도현', nickname: '', maxCapacity: 0, type: '정규', color: '#0d9488', jobType: '관리', role: '차량',
+  { id: 'i7', name: '이도현', nickname: '', maxCapacity: 0, makeupExtraCapacity: 0, type: '정규', color: '#0d9488', jobType: '관리', role: '차량',
     phone: '010-5555-4444', officePhone: '02-555-1234', extNumber: '104', hireDate: '2023-11-20',
     position: '차량 관리자', department: '운영팀', workDays: ['월', '화', '수', '목', '금', '토'], workTimeStart: '13:30', workTimeEnd: '18:30',
     dutyNote: '차량 배차·노선 관리', vehicleNumber: '', address: '', memo: '', status: 'active',
@@ -1021,7 +1037,7 @@ type StoreContextType = {
   rejectScheduleChangeRequest: (id: string) => void;
   instructorNotices: InstructorNotice[];
   // Student ops
-  addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => void;
+  addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => { ok: boolean; error?: string };
   updateStudent: (id: string, updates: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   extendStudentClasses: (id: string, months: number) => void;
@@ -1183,13 +1199,18 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ── Student ──────────────────────────────────────────────────
-  const addStudent = (studentData: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => {
+  const addStudent = (studentData: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>): { ok: boolean; error?: string } => {
+    if (studentData.lessonClassId && studentData.instructorId && studentData.regularTime) {
+      const capCheck = checkRegistrationCapacity(studentData.lessonClassId, studentData.instructorId, studentData.regularTime, students, instructors);
+      if (!capCheck.ok) return { ok: false, error: '해당 반·강사·시간대는 이미 정원이 가득 찼습니다. 다른 시간대를 선택하거나 보강으로 진행해주세요.' };
+    }
     const year = new Date().getFullYear();
     const nextNum = students.length + 1;
     const newStudent: Student = { ...studentData, id: `s${Date.now()}`, studentNumber: `${year}-${String(nextNum).padStart(3, '0')}`, usedReschedules: 0, additionalEnrollments: [] };
     setStudents(prev => [...prev, newStudent]);
     if (newStudent.vehicleId) syncVehicleAssignment(newStudent.id, newStudent.vehicleId);
     setClasses(prev => buildClassesForStudent(newStudent.id, getAllEnrollments(newStudent), startOfMonth(addDays(new Date(), -15)), 90, prev));
+    return { ok: true };
   };
 
   const updateStudent = (studentId: string, updates: Partial<Student>) => {
@@ -1414,6 +1435,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     if (!toClass) return false;
     const toDivision = getClassDivision(toClass, students);
     if (toDivision !== null && toDivision !== student.division) return false;
+    const toInstructor = instructors.find(i => i.id === toClass.instructorId);
+    if (computeOpenMakeupSlots(toClass, toInstructor ? computeMakeupCapacity(toInstructor) : 5, absenceRecords) <= 0) return false;
     setClasses(prev => prev.map(cls => {
       if (cls.id === fromClassId) return { ...cls, absentStudentIds: [...cls.absentStudentIds, studentId] };
       if (cls.id === toClassId) return { ...cls, makeupStudentIds: [...cls.makeupStudentIds, studentId] };
@@ -1536,6 +1559,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     if (!student || !toClass) return;
     const toDivision = getClassDivision(toClass, students);
     if (toDivision !== null && toDivision !== student.division) return;
+    const toInstructor = instructors.find(i => i.id === toClass.instructorId);
+    if (computeOpenMakeupSlots(toClass, toInstructor ? computeMakeupCapacity(toInstructor) : 5, absenceRecords) <= 0) return;
     setClasses(prev => prev.map(cls =>
       cls.id === toClassId && !cls.makeupStudentIds.includes(req.studentId)
         ? { ...cls, makeupStudentIds: [...cls.makeupStudentIds, req.studentId] } : cls

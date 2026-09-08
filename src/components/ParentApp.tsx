@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useStore, getClassDivision, getAllEnrollments,
-  computeOpenMakeupSlots, isAbsenceCancellable, rankMakeupCandidates, computeNextMonthBilling,
+  computeOpenMakeupSlots, computeMakeupCapacity, isAbsenceCancellable, rankMakeupCandidates, computeNextMonthBilling,
   getClassOfferings, resolvePlanPricing,
 } from '../store/StoreContext';
 import type { Enrollment } from '../store/StoreContext';
@@ -334,7 +334,7 @@ export default function ParentApp() {
     .filter(c => c.id !== sourceClassId && isAfter(parseISO(c.date), today))
     .map(c => {
       const instructor = instructors.find(i => i.id === c.instructorId);
-      const remaining = computeOpenMakeupSlots(c, instructor?.maxCapacity ?? 5, absenceRecords);
+      const remaining = computeOpenMakeupSlots(c, instructor ? computeMakeupCapacity(instructor) : 5, absenceRecords);
       const division = getClassDivision(c, students);
       return { c, instructor, remaining, division };
     })

@@ -10,7 +10,7 @@ const STAFF_ROLES: StaffRole[] = ['원장', '팀장', '주임', '사원', '데�
 type StaffForm = Omit<Instructor, 'id'>;
 
 const blankForm = (): StaffForm => ({
-  name: '', nickname: '', maxCapacity: 5, type: '정규', color: '#0891b2',
+  name: '', nickname: '', maxCapacity: 5, makeupExtraCapacity: 1, type: '정규', color: '#0891b2',
   jobType: '강사', role: '사원', phone: '', officePhone: '', extNumber: '',
   hireDate: new Date().toISOString().slice(0, 10), position: '', department: '',
   workDays: [], workTimeStart: '13:00', workTimeEnd: '21:00',
@@ -507,6 +507,11 @@ export default function AdminStaff() {
                 <div>
                   <label className={labelCls}>1타임 정원 (수업당 최대 인원)</label>
                   <input type="number" min={1} className={inputCls} value={form.maxCapacity} onChange={e => set('maxCapacity', parseInt(e.target.value) || 1)} />
+                </div>
+                <div>
+                  <label className={labelCls}>보강 전용 추가 자리 (정원 외 보강생만 추가 수용)</label>
+                  <input type="number" min={0} className={inputCls} value={form.makeupExtraCapacity} onChange={e => set('makeupExtraCapacity', parseInt(e.target.value) || 0)} />
+                  <p className="text-slate-400 text-[11px] mt-1">신규 등록은 정원({form.maxCapacity}명)까지만 가능하고, 보강은 정원+추가자리(최대 {form.maxCapacity + form.makeupExtraCapacity}명)까지 가능해요.</p>
                 </div>
               </div>
             )}

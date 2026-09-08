@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { useStore, ClassSession, computeOpenMakeupSlots, isRecentlyEnrolled, isRecentlyScheduleChanged } from '../store/StoreContext';
+import { useStore, ClassSession, computeOpenMakeupSlots, computeMakeupCapacity, isRecentlyEnrolled, isRecentlyScheduleChanged } from '../store/StoreContext';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search, CalendarOff } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
@@ -50,10 +50,16 @@ export default function AdminSchedule() {
     setShowSearchResults(false);
   };
 
-  // 정원 대비 여유 자리 — 강사 1타임 정원 기준(보강 요청 관리와 동일 기준)
+  // 정원(정규 등록 상한) 대비 여유 자리 — 신규 등록 가능 여부 기준
   const remainingSeats = (cls: ClassSession) => {
     const instructor = instructors.find(i => i.id === cls.instructorId);
     return computeOpenMakeupSlots(cls, instructor?.maxCapacity ?? 5, absenceRecords);
+  };
+  // 정원은 찼지만 보강 전용 추가 자리가 남아있는지 — 신규 등록은 불가하고 보강만 가능한 경우 구분 표시용
+  const remainingMakeupOnlySeats = (cls: ClassSession) => {
+    const instructor = instructors.find(i => i.id === cls.instructorId);
+    if (!instructor) return 0;
+    return computeOpenMakeupSlots(cls, computeMakeupCapacity(instructor), absenceRecords);
   };
 
   // 아직 반영되지 않은 반변경 — 승인 대기중이거나, 이미 승인됐지만 효력일(effectiveDate)이 아직 안 지난 경우
@@ -507,13 +513,18 @@ export default function AdminSchedule() {
                       const absentStudents = cls ? cls.absentStudentIds : [];
                       const color = inst.color || '#0891b2';
                       const remaining = cls ? remainingSeats(cls) : 0;
+                      const makeupOnlyRemaining = cls ? remainingMakeupOnlySeats(cls) : 0;
                       return (
                         <div key={inst.id} className="p-2 border-r border-slate-100 last:border-r-0">
                           {cls ? (
                             <div className="flex flex-col gap-1.5">
-                              {remaining > 0 && (
+                              {remaining > 0 ? (
                                 <span className="text-[9.5px] font-bold text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded-full self-start">
                                   여유 {remaining}자리 · 보강·신규 가능
+                                </span>
+                              ) : makeupOnlyRemaining > 0 && (
+                                <span className="text-[9.5px] font-bold text-orange-700 bg-orange-100 px-1.5 py-0.5 rounded-full self-start">
+                                  보강 전용 {makeupOnlyRemaining}자리 (신규 불가)
                                 </span>
                               )}
                               <div className="flex flex-wrap gap-1.5 content-start">
