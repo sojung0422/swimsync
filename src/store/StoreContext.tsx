@@ -146,6 +146,28 @@ export const checkRegistrationCapacity = (lessonClassId: string, instructorId: s
   return { ok: remaining > 0, remaining };
 };
 
+// 학생 지역(자유 텍스트)이 그 차량의 운행 지역 키워드와 매칭되는지 — 서로 포함 관계면 매칭으로 간주
+export const isRegionServedByVehicle = (region: string, vehicle: Vehicle): boolean =>
+  vehicle.servingRegions.some(r => region.includes(r) || r.includes(region));
+
+// 신규 등록/차량 배정 시 차량 확인 — 차량 미이용(빈 문자열)은 항상 허용.
+// 차량을 지정했다면 그 차량이 학생 지역을 운행하는지, 정원이 남았는지 확인한다.
+export const checkVehicleAvailability = (
+  studentRegion: string, vehicleId: string, vehicles: Vehicle[], excludeStudentId?: string
+): { ok: boolean; error?: string } => {
+  if (!vehicleId) return { ok: true };
+  const vehicle = vehicles.find(v => v.id === vehicleId);
+  if (!vehicle) return { ok: true };
+  if (!isRegionServedByVehicle(studentRegion, vehicle)) {
+    return { ok: false, error: `${vehicle.vehicleNumber} 차량은 "${studentRegion}" 지역을 운행하지 않아요. 다른 차량을 선택하거나 자체 등하원으로 등록해주세요.` };
+  }
+  const occupied = vehicle.studentIds.filter(id => id !== excludeStudentId).length;
+  if (occupied >= vehicle.capacity) {
+    return { ok: false, error: `${vehicle.vehicleNumber} 차량은 이미 정원(${vehicle.capacity}명)이 가득 찼어요. 다른 차량을 선택해주세요.` };
+  }
+  return { ok: true };
+};
+
 export type ClassSession = {
   id: string; date: string; time: string; instructorId: string;
   studentIds: string[]; makeupStudentIds: string[]; absentStudentIds: string[];
@@ -299,6 +321,7 @@ export type Vehicle = {
   id: string; vehicleNumber: string; driverId: string;
   route: string; capacity: number; departureTime: string;
   studentIds: string[];
+  servingRegions: string[]; // 이 차량이 운행하는 지역 키워드(예: '강남', '서초') — 학생 지역과 매칭해 탑승 가능 여부 판단
 };
 
 export type PaymentPlan = {
@@ -653,8 +676,8 @@ const INITIAL_DRIVERS: Driver[] = [
 ];
 
 const INITIAL_VEHICLES: Vehicle[] = [
-  { id: 'v1', vehicleNumber: '서울 12가 3456', driverId: 'd1', route: 'A노선 (강남→서초)', capacity: 15, departureTime: '14:30', studentIds: ['s1', 's2'] },
-  { id: 'v2', vehicleNumber: '서울 98나 7654', driverId: 'd2', route: 'B노선 (송파→강동)', capacity: 12, departureTime: '14:45', studentIds: ['s3'] },
+  { id: 'v1', vehicleNumber: '서울 12가 3456', driverId: 'd1', route: 'A노선 (강남→서초)', capacity: 15, departureTime: '14:30', studentIds: ['s1', 's2'], servingRegions: ['강남', '서초'] },
+  { id: 'v2', vehicleNumber: '서울 98나 7654', driverId: 'd2', route: 'B노선 (송파→강동)', capacity: 12, departureTime: '14:45', studentIds: ['s3'], servingRegions: ['송파', '강동'] },
 ];
 
 const INITIAL_PAYMENT_PLANS: PaymentPlan[] = [
@@ -1083,7 +1106,7 @@ type StoreContextType = {
   addVehicle: (v: Omit<Vehicle, 'id'>) => void;
   updateVehicle: (id: string, updates: Partial<Vehicle>) => void;
   deleteVehicle: (id: string) => void;
-  assignStudentToVehicle: (studentId: string, vehicleId: string) => void;
+  assignStudentToVehicle: (studentId: string, vehicleId: string) => { ok: boolean; error?: string };
   // PaymentPlan
   addPaymentPlan: (p: Omit<PaymentPlan, 'id'>) => void;
   updatePaymentPlan: (id: string, updates: Partial<PaymentPlan>) => void;
@@ -1204,6 +1227,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       const capCheck = checkRegistrationCapacity(studentData.lessonClassId, studentData.instructorId, studentData.regularTime, students, instructors);
       if (!capCheck.ok) return { ok: false, error: '해당 반·강사·시간대는 이미 정원이 가득 찼습니다. 다른 시간대를 선택하거나 보강으로 진행해주세요.' };
     }
+    const vehicleCheck = checkVehicleAvailability(studentData.region, studentData.vehicleId, vehicles);
+    if (!vehicleCheck.ok) return { ok: false, error: vehicleCheck.error };
     const year = new Date().getFullYear();
     const nextNum = students.length + 1;
     const newStudent: Student = { ...studentData, id: `s${Date.now()}`, studentNumber: `${year}-${String(nextNum).padStart(3, '0')}`, usedReschedules: 0, additionalEnrollments: [] };
@@ -1496,10 +1521,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const addVehicle = (v: Omit<Vehicle, 'id'>) => setVehicles(prev => [...prev, { ...v, id: `v${Date.now()}` }]);
   const updateVehicle = (id: string, updates: Partial<Vehicle>) => setVehicles(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
   const deleteVehicle = (id: string) => setVehicles(prev => prev.filter(v => v.id !== id));
-  const assignStudentToVehicle = (studentId: string, vehicleId: string) => {
+  const assignStudentToVehicle = (studentId: string, vehicleId: string): { ok: boolean; error?: string } => {
+    const student = students.find(s => s.id === studentId);
+    if (vehicleId && student) {
+      const check = checkVehicleAvailability(student.region, vehicleId, vehicles, studentId);
+      if (!check.ok) return { ok: false, error: check.error };
+    }
     setVehicles(prev => prev.map(v => ({ ...v, studentIds: v.studentIds.filter(id => id !== studentId) })));
     if (vehicleId) setVehicles(prev => prev.map(v => v.id === vehicleId && !v.studentIds.includes(studentId) ? { ...v, studentIds: [...v.studentIds, studentId] } : v));
     setStudents(prev => prev.map(s => s.id === studentId ? { ...s, vehicleId } : s));
+    return { ok: true };
   };
 
   // ── PaymentPlan ───────────────────────────────────────────────

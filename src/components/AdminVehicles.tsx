@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useStore, getAllEnrollments } from '../store/StoreContext';
+import { useStore, getAllEnrollments, isRegionServedByVehicle } from '../store/StoreContext';
 import type { Driver, Vehicle, Student, Enrollment } from '../store/StoreContext';
 import { Car, User, Plus, Edit2, Trash2, X, MapPin, Clock, Users, AlertCircle, ChevronDown, ChevronUp, CalendarDays, LogIn, LogOut } from 'lucide-react';
 import { EmptyStateGuide } from './GuideSystem';
@@ -70,6 +70,7 @@ function VehicleFormModal({ initial, onClose, onSave, title }: {
   const [route, setRoute] = useState(initial?.route ?? '');
   const [capacity, setCapacity] = useState(initial?.capacity ?? 15);
   const [departureTime, setDepartureTime] = useState(initial?.departureTime ?? '14:30');
+  const [servingRegionsText, setServingRegionsText] = useState((initial?.servingRegions ?? []).join(', '));
 
   const inputCls = "w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:border-cyan-500 transition-colors";
   const labelCls = "block text-xs font-medium text-slate-500 mb-1";
@@ -107,9 +108,19 @@ function VehicleFormModal({ initial, onClose, onSave, title }: {
             <label className={labelCls}>노선 정보</label>
             <input className={inputCls} placeholder="예: A노선 (강남→서초)" value={route} onChange={e => setRoute(e.target.value)} />
           </div>
+          <div>
+            <label className={labelCls}>운행 지역 (쉼표로 구분)</label>
+            <input className={inputCls} placeholder="예: 강남, 서초" value={servingRegionsText} onChange={e => setServingRegionsText(e.target.value)} />
+            <p className="text-slate-400 text-[11px] mt-1">여기 적힌 지역 키워드와 학생 주소가 매칭되지 않으면 이 차량에 배정할 수 없어요.</p>
+          </div>
           <div className="flex gap-3 pt-1">
             <button onClick={onClose} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-600 text-sm hover:bg-slate-50 transition-colors">취소</button>
-            <button onClick={() => { if (!vehicleNumber.trim()) return; onSave({ vehicleNumber: vehicleNumber.trim(), driverId, route, capacity, departureTime }); onClose(); }}
+            <button onClick={() => {
+              if (!vehicleNumber.trim()) return;
+              const servingRegions = servingRegionsText.split(',').map(r => r.trim()).filter(Boolean);
+              onSave({ vehicleNumber: vehicleNumber.trim(), driverId, route, capacity, departureTime, servingRegions });
+              onClose();
+            }}
               className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">
               저장
             </button>
@@ -141,7 +152,9 @@ function AssignStudentsModal({ vehicle: initialVehicle, onClose }: { vehicle: Ve
         <div className="flex-1 overflow-y-auto divide-y divide-slate-50">
           {eligibleStudents.map(s => {
             const assigned = vehicle.studentIds.includes(s.id);
-            const blocked = !assigned && isFull;
+            const regionMismatch = vehicle.servingRegions.length > 0 && !isRegionServedByVehicle(s.region || s.address, vehicle);
+            const blocked = !assigned && (isFull || regionMismatch);
+            const blockReason = isFull ? '정원이 가득 찼어요' : regionMismatch ? '이 차량이 운행하지 않는 지역이에요' : undefined;
             return (
               <div key={s.id} className="flex items-center gap-3 px-6 py-3">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
@@ -150,10 +163,11 @@ function AssignStudentsModal({ vehicle: initialVehicle, onClose }: { vehicle: Ve
                 <div className="flex-1">
                   <p className="text-slate-700 text-sm font-medium">{s.studentName}</p>
                   <p className="text-slate-400 text-xs">{s.address || '주소 없음'}</p>
+                  {!assigned && regionMismatch && !isFull && <p className="text-amber-600 text-[11px] mt-0.5">차량 불가 (운행 지역 아님)</p>}
                 </div>
                 <button onClick={() => !blocked && assignStudentToVehicle(s.id, assigned ? '' : vehicle.id)}
                   disabled={blocked}
-                  title={blocked ? '정원이 가득 찼어요' : undefined}
+                  title={blockReason}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
                     blocked ? 'bg-slate-50 border-slate-200 text-slate-300 cursor-not-allowed'
                     : assigned ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100'
@@ -485,7 +499,29 @@ export default function AdminVehicles() {
           )}
 
           {/* ── Vehicles ── */}
-          {activeTab === 'vehicles' && (
+          {activeTab === 'vehicles' && (() => {
+            const blockedStudents = students.filter(s => {
+              if (s.status !== 'active' || !s.vehicleId) return false;
+              const v = vehicles.find(veh => veh.id === s.vehicleId);
+              if (!v) return false;
+              return v.servingRegions.length > 0 && !isRegionServedByVehicle(s.region || s.address, v);
+            });
+            return (<>
+          {blockedStudents.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-amber-800 text-sm font-semibold">차량 지역 불일치 학생 {blockedStudents.length}명</p>
+                <p className="text-amber-700 text-xs mt-1">배정된 차량이 학생 지역을 운행하지 않아요. 다른 차량으로 재배정하거나 운행 지역을 확인해주세요.</p>
+                <ul className="mt-2 space-y-0.5">
+                  {blockedStudents.map(s => {
+                    const v = vehicles.find(veh => veh.id === s.vehicleId);
+                    return <li key={s.id} className="text-amber-700 text-xs">· {s.studentName} ({s.region || s.address || '지역 미상'}) → {v?.vehicleNumber}</li>;
+                  })}
+                </ul>
+              </div>
+            </div>
+          )}
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -590,7 +626,8 @@ export default function AdminVehicles() {
               </div>
             )}
           </div>
-          )}
+          </>);
+          })()}
         </div>
       </div>
 
