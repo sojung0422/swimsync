@@ -367,6 +367,18 @@ export type WithdrawalRequest = {
   requestedAt: string; resolvedAt: string;
 };
 
+// 온보딩 셀프 가입신청서 — 데스크가 보낸 링크로 사용자가 직접 작성. 제출 즉시 정원이 남아있으면 바로 학생으로 등록되고
+// 정원이 가득 찼으면 등록되지 않고 사유가 남는다(신청자는 다른 시간대로 다시 시도).
+export type RegistrationApplication = {
+  id: string; applicantName: string; phone: string; category: 'adult' | 'child';
+  region: string;
+  desiredLessonClassId: string; desiredInstructorId: string; desiredDays: string[]; desiredTime: string;
+  note: string;
+  status: 'registered' | 'failed';
+  failReason: string;
+  submittedAt: string;
+};
+
 // 학생별 월별 수납 이력(원장) — 어떤 반(enrollment)에 대해, 언제, 얼마를, 어떻게 수납했는지 추적
 export type PaymentRecord = {
   id: string; studentId: string; enrollmentId: string; // 'primary' 또는 additionalEnrollments의 id
@@ -1079,6 +1091,9 @@ type StoreContextType = {
   submitReturnRequest: (studentId: string, enrollmentId: string, returnDate: string) => void;
   approveReturnRequest: (id: string) => void;
   rejectReturnRequest: (id: string) => void;
+  // 온보딩 셀프 가입신청서
+  registrationApplications: RegistrationApplication[];
+  submitRegistrationApplication: (app: Omit<RegistrationApplication, 'id' | 'status' | 'failReason' | 'submittedAt'>) => { ok: boolean; error?: string };
   // Class ops
   rescheduleClass: (studentId: string, fromClassId: string, toClassId: string) => boolean;
   markAbsent: (studentId: string, classId: string) => void;
@@ -1187,6 +1202,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [instructorNotices, setInstructorNotices] = useState<InstructorNotice[]>(INITIAL_INSTRUCTOR_NOTICES);
   const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>(INITIAL_WITHDRAWAL_REQUESTS);
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
+  const [registrationApplications, setRegistrationApplications] = useState<RegistrationApplication[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
   const [makeupCancellations, setMakeupCancellations] = useState<MakeupCancellationNotice[]>([]);
@@ -1404,6 +1420,30 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     const req = returnRequests.find(r => r.id === id);
     setReturnRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
     if (req) pushSystemAlert(req.studentId, '[복귀 신청 반려]', '요청하신 복귀 신청이 반려되었습니다. 자세한 사항은 학원으로 문의해주세요.');
+  };
+
+  // ── 온보딩 셀프 가입신청서 ────────────────────────────────────────
+  // 제출 즉시 정원을 확인해 가능하면 바로 학생으로 등록(반배정 + 스케줄표 반영)하고, 정원이 없으면 등록하지 않고 사유를 남긴다.
+  const submitRegistrationApplication = (
+    app: Omit<RegistrationApplication, 'id' | 'status' | 'failReason' | 'submittedAt'>
+  ): { ok: boolean; error?: string } => {
+    const result = addStudent({
+      studentName: app.applicantName, nickname: '', birthDate: '', registrationDate: format(new Date(), 'yyyy-MM-dd'),
+      gender: '남', lessonClassId: app.desiredLessonClassId, regularDays: app.desiredDays, regularTime: app.desiredTime,
+      phone: app.phone, motherPhone: '', fatherPhone: '', smsRecipients: ['self'],
+      level: '초급', status: 'active', instructorId: app.desiredInstructorId,
+      paymentAmount: 0, paymentDate: '', paymentRenewalDate: '', paymentCompleted: false, studentPhoto: '',
+      parentName: '', age: 0, region: app.region, passType: '',
+      totalClasses: 0, rescheduleLimit: 2, notes: app.note, progress: '',
+      address: app.region, vehicleId: '', category: app.category, paymentPlanId: '',
+      division: app.category === 'adult' ? '성인반' : '정규반',
+      pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
+    });
+    setRegistrationApplications(prev => [...prev, {
+      ...app, id: `ra_${Date.now()}`, submittedAt: format(new Date(), 'yyyy-MM-dd HH:mm'),
+      status: result.ok ? 'registered' : 'failed', failReason: result.ok ? '' : (result.error ?? '등록 실패'),
+    }]);
+    return result;
   };
 
   // ── 강사 개별 알림 ──────────────────────────────────────────────
@@ -1772,6 +1812,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addEnrollment, updateEnrollment, cancelEnrollment, pauseEnrollmentLongTerm,
       withdrawalRequests, submitWithdrawalRequest, approveWithdrawalRequest, rejectWithdrawalRequest,
       returnRequests, submitReturnRequest, approveReturnRequest, rejectReturnRequest,
+      registrationApplications, submitRegistrationApplication,
       rescheduleClass, markAbsent, absenceRecords, cancelAbsence,
       addEvent, addInstructor, updateInstructor, deleteInstructor, updateInstructorColor,
       updateSettings, updateMakeupSettings, updatePayrollSettings,

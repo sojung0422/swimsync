@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Smartphone, UserCircle, LogOut,
   FileText, Waves, Bell, Car, CreditCard, Truck, Sparkles,
   RefreshCw, IdCard, HelpCircle, MessageSquareText, CalendarClock,
-  CalendarCheck, Repeat, ChevronDown
+  CalendarCheck, Repeat, ChevronDown, UserPlus
 } from 'lucide-react';
 import AdminSchedule from './components/AdminSchedule';
 import AdminStudents from './components/AdminStudents';
@@ -24,6 +24,8 @@ import AdminCounseling from './components/AdminCounseling';
 import AdminScheduleChanges from './components/AdminScheduleChanges';
 import AdminLeaveRequests from './components/AdminLeaveRequests';
 import AdminSubRequests from './components/AdminSubRequests';
+import AdminRegistrationApplications from './components/AdminRegistrationApplications';
+import RegistrationApplicationForm from './components/RegistrationApplicationForm';
 import InstructorApp from './components/InstructorApp';
 import ParentApp from './components/ParentApp';
 import DriverApp from './components/DriverApp';
@@ -49,6 +51,7 @@ const navGroups = [
         { id: 'counseling',       text: '상담 관리' },
         { id: 'counseling-log',   text: '상담일지' },
         { id: 'enrollment-stats', text: '증감 현황' },
+        { id: 'registration-applications', text: '가입신청 이력' },
       ]},
       { id: 'staff', icon: IdCard, text: '직원 관리' },
       { id: 'payments-group', icon: CreditCard, text: '결제 관리', children: [
@@ -71,6 +74,7 @@ const navGroups = [
       { id: 'instructor-app', icon: Smartphone,  text: '강사 앱' },
       { id: 'parent-app',     icon: UserCircle,  text: '학부모 앱' },
       { id: 'driver-app',     icon: Truck,       text: '기사 앱' },
+      { id: 'registration-application', icon: UserPlus, text: '가입신청서(신규)' },
     ],
   },
   {
@@ -82,8 +86,8 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles'
-  | 'instructor-app' | 'parent-app' | 'driver-app'
+  | 'schedule' | 'students' | 'staff' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications'
+  | 'instructor-app' | 'parent-app' | 'driver-app' | 'registration-application'
   | 'business-plan';
 
 const PAGE_GUIDES: Record<TabId, { title: string; description: string; features: PageGuideFeature[] }> = {
@@ -259,6 +263,24 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '메시지 탭', description: '담당 강사와 1:1로 채팅해요. 전화 버튼으로 실제 통화도 걸 수 있고, 통화 후 "통화 메모"를 남기면 대화창에 함께 기록돼요.' },
     ],
   },
+  'registration-application': {
+    title: '가입신청서(신규) (미리보기)',
+    description: '데스크가 신규 회원에게 보내는 링크로, 사용자가 직접 접속해 작성하는 셀프 가입신청서예요. 제출 즉시 정원이 남아있으면 바로 학생 등록·반배정까지 완료돼요.',
+    features: [
+      { label: '구분 선택', description: '아동/성인을 고르면 그에 맞는 반만 아래 목록에 나타나요.' },
+      { label: '실시간 반 선택', description: '지금 실제로 여유 자리가 있는 반·강사·요일·시간만 보여줘요. 정원이 다 찬 반은 목록에 나타나지 않아요.' },
+      { label: '제출 즉시 등록', description: '제출하면 바로 학생으로 등록되고 해당 반에 배정돼 전체 스케줄표에 즉시 반영돼요. 그 사이 정원이 다 찼다면 등록되지 않고 사유가 안내돼요.' },
+      { label: '가입신청 이력', description: '접수된 모든 신청 내역은 "강습생 관리 > 가입신청 이력"에서 데스크가 확인할 수 있어요.' },
+    ],
+  },
+  'registration-applications': {
+    title: '가입신청 이력',
+    description: '셀프 가입신청서로 접수된 신청 내역을 모아보는 화면이에요.',
+    features: [
+      { label: '등록 완료 / 등록 실패', description: '제출 시점에 정원이 있어 바로 등록된 건과, 정원이 없어 등록되지 않은 건을 구분해서 보여줘요.' },
+      { label: '신청 상세', description: '신청자 이름·연락처·구분·희망 반·지역·전달사항을 한눈에 확인해요.' },
+    ],
+  },
   'driver-app': {
     title: '기사 앱 (미리보기)',
     description: '통학 차량 기사가 실제로 보게 될 모바일 화면을 미리 확인할 수 있어요.',
@@ -382,9 +404,11 @@ function AppContent() {
       case 'sub-requests':   return <AdminSubRequests />;
       case 'notifications':  return <AdminNotifications />;
       case 'vehicles':       return <AdminVehicles />;
+      case 'registration-applications': return <AdminRegistrationApplications />;
       case 'instructor-app': return <InstructorApp />;
       case 'parent-app':     return <ParentApp />;
       case 'driver-app':     return <DriverApp />;
+      case 'registration-application': return <RegistrationApplicationForm />;
       case 'business-plan':  return <BusinessPlan />;
       default:               return <AdminSchedule />;
     }
