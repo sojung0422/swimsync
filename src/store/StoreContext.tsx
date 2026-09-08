@@ -38,6 +38,7 @@ export type LessonClass = {
   defaultTime: string; // 반 개설 시 기본 시간 — 담당쌤 배정 시 변경 가능
   capacity: number; // 이 반명의 정원 (같은 반명이면 담당쌤이 달라도 공통 정원 기준을 공유)
   eligibilityCondition: string; // 수강 가능 조건 (예: "만 3~7세", "초급 레벨 이상")
+  color: string; // 스케줄표에서 이 반을 한눈에 구분하기 위한 배경색
 };
 
 // 보강은 같은 구분(division) 내에서만 가능 — 유치부/정규반/성인반은 서로 섞이지 않음
@@ -531,11 +532,11 @@ const INITIAL_INSTRUCTORS: Instructor[] = [
 ];
 
 export const INITIAL_LESSON_CLASSES: LessonClass[] = [
-  { id: 'lc1', name: '초급반 A', description: '수영 기초 과정 (오전)', defaultTime: '15:00', capacity: 5, eligibilityCondition: '만 5~9세, 수영 초경험자' },
-  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)', defaultTime: '15:00', capacity: 4, eligibilityCondition: '만 5~9세, 수영 초경험자' },
-  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전', defaultTime: '16:00', capacity: 5, eligibilityCondition: '자유형 25m 완주 가능자' },
-  { id: 'lc4', name: '고급반', description: '경기 준비 및 고급 영법', defaultTime: '17:00', capacity: 6, eligibilityCondition: '4영법 모두 가능자' },
-  { id: 'lc5', name: '성인반', description: '성인 수영 강습', defaultTime: '19:00', capacity: 8, eligibilityCondition: '성인 (만 19세 이상)' },
+  { id: 'lc1', name: '초급반 A', description: '수영 기초 과정 (오전)', defaultTime: '15:00', capacity: 5, eligibilityCondition: '만 5~9세, 수영 초경험자', color: '#38bdf8' },
+  { id: 'lc2', name: '초급반 B', description: '수영 기초 과정 (오후)', defaultTime: '15:00', capacity: 4, eligibilityCondition: '만 5~9세, 수영 초경험자', color: '#a78bfa' },
+  { id: 'lc3', name: '중급반', description: '기초 완성 및 영법 발전', defaultTime: '16:00', capacity: 5, eligibilityCondition: '자유형 25m 완주 가능자', color: '#fb923c' },
+  { id: 'lc4', name: '고급반', description: '경기 준비 및 고급 영법', defaultTime: '17:00', capacity: 6, eligibilityCondition: '4영법 모두 가능자', color: '#34d399' },
+  { id: 'lc5', name: '성인반', description: '성인 수영 강습', defaultTime: '19:00', capacity: 8, eligibilityCondition: '성인 (만 19세 이상)', color: '#f472b6' },
 ];
 
 // "주 N회" 문자열과 월 기준 정가로부터 1회~14회 일할 청구 요금표를 선형 비례로 자동 계산 (관리자가 이후 개별 조정 가능)

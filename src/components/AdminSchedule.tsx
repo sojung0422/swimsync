@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { useStore, ClassSession, computeOpenMakeupSlots, computeMakeupCapacity, isRecentlyEnrolled, isRecentlyScheduleChanged } from '../store/StoreContext';
+import { useStore, ClassSession, computeOpenMakeupSlots, computeMakeupCapacity, isRecentlyEnrolled, isRecentlyScheduleChanged, getClassOfferings } from '../store/StoreContext';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search, CalendarOff } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
 const modalOverlay = 'fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50';
 
+// 정원만큼 미리 칸(점)을 나눠 보여줘 — 채워진 자리는 진하게, 빈 자리는 옅은 점선으로 처음부터 표시
+function CapacityDots({ filled, total, color }: { filled: number; total: number; color: string }) {
+  const dots = Math.max(total, filled);
+  return (
+    <div className="flex flex-wrap gap-0.5">
+      {Array.from({ length: dots }).map((_, i) => (
+        <span key={i} className="w-2.5 h-2.5 rounded-sm shrink-0"
+          style={i < filled ? { backgroundColor: color } : { backgroundColor: 'transparent', border: `1.5px dashed ${color}55` }} />
+      ))}
+    </div>
+  );
+}
+
 export default function AdminSchedule() {
   const {
-    classes, instructors, students, events, settings, vehicles, absenceRecords, scheduleChangeRequests,
+    classes, instructors, students, events, settings, vehicles, absenceRecords, scheduleChangeRequests, lessonClasses,
     addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
@@ -61,6 +74,11 @@ export default function AdminSchedule() {
     if (!instructor) return 0;
     return computeOpenMakeupSlots(cls, computeMakeupCapacity(instructor), absenceRecords);
   };
+
+  // 요일×강사×시간 조합에 정규 개설된 반(반명/색상/정원)이 있는지 — 학생이 아직 없어도(정원 0/N) 반 자체는 표시하기 위함
+  const allOfferings = getClassOfferings(null, students, instructors);
+  const findOffering = (dayLabel: string, instructorId: string, time: string) =>
+    allOfferings.find(o => o.instructorId === instructorId && o.time === time && o.days.includes(dayLabel));
 
   // 아직 반영되지 않은 반변경 — 승인 대기중이거나, 이미 승인됐지만 효력일(effectiveDate)이 아직 안 지난 경우
   const isUpcomingChange = (r: { status: string; effectiveDate: string }) =>
@@ -270,24 +288,33 @@ export default function AdminSchedule() {
             {weekFilterMode === 'all' ? (
               <>
                 {/* 색상 범례 */}
-                <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-4 text-[10.5px] text-slate-500 bg-white">
+                <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-4 text-[10.5px] text-slate-500 bg-white flex-wrap">
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-lime-400" /> 신규 등록</span>
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400" /> 보강</span>
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-violet-400" /> 요일·시간 변경</span>
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-slate-400" /> 반변경 예정(퇴실)</span>
                   <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-blue-400" /> 반변경 예정(입실)</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300" /> 개설된 수업 없음</span>
+                </div>
+                <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-3 text-[10.5px] text-slate-500 bg-white flex-wrap">
+                  <span className="font-bold text-slate-400">반 색상</span>
+                  {lessonClasses.map(lc => (
+                    <span key={lc.id} className="flex items-center gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: lc.color }} /> {lc.name}
+                    </span>
+                  ))}
                 </div>
                 <div className="overflow-x-auto">
                   <div style={{ minWidth: weekGridMinWidth }}>
                     {/* 요일 헤더 (강사 수만큼 span) */}
-                    <div className="grid border-b border-slate-100 bg-slate-50/50" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
-                      <div className="p-2 border-r border-slate-100" />
+                    <div className="grid border-b-2 border-slate-300 bg-slate-50/50" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                      <div className="p-2 border-r-2 border-slate-300" />
                       {weekDays.map((day, i) => {
                         const isToday = isSameDay(day, new Date());
                         const isSun = i === 0, isSat = i === 6;
                         return (
                           <div key={i} style={{ gridColumn: `span ${weekInstructors.length}` }}
-                            className={`p-2 text-center border-r border-slate-100 ${isToday ? 'bg-cyan-50/60' : ''}`}>
+                            className={`p-2 text-center border-r-2 border-slate-300 ${isToday ? 'bg-cyan-50/60' : ''}`}>
                             <div className={`text-[10px] font-bold uppercase tracking-wider ${isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'}`}>
                               {format(day, 'E', { locale: ko })}
                             </div>
@@ -297,32 +324,44 @@ export default function AdminSchedule() {
                       })}
                     </div>
                     {/* 강사 서브헤더 */}
-                    <div className="grid border-b border-slate-200 bg-slate-50/30" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
-                      <div className="p-1.5 border-r border-slate-100" />
-                      {weekDays.map(day => weekInstructors.map(inst => (
-                        <div key={`${format(day, 'yyyy-MM-dd')}-${inst.id}`} className="p-1.5 flex items-center justify-center gap-1 border-r border-slate-100">
+                    <div className="grid border-b-2 border-slate-300 bg-slate-50/30" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                      <div className="p-1.5 border-r-2 border-slate-300" />
+                      {weekDays.map(day => weekInstructors.map((inst, ii) => (
+                        <div key={`${format(day, 'yyyy-MM-dd')}-${inst.id}`}
+                          className={`p-1.5 flex items-center justify-center gap-1 ${ii === weekInstructors.length - 1 ? 'border-r-2 border-slate-300' : 'border-r border-slate-200'}`}>
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: inst.color }} />
                           <span className="text-[10px] font-bold text-slate-500 truncate">{inst.name}</span>
                         </div>
                       )))}
                     </div>
                     {/* 시간대별 행 */}
-                    <div className="divide-y divide-slate-100">
+                    <div className="divide-y-2 divide-slate-200">
                       {settings.designatedTimes.map(time => (
-                        <div key={time} className="grid min-h-[78px]" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
-                          <div className="p-2 border-r border-slate-100 flex items-center justify-center bg-slate-50/30">
+                        <div key={time} className="grid min-h-[86px]" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                          <div className="p-2 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50/30">
                             <span className="text-[11px] font-black text-slate-400">{time}</span>
                           </div>
-                          {weekDays.map(day => weekInstructors.map(inst => {
+                          {weekDays.map(day => weekInstructors.map((inst, ii) => {
                             const dateStr = format(day, 'yyyy-MM-dd');
                             const dayLabel = format(day, 'E', { locale: ko });
                             const cls = classes.find(c => c.date === dateStr && c.time === time && c.instructorId === inst.id);
                             const key = `${dateStr}-${inst.id}`;
                             const arrivingChanges = getArrivingChanges(dayLabel, time, inst.id);
+                            const borderR = ii === weekInstructors.length - 1 ? 'border-r-2 border-slate-300' : 'border-r border-slate-200';
+                            const offering = findOffering(dayLabel, inst.id, time);
+                            const lessonClass = offering ? lessonClasses.find(lc => lc.id === offering.lessonClassId) : undefined;
                             if (!cls) {
-                              if (arrivingChanges.length === 0) return <div key={key} className="border-r border-slate-100 p-1.5 bg-slate-100/70" />;
+                              if (arrivingChanges.length === 0 && !offering) return <div key={key} className={`${borderR} p-1.5 bg-slate-200/70`} />;
+                              if (arrivingChanges.length === 0 && offering) {
+                                return (
+                                  <div key={key} className={`${borderR} p-1.5 flex flex-col gap-1`} style={{ borderLeft: `3px solid ${inst.color}`, backgroundColor: `${lessonClass?.color ?? inst.color}18` }}>
+                                    <span className="text-[9px] font-bold truncate" style={{ color: lessonClass?.color }}>{lessonClass?.name}</span>
+                                    <CapacityDots filled={0} total={offering.capacity} color={lessonClass?.color ?? inst.color} />
+                                  </div>
+                                );
+                              }
                               return (
-                                <div key={key} className="border-r border-slate-100 p-1.5 flex flex-col gap-0.5 bg-blue-50">
+                                <div key={key} className={`${borderR} p-1.5 flex flex-col gap-0.5 bg-blue-50`}>
                                   {arrivingChanges.map(r => {
                                     const s = students.find(st => st.id === r.studentId);
                                     return <span key={r.id} className="text-[10px] truncate px-1 rounded border border-dashed border-blue-400 text-blue-700 font-bold bg-blue-100">{s?.studentName}(예정)</span>;
@@ -333,13 +372,19 @@ export default function AdminSchedule() {
                             const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
                             const hasArriving = arrivingChanges.length > 0;
                             const hasDeparting = presentStudents.some(id => !!getDepartingChange(dayLabel, time, inst.id, id));
-                            // 기본 상태(특이사항 없음)에는 강사 지정 색을 채도 낮춰 옅게 깔아 어느 강사 칸인지 배경만으로도 구분되게 함
-                            const cellBgColor = hasArriving ? '#eff6ff' : hasDeparting ? '#f1f5f9' : `${inst.color}14`;
+                            const classColor = lessonClass?.color ?? inst.color;
+                            // 기본 상태(특이사항 없음)에는 반 색상을 옅게 깔아 무슨 반인지 배경만으로도 구분되게 함
+                            const cellBgColor = hasArriving ? '#eff6ff' : hasDeparting ? '#f1f5f9' : `${classColor}20`;
                             return (
                               <div key={key} onClick={() => setSelectedClass(cls)}
-                                className="border-r border-slate-100 p-1.5 cursor-pointer hover:brightness-95 transition-all flex flex-col gap-0.5"
+                                className={`${borderR} p-1.5 cursor-pointer hover:brightness-95 transition-all flex flex-col gap-1`}
                                 style={{ borderLeft: `3px solid ${inst.color}`, backgroundColor: cellBgColor }}>
-                                <span className="text-[10px] font-black" style={{ color: inst.color }}>{presentStudents.length}명</span>
+                                {lessonClass && <span className="text-[9px] font-bold truncate" style={{ color: classColor }}>{lessonClass.name}</span>}
+                                {offering ? (
+                                  <CapacityDots filled={presentStudents.length} total={offering.capacity} color={classColor} />
+                                ) : (
+                                  <span className="text-[10px] font-black" style={{ color: classColor }}>{presentStudents.length}명</span>
+                                )}
                                 {presentStudents.slice(0, 4).map(id => {
                                   const s = students.find(st => st.id === id);
                                   const isMakeup = cls.makeupStudentIds.includes(id);
@@ -490,32 +535,56 @@ export default function AdminSchedule() {
 
         {/* Day View */}
         {view === 'day' && (
-          <div className="overflow-x-auto">
+          <>
+            <div className="px-5 py-2 border-b border-slate-100 flex items-center gap-3 text-[10.5px] text-slate-500 bg-white flex-wrap">
+              <span className="font-bold text-slate-400">반 색상</span>
+              {lessonClasses.map(lc => (
+                <span key={lc.id} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: lc.color }} /> {lc.name}
+                </span>
+              ))}
+              <span className="flex items-center gap-1.5 ml-2"><span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300" /> 개설된 수업 없음</span>
+            </div>
+            <div className="overflow-x-auto">
             <div style={{ minWidth: 110 + instructors.length * 360 }}>
-              <div className="grid border-b border-slate-100 bg-slate-50/50" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
-                <div className="p-3 border-r border-slate-100 text-slate-400 text-xs font-bold text-center">시간</div>
-                {instructors.map(inst => (
-                  <div key={inst.id} className="p-3 text-center border-r border-slate-100 last:border-r-0">
+              <div className="grid border-b-2 border-slate-300 bg-slate-50/50" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
+                <div className="p-3 border-r-2 border-slate-300 text-slate-400 text-xs font-bold text-center">시간</div>
+                {instructors.map((inst, ii) => (
+                  <div key={inst.id} className={`p-3 text-center ${ii === instructors.length - 1 ? '' : 'border-r-2 border-slate-300'}`}>
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mx-auto mb-1" style={{ backgroundColor: `${inst.color}20`, color: inst.color }}>{inst.name[0]}</div>
                     <span className="text-slate-700 text-xs font-bold">{inst.name} 강사</span>
                   </div>
                 ))}
               </div>
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y-2 divide-slate-200">
                 {settings.designatedTimes.map(time => (
-                  <div key={time} className="grid min-h-[90px]" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
-                    <div className="p-3 border-r border-slate-100 flex items-center justify-center bg-slate-50/30">
+                  <div key={time} className="grid min-h-[96px]" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
+                    <div className="p-3 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50/30">
                       <span className="text-[11px] font-black text-slate-400">{time}</span>
                     </div>
-                    {instructors.map(inst => {
+                    {instructors.map((inst, ii) => {
                       const cls = classes.find(c => c.date === format(currentDate, 'yyyy-MM-dd') && c.time === time && c.instructorId === inst.id);
+                      const dayLabel = format(currentDate, 'E', { locale: ko });
+                      const offering = findOffering(dayLabel, inst.id, time);
+                      const lessonClass = offering ? lessonClasses.find(lc => lc.id === offering.lessonClassId) : undefined;
                       const presentStudents = cls ? [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id)) : [];
                       const absentStudents = cls ? cls.absentStudentIds : [];
                       const color = inst.color || '#0891b2';
+                      const classColor = lessonClass?.color ?? color;
                       const remaining = cls ? remainingSeats(cls) : 0;
                       const makeupOnlyRemaining = cls ? remainingMakeupOnlySeats(cls) : 0;
+                      const borderR = ii === instructors.length - 1 ? '' : 'border-r-2 border-slate-300';
+                      if (!cls && !offering) {
+                        return <div key={inst.id} className={`p-2 ${borderR} bg-slate-200/70 flex items-center justify-center text-slate-300 text-sm`}>—</div>;
+                      }
                       return (
-                        <div key={inst.id} className="p-2 border-r border-slate-100 last:border-r-0">
+                        <div key={inst.id} className={`p-2 ${borderR}`} style={{ backgroundColor: `${classColor}14` }}>
+                          {lessonClass && (
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] font-bold truncate" style={{ color: classColor }}>{lessonClass.name}</span>
+                              {offering && <CapacityDots filled={presentStudents.length} total={offering.capacity} color={classColor} />}
+                            </div>
+                          )}
                           {cls ? (
                             <div className="flex flex-col gap-1.5">
                               {remaining > 0 ? (
@@ -557,7 +626,7 @@ export default function AdminSchedule() {
                               </div>
                               {presentStudents.length === 0 && absentStudents.length === 0 && <span className="text-[10px] text-slate-300 italic text-center mt-2">비어있음</span>}
                             </div>
-                          ) : <div className="h-full flex items-center justify-center text-slate-200 text-sm">—</div>}
+                          ) : <div className="h-full flex items-center justify-center text-slate-300 text-[11px] italic">이 날짜엔 수업 없음</div>}
                         </div>
                       );
                     })}
@@ -565,7 +634,8 @@ export default function AdminSchedule() {
                 ))}
               </div>
             </div>
-          </div>
+            </div>
+          </>
         )}
       </div>
 

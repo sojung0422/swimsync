@@ -39,7 +39,8 @@ const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
 // ─── 강습반 관리 모달 ──────────────────────────────────────────────────────────
 
-const blankLessonClassForm = () => ({ name: '', description: '', defaultTime: '15:00', capacity: 5, eligibilityCondition: '' });
+const LESSON_CLASS_COLOR_PALETTE = ['#38bdf8', '#a78bfa', '#fb923c', '#34d399', '#f472b6', '#facc15', '#f87171', '#818cf8'];
+const blankLessonClassForm = () => ({ name: '', description: '', defaultTime: '15:00', capacity: 5, eligibilityCondition: '', color: LESSON_CLASS_COLOR_PALETTE[0] });
 
 function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
   const { lessonClasses, settings, addLessonClass, deleteLessonClass, updateLessonClass } = useStore();
@@ -98,6 +99,16 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
                     <label className="block text-[10px] text-slate-400 mb-1">수강 가능 조건 (선택)</label>
                     <input className={fieldCls} placeholder="예: 만 3~7세, 초급 레벨 이상" value={editForm.eligibilityCondition} onChange={e => setEditForm({ ...editForm, eligibilityCondition: e.target.value })} />
                   </div>
+                  <div>
+                    <label className="block text-[10px] text-slate-400 mb-1">스케줄표 색상</label>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {LESSON_CLASS_COLOR_PALETTE.map(c => (
+                        <button key={c} onClick={() => setEditForm({ ...editForm, color: c })}
+                          className={`w-6 h-6 rounded-full transition-all ${editForm.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`}
+                          style={{ backgroundColor: c }} />
+                      ))}
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <button onClick={() => handleEditSave(lc.id)} className="flex-1 bg-cyan-600 text-white rounded-lg py-1.5 text-xs font-medium">저장</button>
                     <button onClick={() => setEditingId(null)} className="flex-1 bg-slate-100 text-slate-600 rounded-lg py-1.5 text-xs">취소</button>
@@ -105,6 +116,7 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
+                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: lc.color }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-slate-800 text-sm font-medium">{lc.name}</p>
                     <p className="text-slate-400 text-xs mt-0.5">
@@ -112,7 +124,7 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
                     </p>
                     {lc.description && <p className="text-slate-400 text-xs mt-0.5">{lc.description}</p>}
                   </div>
-                  <button onClick={() => { setEditingId(lc.id); setEditForm({ name: lc.name, description: lc.description, defaultTime: lc.defaultTime, capacity: lc.capacity, eligibilityCondition: lc.eligibilityCondition }); }} className="text-slate-400 hover:text-cyan-600 transition-colors shrink-0">
+                  <button onClick={() => { setEditingId(lc.id); setEditForm({ name: lc.name, description: lc.description, defaultTime: lc.defaultTime, capacity: lc.capacity, eligibilityCondition: lc.eligibilityCondition, color: lc.color }); }} className="text-slate-400 hover:text-cyan-600 transition-colors shrink-0">
                     <Edit2 className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => deleteLessonClass(lc.id)} className="text-slate-400 hover:text-red-500 transition-colors shrink-0">
@@ -140,6 +152,16 @@ function LessonClassManagerModal({ onClose }: { onClose: () => void }) {
             </div>
           </div>
           <input className={fieldCls} placeholder="수강 가능 조건 (선택, 예: 만 3~7세)" value={newForm.eligibilityCondition} onChange={e => setNewForm({ ...newForm, eligibilityCondition: e.target.value })} />
+          <div>
+            <label className="block text-[10px] text-slate-400 mb-1">스케줄표 색상</label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {LESSON_CLASS_COLOR_PALETTE.map(c => (
+                <button key={c} onClick={() => setNewForm({ ...newForm, color: c })}
+                  className={`w-6 h-6 rounded-full transition-all ${newForm.color === c ? 'ring-2 ring-offset-2 ring-slate-400' : ''}`}
+                  style={{ backgroundColor: c }} />
+              ))}
+            </div>
+          </div>
           <button onClick={handleAdd} className="w-full bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl py-2 text-sm font-medium transition-colors">
             <Plus className="w-4 h-4 inline mr-1" /> 강습반 추가
           </button>
