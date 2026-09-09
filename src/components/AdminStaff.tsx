@@ -271,9 +271,9 @@ function PayrollView() {
   );
 }
 
-export default function AdminStaff() {
+export default function AdminStaff({ initialMode = 'info' }: { initialMode?: 'info' | 'payroll' }) {
   const { instructors, addInstructor, updateInstructor, deleteInstructor, payrollRecords } = useStore();
-  const [mode, setMode] = useState<'info' | 'payroll'>('info');
+  const [mode, setMode] = useState<'info' | 'payroll'>(initialMode);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resigned'>('active');
   const [nameFilter, setNameFilter] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(instructors[0]?.id ?? null);

@@ -53,7 +53,10 @@ const navGroups = [
         { id: 'enrollment-stats', text: '증감 현황' },
         { id: 'registration-applications', text: '가입신청 이력' },
       ]},
-      { id: 'staff', icon: IdCard, text: '직원 관리' },
+      { id: 'staff-group', icon: IdCard, text: '직원 관리', children: [
+        { id: 'staff',         text: '직원 정보' },
+        { id: 'staff-payroll', text: '급여 정산' },
+      ]},
       { id: 'payments-group', icon: CreditCard, text: '결제 관리', children: [
         { id: 'payments',  text: '결제 현황' },
         { id: 'free-swim', text: '자유수영 관리' },
@@ -86,7 +89,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications'
+  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications'
   | 'instructor-app' | 'parent-app' | 'driver-app' | 'registration-application'
   | 'business-plan';
 
@@ -125,6 +128,15 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '직원 상세 폼', description: '연락처, 입사일, 직책, 부서, 근무 요일·시간 등을 수정하고 저장해요.' },
       { label: '업무구분 = 강사', description: '업무구분을 "강사"로 선택하면 스케줄 색상, 1타임 정원 같은 강사 전용 항목이 추가로 나타나요.' },
       { label: '삭제', description: '더 이상 소속되지 않은 직원을 목록에서 제거해요.' },
+    ],
+  },
+  'staff-payroll': {
+    title: '급여 정산',
+    description: '강사·직원의 월별 급여를 자동 계산하고 명세서를 발행하는 화면이에요.',
+    features: [
+      { label: '정규직 / 파트타임 자동 계산', description: '정규직은 등록된 월급, 파트타임은 근무 요일·시간 기준 시급×시간을 자동 계산해요.' },
+      { label: '수당 반영', description: '인센티브·추가근무·방학특강 수당·생존수영 수당·개인지도료까지 더해 총액을 계산해요.' },
+      { label: '명세서 발행', description: '월별 명세서를 발행하고 인쇄/PDF로 저장할 수 있어요.' },
     ],
   },
   counseling: {
@@ -392,7 +404,8 @@ function AppContent() {
     switch (active) {
       case 'schedule':       return <AdminSchedule />;
       case 'students':       return <AdminStudents />;
-      case 'staff':          return <AdminStaff />;
+      case 'staff':          return <AdminStaff key="info" initialMode="info" />;
+      case 'staff-payroll':  return <AdminStaff key="payroll" initialMode="payroll" />;
       case 'counseling':     return <AdminCounseling />;
       case 'counseling-log':   return <AdminCounselingLog />;
       case 'enrollment-stats': return <AdminEnrollmentStats />;

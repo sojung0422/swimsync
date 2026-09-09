@@ -304,11 +304,12 @@ export default function AdminSchedule() {
                     </span>
                   ))}
                 </div>
-                <div className="overflow-x-auto">
+                <div className="overflow-auto" style={{ maxHeight: '72vh' }}>
                   <div style={{ minWidth: weekGridMinWidth }}>
+                    <div className="sticky top-0 z-20">
                     {/* 요일 헤더 (강사 수만큼 span) */}
-                    <div className="grid border-b-2 border-slate-300 bg-slate-50/50" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
-                      <div className="p-2 border-r-2 border-slate-300" />
+                    <div className="grid border-b-2 border-slate-300 bg-slate-50" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                      <div className="sticky left-0 z-30 p-2 border-r-2 border-slate-300 bg-slate-50" />
                       {weekDays.map((day, i) => {
                         const isToday = isSameDay(day, new Date());
                         const isSun = i === 0, isSat = i === 6;
@@ -324,21 +325,22 @@ export default function AdminSchedule() {
                       })}
                     </div>
                     {/* 강사 서브헤더 */}
-                    <div className="grid border-b-2 border-slate-300 bg-slate-50/30" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
-                      <div className="p-1.5 border-r-2 border-slate-300" />
+                    <div className="grid border-b-2 border-slate-300 bg-slate-50" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
+                      <div className="sticky left-0 z-30 p-1.5 border-r-2 border-slate-300 bg-slate-50" />
                       {weekDays.map(day => weekInstructors.map((inst, ii) => (
                         <div key={`${format(day, 'yyyy-MM-dd')}-${inst.id}`}
-                          className={`p-1.5 flex items-center justify-center gap-1 ${ii === weekInstructors.length - 1 ? 'border-r-2 border-slate-300' : 'border-r border-slate-200'}`}>
+                          className={`p-1.5 flex items-center justify-center gap-1 bg-slate-50 ${ii === weekInstructors.length - 1 ? 'border-r-2 border-slate-300' : 'border-r border-slate-200'}`}>
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: inst.color }} />
                           <span className="text-[10px] font-bold text-slate-500 truncate">{inst.name}</span>
                         </div>
                       )))}
                     </div>
+                    </div>
                     {/* 시간대별 행 */}
                     <div className="divide-y-2 divide-slate-200">
                       {settings.designatedTimes.map(time => (
                         <div key={time} className="grid min-h-[86px]" style={{ gridTemplateColumns: `96px repeat(${weekDays.length * weekInstructors.length}, minmax(112px,1fr))` }}>
-                          <div className="p-2 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50/30">
+                          <div className="sticky left-0 z-10 p-2 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50">
                             <span className="text-[11px] font-black text-slate-400">{time}</span>
                           </div>
                           {weekDays.map(day => weekInstructors.map((inst, ii) => {
@@ -418,17 +420,17 @@ export default function AdminSchedule() {
                 </div>
               </>
             ) : (
-              <div className="overflow-x-auto">
+              <div className="overflow-auto" style={{ maxHeight: '72vh' }}>
                 <div className="min-w-[900px]">
                   {/* Day headers */}
-                  <div className="grid grid-cols-[88px_repeat(7,1fr)] border-b border-slate-100 bg-slate-50/50">
-                    <div className="p-3 border-r border-slate-100" />
+                  <div className="sticky top-0 z-20 grid grid-cols-[88px_repeat(7,1fr)] border-b-2 border-slate-300 bg-slate-50">
+                    <div className="sticky left-0 z-30 p-3 border-r-2 border-slate-300 bg-slate-50" />
                     {weekDays.map((day, i) => {
                       const isToday = isSameDay(day, new Date());
                       const isSun = i === 0, isSat = i === 6;
                       const instDayCount = classes.filter(c => c.date === format(day, 'yyyy-MM-dd') && c.instructorId === selectedInstructorId).length;
                       return (
-                        <div key={i} className={`p-3 text-center border-r border-slate-100 last:border-r-0 ${isToday ? 'bg-cyan-50/60' : ''}`}>
+                        <div key={i} className={`p-3 text-center border-r border-slate-200 last:border-r-0 ${isToday ? 'bg-cyan-50/60' : ''}`}>
                           <div className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${isSun ? 'text-red-400' : isSat ? 'text-blue-400' : 'text-slate-400'}`}>
                             {format(day, 'E', { locale: ko })}
                           </div>
@@ -442,10 +444,10 @@ export default function AdminSchedule() {
                   </div>
 
                   {/* Time rows */}
-                  <div className="divide-y divide-slate-100">
+                  <div className="divide-y-2 divide-slate-200">
                     {settings.designatedTimes.map(time => (
                       <div key={time} className="grid grid-cols-[88px_repeat(7,1fr)] min-h-[110px]">
-                        <div className="p-3 border-r border-slate-100 flex items-center justify-center bg-slate-50/30">
+                        <div className="sticky left-0 z-10 p-3 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50">
                           <span className="text-[11px] font-black text-slate-400">{time}</span>
                         </div>
                         {weekDays.map((day, i) => {
@@ -455,13 +457,13 @@ export default function AdminSchedule() {
                           const dayClasses = classes.filter(c => c.date === dateStr && c.time === time && c.instructorId === selectedInstructorId);
                           const arrivingChanges = getArrivingChanges(dayLabel, time, selectedInstructorId);
                           return (
-                            <div key={i} className={`border-r border-slate-100 last:border-r-0 flex flex-col p-1.5 gap-1.5 ${isToday ? 'bg-cyan-50/30' : ''}`}>
+                            <div key={i} className={`border-r border-slate-200 last:border-r-0 flex flex-wrap content-start p-1.5 gap-1.5 ${isToday ? 'bg-cyan-50/30' : ''}`}>
                               {dayClasses.map(cls => {
                                 const instructor = instructors.find(inst => inst.id === cls.instructorId);
                                 const presentStudents = [...cls.studentIds, ...cls.makeupStudentIds].filter(id => !cls.absentStudentIds.includes(id));
                                 const color = instructor?.color || '#0891b2';
                                 return (
-                                  <div key={cls.id} className="flex flex-col gap-1">
+                                  <div key={cls.id} className="flex flex-wrap gap-1.5 content-start w-full">
                                     {presentStudents.map(id => {
                                       const s = students.find(st => st.id === id);
                                       const isMakeup = cls.makeupStudentIds.includes(id);
@@ -472,16 +474,16 @@ export default function AdminSchedule() {
                                       const isHit = searchMatches(s?.studentName);
                                       return (
                                         <div key={id} onClick={() => setSelectedClass(cls)}
-                                          className={`rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold ${isHit ? 'ring-2 ring-amber-400' : ''} ${isDeparting ? 'line-through' : ''}`}
+                                          className={`w-[112px] shrink-0 rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] text-[11px] font-bold ${isHit ? 'ring-2 ring-amber-400' : ''} ${isDeparting ? 'line-through' : ''}`}
                                           style={isDeparting
                                             ? { backgroundColor: '#f1f5f9', borderLeftColor: '#94a3b8', borderTopColor: '#e2e8f0', borderRightColor: '#e2e8f0', borderBottomColor: '#e2e8f0', borderWidth: '1px', borderLeftWidth: '3px', color: '#94a3b8' }
                                             : { backgroundColor: `${color}12`, borderLeftColor: color, borderTopColor: `${color}20`, borderRightColor: `${color}20`, borderBottomColor: `${color}20`, borderWidth: '1px', borderLeftWidth: '3px', color }}>
-                                          {s?.studentName}
-                                          {isDeparting && <span className="ml-1 text-[9px] bg-slate-200 text-slate-500 px-1 rounded no-underline inline-block">반변경 예정(퇴실)</span>}
-                                          {!isDeparting && isNew && <span className="ml-1 text-[9px] bg-lime-100 text-lime-700 px-1 rounded">신규</span>}
-                                          {!isDeparting && isChanged && <span className="ml-1 text-[9px] bg-violet-100 text-violet-700 px-1 rounded">반변경</span>}
-                                          {!isDeparting && isMakeup && <span className="ml-1 text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
-                                          <div className="text-[9.5px] font-normal opacity-70 mt-0.5">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
+                                          <div className="truncate">{s?.studentName}</div>
+                                          {isDeparting && <span className="text-[9px] bg-slate-200 text-slate-500 px-1 rounded no-underline inline-block">반변경 예정(퇴실)</span>}
+                                          {!isDeparting && isNew && <span className="text-[9px] bg-lime-100 text-lime-700 px-1 rounded">신규</span>}
+                                          {!isDeparting && isChanged && <span className="text-[9px] bg-violet-100 text-violet-700 px-1 rounded">반변경</span>}
+                                          {!isDeparting && isMakeup && <span className="text-[9px] bg-orange-100 text-orange-600 px-1 rounded">보강</span>}
+                                          <div className="text-[9.5px] font-normal opacity-70 mt-0.5 truncate">{s?.age}세 · {s?.level} · {vehicle ? vehicle.vehicleNumber : 'X'}</div>
                                         </div>
                                       );
                                     })}
@@ -489,9 +491,9 @@ export default function AdminSchedule() {
                                       const s = students.find(st => st.id === id);
                                       return (
                                         <div key={id} onClick={() => setSelectedClass(cls)}
-                                          className="rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] border-red-400 bg-red-50 text-red-500 text-[11px] font-bold line-through decoration-red-300">
-                                          {s?.studentName}
-                                          <span className="ml-1 text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span>
+                                          className="w-[112px] shrink-0 rounded-lg px-2 py-1.5 cursor-pointer hover:shadow-sm transition-all duration-150 border-l-[3px] border-red-400 bg-red-50 text-red-500 text-[11px] font-bold line-through decoration-red-300">
+                                          <div className="truncate">{s?.studentName}</div>
+                                          <span className="text-[9px] bg-red-100 text-red-600 px-1 rounded no-underline inline-block">결석</span>
                                         </div>
                                       );
                                     })}
@@ -545,12 +547,12 @@ export default function AdminSchedule() {
               ))}
               <span className="flex items-center gap-1.5 ml-2"><span className="w-2.5 h-2.5 rounded bg-slate-200 border border-slate-300" /> 개설된 수업 없음</span>
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-auto" style={{ maxHeight: '72vh' }}>
             <div style={{ minWidth: 110 + instructors.length * 360 }}>
-              <div className="grid border-b-2 border-slate-300 bg-slate-50/50" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
-                <div className="p-3 border-r-2 border-slate-300 text-slate-400 text-xs font-bold text-center">시간</div>
+              <div className="sticky top-0 z-20 grid border-b-2 border-slate-300 bg-slate-50" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
+                <div className="sticky left-0 z-30 p-3 border-r-2 border-slate-300 bg-slate-50 text-slate-400 text-xs font-bold text-center">시간</div>
                 {instructors.map((inst, ii) => (
-                  <div key={inst.id} className={`p-3 text-center ${ii === instructors.length - 1 ? '' : 'border-r-2 border-slate-300'}`}>
+                  <div key={inst.id} className={`p-3 text-center bg-slate-50 ${ii === instructors.length - 1 ? '' : 'border-r-2 border-slate-300'}`}>
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold mx-auto mb-1" style={{ backgroundColor: `${inst.color}20`, color: inst.color }}>{inst.name[0]}</div>
                     <span className="text-slate-700 text-xs font-bold">{inst.name} 강사</span>
                   </div>
@@ -559,7 +561,7 @@ export default function AdminSchedule() {
               <div className="divide-y-2 divide-slate-200">
                 {settings.designatedTimes.map(time => (
                   <div key={time} className="grid min-h-[96px]" style={{ gridTemplateColumns: `110px repeat(${instructors.length},1fr)` }}>
-                    <div className="p-3 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50/30">
+                    <div className="sticky left-0 z-10 p-3 border-r-2 border-slate-300 flex items-center justify-center bg-slate-50">
                       <span className="text-[11px] font-black text-slate-400">{time}</span>
                     </div>
                     {instructors.map((inst, ii) => {
