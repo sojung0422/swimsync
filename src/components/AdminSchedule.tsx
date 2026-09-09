@@ -25,6 +25,7 @@ export default function AdminSchedule() {
   const {
     classes, instructors, students, events, settings, vehicles, absenceRecords, scheduleChangeRequests, lessonClasses,
     addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
+    substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -38,6 +39,8 @@ export default function AdminSchedule() {
   const [newLevel, setNewLevel] = useState('');
   const [newClosedDate, setNewClosedDate] = useState('');
   const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName, academyPhone: settings.academyPhone });
+  const [fiveWeekYear, setFiveWeekYear] = useState(new Date().getFullYear());
+  const [fiveWeekResult, setFiveWeekResult] = useState<{ suggestedCount: number; mandatoryCount: number } | null>(null);
   const [policyDraft, setPolicyDraft] = useState({
     reRegStart: settings.reRegistrationPeriod.startDay, reRegEnd: settings.reRegistrationPeriod.endDay,
     newRegStart: settings.newRegistrationPeriod.startDay, newRegEnd: settings.newRegistrationPeriod.endDay,
@@ -830,6 +833,45 @@ export default function AdminSchedule() {
                       onBlur={() => updateSettings({ reRegistrationNoticeTemplate: policyDraft.noticeTemplate })} />
                     <p className="text-slate-400 text-xs mt-1">재등록 기간 시작일에 학부모 앱으로 자동 발송돼요.</p>
                   </div>
+
+                  {settings.operatingMode === 'fiveWeek' && (
+                    <div className="border-t border-slate-100 pt-4">
+                      <p className="text-sm font-bold text-slate-700 mb-1.5">연간 대체보강일 계획 (연초 1회 설정)</p>
+                      <p className="text-slate-400 text-xs mb-3">해당 연도에 요일별로 3회만 도는 부족한 달과 5회 도는 잉여 달을 자동으로 찾아, 잉여 달의 5번째 수업일을 대체보강일로 제안해요. 매칭되는 잉여 달이 없으면 그 요일 수강생에게 개별 의무보강을 배정해요.</p>
+                      <div className="flex items-center gap-2 mb-3">
+                        <input type="number" className={`${inputCls} w-28`} value={fiveWeekYear}
+                          onChange={e => setFiveWeekYear(parseInt(e.target.value) || new Date().getFullYear())} />
+                        <button onClick={() => setFiveWeekResult(generateFiveWeekPlan(fiveWeekYear))}
+                          className="px-3 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">
+                          {fiveWeekYear}년 계획 생성
+                        </button>
+                      </div>
+                      {fiveWeekResult && (
+                        <p className="text-xs text-emerald-600 font-semibold mb-3">대체보강일 후보 {fiveWeekResult.suggestedCount}건, 개별 의무보강 대상 {fiveWeekResult.mandatoryCount}건 생성됨</p>
+                      )}
+                      {substituteMakeupDays.filter(d => d.year === fiveWeekYear).length > 0 && (
+                        <div className="space-y-1.5 mb-3">
+                          <p className="text-xs font-semibold text-slate-600">대체보강일 후보</p>
+                          {substituteMakeupDays.filter(d => d.year === fiveWeekYear).map(d => (
+                            <div key={d.id} className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs">
+                              <span className="text-slate-600">{d.coversMonth} {d.weekday}요일 부족분 → <b>{d.date}</b> 대체보강</span>
+                              {d.status === 'suggested' ? (
+                                <button onClick={() => confirmSubstituteMakeupDay(d.id)} className="text-cyan-700 font-semibold hover:text-cyan-800">확정하기</button>
+                              ) : (
+                                <span className="text-emerald-600 font-semibold">확정됨</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      {mandatoryMakeupRequirements.filter(r => r.shortfallMonth.startsWith(String(fiveWeekYear))).length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-semibold text-slate-600">개별 의무보강 대상 (매칭되는 잉여 달 없음)</p>
+                          <p className="text-slate-400 text-xs">{mandatoryMakeupRequirements.filter(r => r.shortfallMonth.startsWith(String(fiveWeekYear))).length}명 — 학부모 앱에 예약 안내가 표시돼요.</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 

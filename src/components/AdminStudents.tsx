@@ -1,5 +1,5 @@
 import { useState, useRef, Fragment } from 'react';
-import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth, getClassOfferings, computeNextMonthBilling } from '../store/StoreContext';
+import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth, getClassOfferings, computeNextMonthBilling, computeFiveWeekBilling } from '../store/StoreContext';
 import type { Student, Enrollment, WaitlistEntry } from '../store/StoreContext';
 import {
   Search, Plus, X, ChevronLeft, List, Settings,
@@ -1263,7 +1263,9 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
   const suggestedAmount = Math.max(0, Math.round(discountBase * (1 - discountPercent / 100) / 100) * 100 - customAmountOff);
   const [editingCustomDiscount, setEditingCustomDiscount] = useState(false);
   const nextMonthBilling = paymentPlan
-    ? computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence)
+    ? (settings.operatingMode === 'fiveWeek'
+        ? computeFiveWeekBilling(paymentPlan.sessionsPerWeek, paymentPlan.sessionRates)
+        : computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence))
     : null;
   const [editingNextMonth, setEditingNextMonth] = useState(false);
   const [nextMonthDraft, setNextMonthDraft] = useState(String(student.nextMonthAmountOverride || ''));

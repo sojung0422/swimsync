@@ -605,6 +605,90 @@ export const computeNextMonthBilling = (
   return { month: format(nextMonthStart, 'yyyy-MM'), occurrences, amount };
 };
 
+// 5주차 운영 방침: 가격은 표준 회차(주 N회 = N*4회/월)로 고정하고, 실제 달력이 그에 못 미치면 대체보강일로 채운다는 전제 하의 청구액
+export const computeFiveWeekBilling = (
+  sessionsPerWeek: number, sessionRates: number[], referenceDate: Date = new Date()
+): { month: string; occurrences: number; amount: number } => {
+  const nextMonthStart = startOfMonth(addMonths(referenceDate, 1));
+  const standardOccurrences = Math.max(1, sessionsPerWeek * 4);
+  const amount = sessionRates[Math.min(standardOccurrences, sessionRates.length) - 1] ?? 0;
+  return { month: format(nextMonthStart, 'yyyy-MM'), occurrences: standardOccurrences, amount };
+};
+
+// 연도 전체 × 요일별 실제 발생 횟수(공휴일 제외) — 5주차 운영 방침에서 부족(3회)/잉여(5회) 달을 찾는 데 사용
+export type WeekdayOccurrence = { month: string; weekday: string; occurrences: number };
+
+export const computeFiveWeekAnalysis = (year: number, closedDates: string[]): WeekdayOccurrence[] => {
+  const closedSet = new Set(closedDates);
+  const results: WeekdayOccurrence[] = [];
+  for (let m = 1; m <= 12; m++) {
+    const monthStart = new Date(year, m - 1, 1);
+    const monthEnd = endOfMonth(monthStart);
+    const countByDay: Record<string, number> = {};
+    for (let d = monthStart; d <= monthEnd; d = addDays(d, 1)) {
+      if (closedSet.has(format(d, 'yyyy-MM-dd'))) continue;
+      const dayLabel = Object.entries(DAY_MAP).find(([, v]) => v === getDay(d))?.[0];
+      if (!dayLabel) continue;
+      countByDay[dayLabel] = (countByDay[dayLabel] ?? 0) + 1;
+    }
+    const monthKey = format(monthStart, 'yyyy-MM');
+    Object.entries(countByDay).forEach(([weekday, occurrences]) => results.push({ month: monthKey, weekday, occurrences }));
+  }
+  return results;
+};
+
+const monthDiff = (a: string, b: string): number => {
+  const [ay, am] = a.split('-').map(Number);
+  const [by, bm] = b.split('-').map(Number);
+  return (ay - by) * 12 + (am - bm);
+};
+
+// 특정 달의 N번째 요일 날짜를 찾음 (공휴일은 세지 않음) — 5번째 발생일을 대체보강일 후보로 제안할 때 사용
+const findNthWeekdayOfMonth = (monthKey: string, weekday: string, n: number, closedDates: string[]): string | undefined => {
+  const [y, m] = monthKey.split('-').map(Number);
+  const monthStart = new Date(y, m - 1, 1);
+  const monthEnd = endOfMonth(monthStart);
+  const closedSet = new Set(closedDates);
+  let count = 0;
+  for (let d = monthStart; d <= monthEnd; d = addDays(d, 1)) {
+    if (closedSet.has(format(d, 'yyyy-MM-dd'))) continue;
+    const dayLabel = Object.entries(DAY_MAP).find(([, v]) => v === getDay(d))?.[0];
+    if (dayLabel !== weekday) continue;
+    count++;
+    if (count === n) return format(d, 'yyyy-MM-dd');
+  }
+  return undefined;
+};
+
+// 부족한 달(3회)마다 가장 가까운 잉여 달(5회, 같은 요일)의 5번째 발생일을 대체보강일 후보로 매칭. 매칭되는 잉여 달이 없으면 개별 의무보강 대상으로 남김
+export type SubstituteMakeupSuggestion = { weekday: string; shortfallMonth: string; matchedDate?: string; matchedFromMonth?: string };
+
+export const computeFiveWeekSuggestions = (year: number, closedDates: string[]): SubstituteMakeupSuggestion[] => {
+  const analysis = computeFiveWeekAnalysis(year, closedDates);
+  const shortfalls = analysis.filter(a => a.occurrences === 3);
+  const surplusByWeekday: Record<string, WeekdayOccurrence[]> = {};
+  analysis.filter(a => a.occurrences === 5).forEach(a => { (surplusByWeekday[a.weekday] ??= []).push(a); });
+
+  return shortfalls.map(sf => {
+    const candidates = (surplusByWeekday[sf.weekday] ?? []).slice().sort(
+      (a, b) => Math.abs(monthDiff(a.month, sf.month)) - Math.abs(monthDiff(b.month, sf.month))
+    );
+    const best = candidates[0];
+    if (!best) return { weekday: sf.weekday, shortfallMonth: sf.month };
+    const matchedDate = findNthWeekdayOfMonth(best.month, sf.weekday, 5, closedDates);
+    return { weekday: sf.weekday, shortfallMonth: sf.month, matchedDate, matchedFromMonth: best.month };
+  });
+};
+
+export type SubstituteMakeupDay = {
+  id: string; year: number; weekday: string; date: string; coversMonth: string; status: 'suggested' | 'confirmed';
+};
+
+export type MandatoryMakeupRequirement = {
+  id: string; studentId: string; weekday: string; shortfallMonth: string;
+  assignedDate?: string; status: 'unassigned' | 'awaiting_parent' | 'scheduled' | 'completed';
+};
+
 // 같은 가족(모/부 연락처가 일치)으로 등록된 활성 학생 수 — 형제 할인 판단에 사용
 export const computeSiblingCount = (student: Student, allStudents: Student[]): number => {
   const motherKey = student.motherPhone;
@@ -1223,6 +1307,12 @@ type StoreContextType = {
   submitEventParticipation: (studentId: string, discountId: string, evidencePhoto: string) => void;
   approveEventParticipation: (id: string) => void;
   rejectEventParticipation: (id: string) => void;
+  // 5주차 대체보강 시스템 (운영 방침 operatingMode === 'fiveWeek'일 때 사용)
+  substituteMakeupDays: SubstituteMakeupDay[];
+  mandatoryMakeupRequirements: MandatoryMakeupRequirement[];
+  generateFiveWeekPlan: (year: number) => { suggestedCount: number; mandatoryCount: number };
+  confirmSubstituteMakeupDay: (id: string) => void;
+  assignMandatoryMakeup: (id: string, date: string) => void;
   // 강사 급여 정산
   payrollRecords: PayrollRecord[];
   issuePayroll: (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => void;
@@ -1277,6 +1367,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<LeadRecord[]>(INITIAL_LEADS);
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
   const [eventParticipations, setEventParticipations] = useState<EventParticipation[]>(INITIAL_EVENT_PARTICIPATIONS);
+  const [substituteMakeupDays, setSubstituteMakeupDays] = useState<SubstituteMakeupDay[]>([]);
+  const [mandatoryMakeupRequirements, setMandatoryMakeupRequirements] = useState<MandatoryMakeupRequirement[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
   const [levelTestRecords, setLevelTestRecords] = useState<LevelTestRecord[]>(INITIAL_LEVEL_TEST_RECORDS);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
@@ -1785,6 +1877,39 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setEventParticipations(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : p));
   };
 
+  // ── 5주차 대체보강 시스템 ─────────────────────────────────────────
+  // 연초에 관리자가 한 번 실행 — 부족한 달(3회)마다 매칭되는 잉여 달(5회)을 대체보강일로 제안하고,
+  // 매칭이 없는 부족분은 해당 요일 수강생별로 의무보강 대상을 만들어 학부모 앱에서 직접 예약하게 함
+  const generateFiveWeekPlan = (year: number) => {
+    const suggestions = computeFiveWeekSuggestions(year, settings.closedDates);
+    const newSubDays: SubstituteMakeupDay[] = [];
+    const newMandatory: MandatoryMakeupRequirement[] = [];
+    suggestions.forEach((sug, i) => {
+      if (sug.matchedDate) {
+        newSubDays.push({
+          id: `smd_${Date.now()}_${i}`, year, weekday: sug.weekday, date: sug.matchedDate,
+          coversMonth: sug.shortfallMonth, status: 'suggested',
+        });
+      } else {
+        students.filter(s => s.status === 'active' && s.regularDays.includes(sug.weekday)).forEach(s => {
+          newMandatory.push({
+            id: `mmr_${Date.now()}_${i}_${s.id}`, studentId: s.id, weekday: sug.weekday,
+            shortfallMonth: sug.shortfallMonth, status: 'awaiting_parent',
+          });
+        });
+      }
+    });
+    setSubstituteMakeupDays(prev => [...prev, ...newSubDays]);
+    setMandatoryMakeupRequirements(prev => [...prev, ...newMandatory]);
+    return { suggestedCount: newSubDays.length, mandatoryCount: newMandatory.length };
+  };
+  const confirmSubstituteMakeupDay = (id: string) => {
+    setSubstituteMakeupDays(prev => prev.map(d => d.id === id ? { ...d, status: 'confirmed' } : d));
+  };
+  const assignMandatoryMakeup = (id: string, date: string) => {
+    setMandatoryMakeupRequirements(prev => prev.map(r => r.id === id ? { ...r, assignedDate: date, status: 'scheduled' } : r));
+  };
+
   // ── 강사 급여 정산 ────────────────────────────────────────────
   const issuePayroll = (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => {
     const inst = instructors.find(i => i.id === instructorId);
@@ -1916,6 +2041,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       leads, addLead, updateLead, deleteLead, convertLeadToEnrolled,
       discounts, addDiscount, updateDiscount, deleteDiscount,
       eventParticipations, submitEventParticipation, approveEventParticipation, rejectEventParticipation,
+      substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay, assignMandatoryMakeup,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,
       currentInstructorId, setCurrentInstructorId,

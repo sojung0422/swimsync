@@ -311,6 +311,7 @@ export default function InstructorApp() {
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
     leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings, instructorNotices,
+    substituteMakeupDays,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages' | 'contacts'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
@@ -451,6 +452,26 @@ export default function InstructorApp() {
                 </div>
               )}
             </div>
+
+            {(settings.closedDates.length > 0 || substituteMakeupDays.some(d => d.status === 'confirmed')) && (
+              <div className="mt-5">
+                <h2 className="text-[15px] font-bold text-slate-800 px-1 mb-3">연간 휴관일·대체보강일</h2>
+                <div className="bg-white rounded-2xl p-4 border border-slate-100 space-y-2">
+                  {settings.closedDates.slice().sort().map(d => (
+                    <div key={d} className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">{d}</span>
+                      <span className="text-slate-400 font-medium">휴관일</span>
+                    </div>
+                  ))}
+                  {substituteMakeupDays.filter(d => d.status === 'confirmed').slice().sort((a, b) => a.date.localeCompare(b.date)).map(d => (
+                    <div key={d.id} className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">{d.date} ({d.weekday}요일)</span>
+                      <span className="text-cyan-600 font-medium">{d.coversMonth} 대체보강일</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         ) : activeTab === 'messages' ? (
           <div className="flex-1 overflow-hidden pb-20 flex flex-col bg-slate-50">

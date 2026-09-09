@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   useStore, getClassDivision, getAllEnrollments,
-  computeOpenMakeupSlots, computeMakeupCapacity, isAbsenceCancellable, rankMakeupCandidates, computeNextMonthBilling,
+  computeOpenMakeupSlots, computeMakeupCapacity, isAbsenceCancellable, rankMakeupCandidates, computeNextMonthBilling, computeFiveWeekBilling,
   getClassOfferings, resolvePlanPricing,
 } from '../store/StoreContext';
 import type { Enrollment } from '../store/StoreContext';
@@ -214,6 +214,7 @@ export default function ParentApp() {
     makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
     absenceRecords, cancelAbsence, freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
     discounts, eventParticipations, submitEventParticipation,
+    mandatoryMakeupRequirements, assignMandatoryMakeup,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
@@ -292,7 +293,9 @@ export default function ParentApp() {
 
   const paymentPlan = student ? paymentPlans.find(p => p.id === student.paymentPlanId) : undefined;
   const nextMonthBilling = student && paymentPlan
-    ? computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence)
+    ? (settings.operatingMode === 'fiveWeek'
+        ? computeFiveWeekBilling(paymentPlan.sessionsPerWeek, paymentPlan.sessionRates)
+        : computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence))
     : null;
   const myFreeSwimBookings = freeSwimBookings.filter(b => b.studentId === studentId && b.status === 'booked');
 
@@ -794,6 +797,25 @@ export default function ParentApp() {
                     </div>
                   );
                 })}
+
+                {mandatoryMakeupRequirements.filter(r => r.studentId === studentId && r.status === 'awaiting_parent').map(r => (
+                  <div key={r.id} className="mt-3 pt-3 border-t border-slate-100 bg-amber-50 -mx-4 px-4 py-3 rounded-xl">
+                    <p className="text-amber-700 text-sm font-semibold">의무 보강 예약이 필요해요</p>
+                    <p className="text-amber-600 text-[11px] mt-0.5">{r.shortfallMonth} {r.weekday}요일 수업이 이번 달 부족해요. 보강 날짜를 예약해주세요.</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <input type="date" id={`mmr-${r.id}`} className="flex-1 border border-amber-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none" />
+                      <button onClick={() => {
+                        const el = document.getElementById(`mmr-${r.id}`) as HTMLInputElement | null;
+                        if (el?.value) assignMandatoryMakeup(r.id, el.value);
+                      }} className="px-3 py-1.5 bg-amber-500 hover:bg-amber-400 text-white rounded-lg text-xs font-semibold transition-colors shrink-0">예약하기</button>
+                    </div>
+                  </div>
+                ))}
+                {mandatoryMakeupRequirements.filter(r => r.studentId === studentId && r.status === 'scheduled').map(r => (
+                  <div key={r.id} className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-emerald-600">
+                    <CheckCircle className="w-3.5 h-3.5" /> {r.shortfallMonth} {r.weekday}요일 의무 보강 {r.assignedDate}로 예약됨
+                  </div>
+                ))}
               </div>
             </div>
 
