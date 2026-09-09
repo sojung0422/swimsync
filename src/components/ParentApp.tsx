@@ -214,8 +214,9 @@ export default function ParentApp() {
     makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
     absenceRecords, cancelAbsence, freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
     discounts, eventParticipations, submitEventParticipation,
-    mandatoryMakeupRequirements, assignMandatoryMakeup,
+    mandatoryMakeupRequirements, assignMandatoryMakeup, checkMonthlyPaymentReminder,
   } = useStore();
+  useEffect(() => { checkMonthlyPaymentReminder(); }, []);
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
   const [withdrawEnrollmentTarget, setWithdrawEnrollmentTarget] = useState<Enrollment | null>(null);

@@ -332,7 +332,8 @@ const findParentIdFor = (tabId: string): string | undefined => {
 
 function AppContent() {
   const { signOut } = useAuth();
-  const { instructors, currentInstructorId, setCurrentInstructorId } = useStore();
+  const { instructors, currentInstructorId, setCurrentInstructorId, eventParticipations } = useStore();
+  const pendingEventCount = eventParticipations.filter(p => p.status === 'pending').length;
   const [active, setActive] = useState<TabId>('schedule');
   const [expandedParents, setExpandedParents] = useState<Set<string>>(() => {
     const p = findParentIdFor('schedule');
@@ -487,6 +488,9 @@ function AppContent() {
                         >
                           <Icon size={15} className={`shrink-0 ${childActive ? 'text-cyan-600' : 'text-slate-400'}`} />
                           <span className="flex-1 text-left">{text}</span>
+                          {id === 'payments-group' && pendingEventCount > 0 && (
+                            <span className="shrink-0 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingEventCount}</span>
+                          )}
                           <ChevronDown size={13} className={`shrink-0 text-slate-300 transition-transform duration-150 ${isExpanded ? 'rotate-180' : ''}`} />
                         </button>
                         {isExpanded && (
@@ -497,11 +501,14 @@ function AppContent() {
                                 <button
                                   key={child.id}
                                   onClick={() => setActive(child.id as TabId)}
-                                  className={`w-full text-left px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150 ${
+                                  className={`w-full flex items-center gap-1.5 text-left px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all duration-150 ${
                                     on ? 'bg-cyan-50 text-cyan-700 font-semibold' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                                   }`}
                                 >
-                                  {child.text}
+                                  <span className="flex-1">{child.text}</span>
+                                  {child.id === 'payments' && pendingEventCount > 0 && (
+                                    <span className="shrink-0 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingEventCount}</span>
+                                  )}
                                 </button>
                               );
                             })}

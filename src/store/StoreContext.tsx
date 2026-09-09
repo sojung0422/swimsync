@@ -497,6 +497,7 @@ export type LevelTestRecord = {
 export type LeaveType = 'annual' | 'half' | 'quarter' | 'unavailable';
 export type LeaveRequest = {
   id: string; instructorId: string; date: string; leaveType: LeaveType; reason: string;
+  timeRange?: 'am' | 'pm'; // 반차/반반차일 때 어느 시간대가 휴강인지 — 학부모 알림에 사용
   status: 'pending' | 'approved' | 'rejected';
   requestedAt: string; resolvedAt: string | null; resolvedBy: string | null; // resolvedBy = 승인/반려한 instructorId
 };
@@ -1326,6 +1327,7 @@ type StoreContextType = {
   addNotification: (n: Omit<NotificationRecord, 'id' | 'createdAt' | 'sentAt'>) => string;
   sendNotification: (id: string) => void;
   deleteNotification: (id: string) => void;
+  checkMonthlyPaymentReminder: () => void;
   // Makeup request (서류 기반 보강/이월)
   submitMakeupRequest: (studentId: string, fromClassId: string, docPhoto: string, reason: string, preferredResolution: 'makeup' | 'carryover') => void;
   approveMakeupRequestAsSlot: (requestId: string, toClassId: string) => void;
@@ -1377,7 +1379,7 @@ type StoreContextType = {
   setCurrentInstructorId: (id: string) => void;
   // 강사 연차/근무불가 신청
   leaveRequests: LeaveRequest[];
-  submitLeaveRequest: (instructorId: string, date: string, leaveType: LeaveType, reason: string) => { ok: boolean; error?: string };
+  submitLeaveRequest: (instructorId: string, date: string, leaveType: LeaveType, reason: string, timeRange?: 'am' | 'pm') => { ok: boolean; error?: string };
   approveLeaveRequest: (id: string, approverInstructorId: string) => { ok: boolean; error?: string };
   rejectLeaveRequest: (id: string, approverInstructorId: string) => { ok: boolean; error?: string };
   // 강사 간 대타 요청
@@ -1420,6 +1422,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [leads, setLeads] = useState<LeadRecord[]>(INITIAL_LEADS);
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
   const [eventParticipations, setEventParticipations] = useState<EventParticipation[]>(INITIAL_EVENT_PARTICIPATIONS);
+  const [sentReminderMonths, setSentReminderMonths] = useState<string[]>([]);
   const [substituteMakeupDays, setSubstituteMakeupDays] = useState<SubstituteMakeupDay[]>([]);
   const [mandatoryMakeupRequirements, setMandatoryMakeupRequirements] = useState<MandatoryMakeupRequirement[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
@@ -1829,6 +1832,23 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
   const deleteNotification = (id: string) => setNotifications(prev => prev.filter(n => n.id !== id));
 
+  // 재등록 기간 시작일에 학부모 앱으로 결제 안내를 월 1회 자동 발송 — 이미 보낸 달이면 다시 보내지 않음
+  const checkMonthlyPaymentReminder = () => {
+    const today = new Date();
+    const monthKey = format(today, 'yyyy-MM');
+    if (sentReminderMonths.includes(monthKey)) return;
+    if (today.getDate() !== settings.reRegistrationPeriod.startDay) return;
+    const activeIds = students.filter(s => s.status === 'active').map(s => s.id);
+    if (activeIds.length === 0) return;
+    const id = `n${Date.now()}_reminder`;
+    setNotifications(prev => [...prev, {
+      id, createdAt: format(today, 'yyyy-MM-dd HH:mm'), type: 'payment',
+      title: '재등록 기간 안내', content: settings.reRegistrationNoticeTemplate,
+      recipientIds: activeIds, sentAt: format(today, 'yyyy-MM-dd HH:mm'),
+    }]);
+    setSentReminderMonths(prev => [...prev, monthKey]);
+  };
+
   // ── Makeup Request (서류 기반 보강/이월) ─────────────────────────
   const submitMakeupRequest = (studentId: string, fromClassId: string, docPhoto: string, reason: string, preferredResolution: 'makeup' | 'carryover') => {
     setMakeupRequests(prev => [...prev, {
@@ -1994,7 +2014,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ── 강사 연차/근무불가 신청 ─────────────────────────────────────
-  const submitLeaveRequest = (instructorId: string, date: string, leaveType: LeaveType, reason: string): { ok: boolean; error?: string } => {
+  const submitLeaveRequest = (instructorId: string, date: string, leaveType: LeaveType, reason: string, timeRange?: 'am' | 'pm'): { ok: boolean; error?: string } => {
     const inst = instructors.find(i => i.id === instructorId);
     if (!inst) return { ok: false, error: '강사 정보를 찾을 수 없습니다.' };
     if (inst.type === '정규' && leaveType !== 'unavailable') {
@@ -2002,7 +2022,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       if (remaining < leaveDeduction(leaveType)) return { ok: false, error: '남은 연차가 부족합니다.' };
     }
     setLeaveRequests(prev => [...prev, {
-      id: `leave_${Date.now()}`, instructorId, date, leaveType, reason,
+      id: `leave_${Date.now()}`, instructorId, date, leaveType, reason, timeRange,
       status: 'pending', requestedAt: new Date().toISOString(), resolvedAt: null, resolvedBy: null,
     }]);
     return { ok: true };
@@ -2020,6 +2040,16 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       setInstructors(prev => prev.map(i => i.id === inst.id ? { ...i, annualLeaveUsed: i.annualLeaveUsed + leaveDeduction(req.leaveType) } : i));
     }
     setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', resolvedAt: new Date().toISOString(), resolvedBy: approverInstructorId } : r));
+
+    // 해당 요일·시간대에 배정된 학생들에게 휴강 안내 알림 발송
+    const affectedClasses = classes.filter(c => c.instructorId === req.instructorId && c.date === req.date && (
+      !req.timeRange || (req.timeRange === 'am' ? parseInt(c.time) < 12 : parseInt(c.time) >= 12)
+    ));
+    const affectedStudentIds = new Set(affectedClasses.flatMap(c => [...c.studentIds, ...c.makeupStudentIds]));
+    affectedStudentIds.forEach(studentId => {
+      pushSystemAlert(studentId, '수업 휴강 안내', `${req.date} ${inst?.name ?? ''}쌤 개인 사정으로 수업이 휴강돼요. 보강은 추후 안내드릴게요.`);
+    });
+
     return { ok: true };
   };
 
@@ -2085,7 +2115,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addVehicle, updateVehicle, deleteVehicle, assignStudentToVehicle,
       addPaymentPlan, updatePaymentPlan, deletePaymentPlan,
       addPaymentRecord, markPaymentPaid,
-      addNotification, sendNotification, deleteNotification,
+      addNotification, sendNotification, deleteNotification, checkMonthlyPaymentReminder,
       addNotificationGroup, updateNotificationGroup, deleteNotificationGroup,
       submitMakeupRequest, approveMakeupRequestAsSlot, approveMakeupRequestAsCarryover, rejectMakeupRequest, cancelScheduledMakeup,
       makeupCancellations,

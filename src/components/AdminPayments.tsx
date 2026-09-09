@@ -769,7 +769,8 @@ function PaymentStatusView() {
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminPayments() {
-  const { paymentPlans, students, addPaymentPlan, updatePaymentPlan, deletePaymentPlan } = useStore();
+  const { paymentPlans, students, addPaymentPlan, updatePaymentPlan, deletePaymentPlan, eventParticipations } = useStore();
+  const pendingEventCount = eventParticipations.filter(p => p.status === 'pending').length;
 
   const [planModal, setPlanModal] = useState<{ mode: 'add' | 'edit'; plan?: PaymentPlan } | null>(null);
   const [expandedPlan, setExpandedPlan] = useState<string | null>(null);
@@ -837,6 +838,9 @@ export default function AdminPayments() {
         <button onClick={() => setActiveTab('discounts')}
           className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'discounts' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
           <Gift className="w-4 h-4" /> 할인·이벤트
+          {pendingEventCount > 0 && (
+            <span className="bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">{pendingEventCount}</span>
+          )}
         </button>
         <button onClick={() => setActiveTab('stats')}
           className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'stats' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>

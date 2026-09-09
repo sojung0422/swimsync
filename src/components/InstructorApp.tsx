@@ -322,6 +322,7 @@ export default function InstructorApp() {
   const [counselingStudentId, setCounselingStudentId] = useState<string | null>(null);
   const [leaveDate, setLeaveDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [leaveType, setLeaveType] = useState<LeaveType>('annual');
+  const [leaveTimeRange, setLeaveTimeRange] = useState<'am' | 'pm'>('am');
   const [leaveReason, setLeaveReason] = useState('');
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [leaveSaved, setLeaveSaved] = useState(false);
@@ -861,6 +862,19 @@ export default function InstructorApp() {
                       ) : (
                         <p className="text-slate-400 text-xs">{settings.annualLeaveEnabled ? '프리랜서/비정규직은 연차 차감 없이 근무 불가일로만 등록돼요.' : '연차를 지급하지 않는 학원이라 근무 불가일로만 등록돼요.'}</p>
                       )}
+                      {(leaveType === 'half' || leaveType === 'quarter') && instructor?.type === '정규' && settings.annualLeaveEnabled && (
+                        <div>
+                          <p className="text-slate-500 text-xs font-medium mb-1.5">휴강 시간대 (학부모에게 안내돼요)</p>
+                          <div className="flex gap-2">
+                            {(['am', 'pm'] as const).map(t => (
+                              <button key={t} onClick={() => setLeaveTimeRange(t)}
+                                className={`flex-1 py-2 rounded-xl text-xs font-semibold border transition-colors ${leaveTimeRange === t ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
+                                {t === 'am' ? '오전' : '오후'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       <div>
                         <p className="text-slate-500 text-xs font-medium mb-1.5">사유</p>
                         <input value={leaveReason} onChange={e => setLeaveReason(e.target.value)} placeholder="예: 개인 사정"
@@ -869,7 +883,8 @@ export default function InstructorApp() {
                       {leaveError && <p className="text-red-500 text-xs">{leaveError}</p>}
                       <button onClick={() => {
                         const type: LeaveType = (instructor?.type === '정규' && settings.annualLeaveEnabled) ? leaveType : 'unavailable';
-                        const res = submitLeaveRequest(instructorId, leaveDate, type, leaveReason);
+                        const timeRange = (type === 'half' || type === 'quarter') ? leaveTimeRange : undefined;
+                        const res = submitLeaveRequest(instructorId, leaveDate, type, leaveReason, timeRange);
                         if (!res.ok) setLeaveError(res.error ?? '신청에 실패했습니다.');
                         else { setLeaveError(null); setLeaveReason(''); setLeaveSaved(true); setTimeout(() => setLeaveSaved(false), 1500); }
                       }} className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
