@@ -1,14 +1,109 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useStore, getPrimaryContactPhone } from '../store/StoreContext';
 import { format, isAfter, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
-import { Car, MapPin, Users, Clock, Info, ChevronRight, Navigation, Phone } from 'lucide-react';
+import { Car, MapPin, Users, Clock, Info, ChevronRight, Navigation, Phone, PlayCircle, X, CheckCircle2, LocateFixed } from 'lucide-react';
 import AddContactButton from './AddContactButton';
+
+// 운행 중인 노선 화면 — 실시간 위치(브라우저 GPS, 화면이 켜져 있을 때만) + 정류장 순서 진행 체크
+function ActiveRouteScreen({ vehicleId, onEnd }: { vehicleId: string; onEnd: () => void }) {
+  const { vehicles, students, classes } = useStore();
+  const vehicle = vehicles.find(v => v.id === vehicleId);
+  const [arrivedIds, setArrivedIds] = useState<Set<string>>(new Set());
+  const [position, setPosition] = useState<{ lat: number; lng: number } | null>(null);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+
+  const today = format(new Date(), 'yyyy-MM-dd');
+  const todayClasses = classes.filter(c => c.date === today);
+  const isRegularToday = (s: typeof students[number]) => todayClasses.some(c => c.studentIds.includes(s.id));
+  const isAbsentToday = (s: typeof students[number]) => todayClasses.some(c => c.absentStudentIds.includes(s.id));
+  const stops = vehicle
+    ? vehicle.studentIds.map(id => students.find(s => s.id === id)).filter((s): s is NonNullable<typeof s> => Boolean(s) && isRegularToday(s!) && !isAbsentToday(s!))
+    : [];
+  const nextStop = stops.find(s => !arrivedIds.has(s.id));
+
+  useEffect(() => {
+    if (!navigator.geolocation) { setGeoError('이 브라우저는 위치 확인을 지원하지 않아요.'); return; }
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      pos => { setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }); setGeoError(null); },
+      err => setGeoError(err.code === 1 ? '위치 권한이 거부됐어요. 브라우저 설정에서 허용해주세요.' : '현재 위치를 가져올 수 없어요.'),
+      { enableHighAccuracy: true, maximumAge: 5000 }
+    );
+    return () => { if (watchIdRef.current !== null) navigator.geolocation.clearWatch(watchIdRef.current); };
+  }, []);
+
+  if (!vehicle) return null;
+  const mapSrc = position
+    ? `https://www.openstreetmap.org/export/embed.html?bbox=${position.lng - 0.01}%2C${position.lat - 0.008}%2C${position.lng + 0.01}%2C${position.lat + 0.008}&layer=mapnik&marker=${position.lat}%2C${position.lng}`
+    : null;
+
+  return (
+    <div className="absolute inset-0 bg-slate-50 z-30 flex flex-col">
+      <div className="shrink-0 px-4 pt-5 pb-3 text-white" style={{ background: 'linear-gradient(135deg, #0891b2, #3b82f6)' }}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-white/80 text-xs">운행 중</p>
+            <p className="font-bold text-base">{vehicle.route || vehicle.vehicleNumber}</p>
+          </div>
+          <button onClick={onEnd} className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center"><X className="w-4 h-4" /></button>
+        </div>
+      </div>
+
+      <div className="shrink-0 h-40 bg-slate-200 relative">
+        {mapSrc ? (
+          <iframe title="현재 위치" src={mapSrc} className="w-full h-full border-0" />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 text-xs gap-1.5">
+            <LocateFixed className="w-5 h-5" />
+            {geoError ?? '현재 위치를 확인하는 중...'}
+          </div>
+        )}
+      </div>
+
+      {nextStop && (
+        <div className="shrink-0 mx-4 mt-3 bg-cyan-50 border border-cyan-200 rounded-2xl p-3.5 flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-cyan-600 text-white flex items-center justify-center font-bold text-sm shrink-0">{nextStop.studentName[0]}</div>
+          <div className="flex-1 min-w-0">
+            <p className="text-cyan-700 text-xs font-semibold">다음 정류장</p>
+            <p className="text-slate-800 text-sm font-bold truncate">{nextStop.studentName} · {nextStop.address || '주소 없음'}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+        {stops.map((s, idx) => {
+          const arrived = arrivedIds.has(s.id);
+          return (
+            <div key={s.id} className={`rounded-xl border px-3.5 py-2.5 flex items-center gap-3 ${arrived ? 'bg-slate-100 border-slate-200 opacity-60' : 'bg-white border-slate-200'}`}>
+              <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 text-xs font-bold shrink-0">{idx + 1}</div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-medium ${arrived ? 'text-slate-400 line-through' : 'text-slate-800'}`}>{s.studentName}</p>
+                <p className="text-slate-400 text-xs truncate">{s.address || '주소 없음'}</p>
+              </div>
+              <button onClick={() => setArrivedIds(prev => { const next = new Set(prev); if (arrived) next.delete(s.id); else next.add(s.id); return next; })}
+                className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors ${arrived ? 'bg-slate-200 text-slate-500' : 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'}`}>
+                <CheckCircle2 className="w-3.5 h-3.5" /> {arrived ? '도착 취소' : '도착'}
+              </button>
+            </div>
+          );
+        })}
+        {stops.length === 0 && <div className="text-center py-10 text-slate-400 text-sm">오늘 탑승 예정 학생이 없습니다.</div>}
+        {stops.length > 0 && !nextStop && (
+          <div className="text-center py-6 text-emerald-600 text-sm font-semibold flex flex-col items-center gap-1.5">
+            <CheckCircle2 className="w-6 h-6" /> 오늘 노선 운행 완료!
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function DriverApp() {
   const { drivers, vehicles, students, classes } = useStore();
   const [activeTab, setActiveTab] = useState<'route' | 'students'>('route');
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
+  const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
 
   // Mock: logged in as driver d1 — 기사 한 명이 여러 차량(노선)을 맡을 수도 있어 전체를 가져옴
   const driverId = 'd1';
@@ -148,12 +243,20 @@ export default function DriverApp() {
                     </div>
                     {group.routes.map(({ vehicle: v, present, absent }) => (
                       <div key={v.id} className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2 min-w-0">
                             <Navigation className="w-4 h-4 text-cyan-600 shrink-0" />
                             <span className="text-slate-700 text-sm font-semibold truncate">{v.route || v.vehicleNumber}</span>
                           </div>
-                          <span className="text-slate-400 text-xs shrink-0">{present.length}명</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-slate-400 text-xs">{present.length}명</span>
+                            {present.length > 0 && (
+                              <button onClick={() => setActiveRouteId(v.id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-[11px] font-semibold transition-colors">
+                                <PlayCircle className="w-3.5 h-3.5" /> 운행 시작
+                              </button>
+                            )}
+                          </div>
                         </div>
                         {present.length === 0 && absent.length === 0 ? (
                           <div className="py-6 text-center text-slate-400 text-sm">오늘 탑승 예정 학생이 없습니다.</div>
@@ -291,6 +394,8 @@ export default function DriverApp() {
             <span className="text-[10px] font-medium">탑승생</span>
           </button>
         </div>
+
+        {activeRouteId && <ActiveRouteScreen vehicleId={activeRouteId} onEnd={() => setActiveRouteId(null)} />}
       </div>
     </div>
   );
