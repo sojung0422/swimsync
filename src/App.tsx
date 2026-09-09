@@ -25,6 +25,7 @@ import AdminScheduleChanges from './components/AdminScheduleChanges';
 import AdminLeaveRequests from './components/AdminLeaveRequests';
 import AdminSubRequests from './components/AdminSubRequests';
 import AdminRegistrationApplications from './components/AdminRegistrationApplications';
+import AdminInstructorPerformance from './components/AdminInstructorPerformance';
 import RegistrationApplicationForm from './components/RegistrationApplicationForm';
 import InstructorApp from './components/InstructorApp';
 import ParentApp from './components/ParentApp';
@@ -60,6 +61,7 @@ const navGroups = [
         { id: 'staff-payroll', text: '급여 정산' },
         { id: 'leave-requests', text: '연차 승인' },
         { id: 'sub-requests',   text: '대타 관리' },
+        { id: 'instructor-performance', text: '강사 실적/역량' },
       ]},
       { id: 'payments-group', icon: CreditCard, text: '결제 관리', children: [
         { id: 'payments',  text: '결제 현황' },
@@ -87,7 +89,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications'
+  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'instructor-performance' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications'
   | 'instructor-app' | 'parent-app' | 'driver-app' | 'registration-application'
   | 'business-plan';
 
@@ -135,6 +137,15 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '정규직 / 파트타임 자동 계산', description: '정규직은 등록된 월급, 파트타임은 근무 요일·시간 기준 시급×시간을 자동 계산해요.' },
       { label: '수당 반영', description: '인센티브·추가근무·방학특강 수당·생존수영 수당·개인지도료까지 더해 총액을 계산해요.' },
       { label: '명세서 발행', description: '월별 명세서를 발행하고 인쇄/PDF로 저장할 수 있어요.' },
+    ],
+  },
+  'instructor-performance': {
+    title: '강사 실적/역량',
+    description: '강사별 재등록률·퇴원률·반이동률을 전체 평균과 함께 비교하는 화면이에요.',
+    features: [
+      { label: '재등록률', description: '현재 재원생 중 등록 2개월 이상 유지 중인 비율이에요.' },
+      { label: '퇴원률 / 반이동률', description: '최근 6개월 기준 퇴원 비율, 다른 강사로 반을 옮긴 비율을 보여줘요.' },
+      { label: '평균 비교', description: '막대그래프의 회색 세로선이 전체 강사 평균이라 한눈에 비교할 수 있어요.' },
     ],
   },
   counseling: {
@@ -404,6 +415,7 @@ function AppContent() {
       case 'students':       return <AdminStudents />;
       case 'staff':          return <AdminStaff key="info" initialMode="info" />;
       case 'staff-payroll':  return <AdminStaff key="payroll" initialMode="payroll" />;
+      case 'instructor-performance': return <AdminInstructorPerformance />;
       case 'counseling':     return <AdminCounseling />;
       case 'counseling-log':   return <AdminCounselingLog />;
       case 'enrollment-stats': return <AdminEnrollmentStats />;
