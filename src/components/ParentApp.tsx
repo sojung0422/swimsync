@@ -729,9 +729,15 @@ export default function ParentApp() {
                           {student?.regularDays.join('·')} 수업 <strong>{nextMonthBilling.occurrences}회</strong>
                         </p>
                       </div>
-                      <p className="text-slate-800 font-bold text-base">{nextMonthBilling.amount.toLocaleString()}원</p>
+                      <p className="text-slate-800 font-bold text-base">
+                        {(student?.nextMonthAmountOverride || nextMonthBilling.amount).toLocaleString()}원
+                      </p>
                     </div>
-                    <p className="text-slate-300 text-[10.5px] mt-1">실제 달력의 수업 요일 수를 기준으로 자동 계산돼요. 휴무일은 제외돼요.</p>
+                    <p className="text-slate-300 text-[10.5px] mt-1">
+                      {student?.nextMonthAmountOverride
+                        ? '학원에서 직접 조정한 금액이에요.'
+                        : '실제 달력의 수업 요일 수를 기준으로 자동 계산돼요. 휴무일은 제외돼요.'}
+                    </p>
                   </div>
                 )}
               </div>

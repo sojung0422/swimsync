@@ -89,6 +89,8 @@ export type Student = {
   withdrawalReason: string;
   // 학생별 개별 할인(관리자가 직접 설정) — 기존 규칙 기반(형제/이벤트) 할인과 별도로 추가 적용됨
   customDiscount?: { kind: 'percent' | 'amount'; value: number; active: boolean };
+  // 다음 달 예상 청구액 수동 재정의 — 설정하면 자동 계산(computeNextMonthBilling) 대신 이 금액을 보여줌 (0/미설정 시 자동 계산 사용)
+  nextMonthAmountOverride?: number;
 };
 
 export const getPrimaryEnrollment = (s: Student): Enrollment => ({

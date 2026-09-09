@@ -1,5 +1,5 @@
 import { useState, useRef, Fragment } from 'react';
-import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth, getClassOfferings } from '../store/StoreContext';
+import { useStore, getMakeupLimitForSessions, getAllEnrollments, getPrimaryEnrollment, getPrimaryContactPhone, computeApplicableDiscounts, computeRemainingSessionsInMonth, getClassOfferings, computeNextMonthBilling } from '../store/StoreContext';
 import type { Student, Enrollment, WaitlistEntry } from '../store/StoreContext';
 import {
   Search, Plus, X, ChevronLeft, List, Settings,
@@ -1251,7 +1251,7 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
   student: Student; onBack: () => void; onEdit: (s: Student) => void;
   onDelete: (s: Student) => void; onExtend: (s: Student) => void; onDefer: (s: Student) => void;
 }) {
-  const { instructors, lessonClasses, vehicles, drivers, paymentPlans, updateStudent, students: allStudents, discounts } = useStore();
+  const { instructors, lessonClasses, vehicles, drivers, paymentPlans, updateStudent, students: allStudents, discounts, settings } = useStore();
   const instructor = instructors.find(i => i.id === student.instructorId);
   const lessonClass = lessonClasses.find(lc => lc.id === student.lessonClassId);
   const vehicle = vehicles.find(v => v.id === student.vehicleId);
@@ -1262,6 +1262,11 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
   const discountBase = paymentPlan?.monthlyPrice || student.paymentAmount;
   const suggestedAmount = Math.max(0, Math.round(discountBase * (1 - discountPercent / 100) / 100) * 100 - customAmountOff);
   const [editingCustomDiscount, setEditingCustomDiscount] = useState(false);
+  const nextMonthBilling = paymentPlan
+    ? computeNextMonthBilling(student.regularDays, paymentPlan.sessionRates, settings.closedDates, settings.skipFifthWeekOccurrence)
+    : null;
+  const [editingNextMonth, setEditingNextMonth] = useState(false);
+  const [nextMonthDraft, setNextMonthDraft] = useState(String(student.nextMonthAmountOverride || ''));
   const [customKind, setCustomKind] = useState<'percent' | 'amount'>(student.customDiscount?.kind ?? 'percent');
   const [customValue, setCustomValue] = useState(student.customDiscount?.value ?? 0);
 
@@ -1456,13 +1461,42 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
                 <span className="text-slate-700 text-sm font-medium">{row.value}</span>
               </div>
             ))}
-            <div className="flex justify-between items-center py-1.5">
+            <div className="flex justify-between items-center py-1.5 border-b border-slate-50">
               <span className="text-slate-400 text-sm">결제 상태</span>
               <button onClick={() => updateStudent(student.id, { paymentCompleted: !student.paymentCompleted })}
                 className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${student.paymentCompleted ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'}`}>
                 {student.paymentCompleted ? <><CheckCircle className="w-3.5 h-3.5" /> 결제 완료</> : <><XCircle className="w-3.5 h-3.5" /> 미결제</>}
               </button>
             </div>
+            {nextMonthBilling && (
+              <div className="py-1.5">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-sm">{nextMonthBilling.month} 예상 청구액</span>
+                  {!editingNextMonth && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-700 text-sm font-bold">
+                        {(student.nextMonthAmountOverride || nextMonthBilling.amount).toLocaleString()}원
+                        {!!student.nextMonthAmountOverride && <span className="text-violet-500 text-[10px] font-medium ml-1">(수동 조정)</span>}
+                      </span>
+                      <button onClick={() => { setNextMonthDraft(String(student.nextMonthAmountOverride || nextMonthBilling.amount)); setEditingNextMonth(true); }}
+                        className="text-cyan-600 hover:text-cyan-700 text-[11px] font-medium">수정</button>
+                    </div>
+                  )}
+                </div>
+                {editingNextMonth && (
+                  <div className="flex items-center gap-2 mt-2">
+                    <input type="number" className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-cyan-500" value={nextMonthDraft} onChange={e => setNextMonthDraft(e.target.value)} placeholder={String(nextMonthBilling.amount)} />
+                    <button onClick={() => { updateStudent(student.id, { nextMonthAmountOverride: parseInt(nextMonthDraft) || 0 }); setEditingNextMonth(false); }}
+                      className="px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-medium transition-colors shrink-0">저장</button>
+                    {!!student.nextMonthAmountOverride && (
+                      <button onClick={() => { updateStudent(student.id, { nextMonthAmountOverride: 0 }); setEditingNextMonth(false); }}
+                        className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-lg text-xs font-medium transition-colors shrink-0">자동계산으로</button>
+                    )}
+                  </div>
+                )}
+                <p className="text-slate-300 text-[10.5px] mt-1">자동 계산값은 {nextMonthBilling.amount.toLocaleString()}원({nextMonthBilling.occurrences}회)이에요. 수정하면 학부모 앱에 이 금액이 대신 표시돼요.</p>
+              </div>
+            )}
           </div>
         </div>
 
