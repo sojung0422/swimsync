@@ -89,6 +89,7 @@ export type Student = {
   pauseReason: string;
   expectedReturnDate: string;
   withdrawalReason: string;
+  pausedAt?: string; // 휴원 처리된 시점('yyyy-MM-dd') — 월별 증감 통계에서 휴원 집계에 사용
   // 학생별 개별 할인(관리자가 직접 설정) — 기존 규칙 기반(형제/이벤트) 할인과 별도로 추가 적용됨
   customDiscount?: { kind: 'percent' | 'amount'; value: number; active: boolean };
   // 다음 달 예상 청구액 수동 재정의 — 설정하면 자동 계산(computeNextMonthBilling) 대신 이 금액을 보여줌 (0/미설정 시 자동 계산 사용)
@@ -370,6 +371,7 @@ export type WithdrawalRequest = {
   requestedBy: 'parent' | 'admin';
   status: 'pending' | 'approved' | 'rejected';
   requestedAt: string; resolvedAt: string;
+  refundAmount?: number; // 승인 시점에 남은 이번 달 수업 횟수 기준으로 자동 추정한 환불 예상액
 };
 
 // 온보딩 셀프 가입신청서 — 데스크가 보낸 링크로 사용자가 직접 작성. 제출 즉시 정원이 남아있으면 바로 학생으로 등록되고
@@ -936,7 +938,7 @@ const INITIAL_STUDENTS: Student[] = [
     phone: '', motherPhone: '010-9988-7766', fatherPhone: '', smsRecipients: ['mother'],
     passType: '주 1회', totalClasses: 4, rescheduleLimit: 1, usedReschedules: 0,
     instructorId: 'i2', regularDays: ['토'], regularTime: '14:00',
-    notes: '해외 출장으로 장기 휴강 중', progress: '', status: 'deferred',
+    notes: '해외 출장으로 장기 휴강 중', progress: '', status: 'deferred', pausedAt: format(addDays(new Date(), -20), 'yyyy-MM-dd'),
     paymentAmount: 160000, paymentDate: format(addDays(new Date(), -60), 'yyyy-MM-dd'), paymentRenewalDate: format(addDays(new Date(), -30), 'yyyy-MM-dd'),
     paymentCompleted: true, studentPhoto: '',
     address: '서울시 송파구 문정동 34-5', vehicleId: 'v2',
@@ -1044,6 +1046,17 @@ const INITIAL_INSTRUCTOR_NOTICES: InstructorNotice[] = [
 const INITIAL_WITHDRAWAL_REQUESTS: WithdrawalRequest[] = [
   { id: 'wr1', studentId: 's8', enrollmentId: 'primary', reason: '해외 이주 예정', requestedBy: 'parent',
     status: 'pending', requestedAt: format(addDays(new Date(), -2), 'yyyy-MM-dd HH:mm'), resolvedAt: '' },
+  // 통계용 과거 승인 이력(실제 학생 상태와 무관하게 차트 표시를 위한 이력 데이터)
+  { id: 'wr_h1', studentId: 's3', enrollmentId: 'primary', reason: '전학', requestedBy: 'parent', status: 'approved',
+    requestedAt: format(addMonths(new Date(), -5), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -5), 'yyyy-MM-dd HH:mm'), refundAmount: 71300 },
+  { id: 'wr_h2', studentId: 's4', enrollmentId: 'primary', reason: '거리가 멀어서', requestedBy: 'parent', status: 'approved',
+    requestedAt: format(addMonths(new Date(), -4), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -4), 'yyyy-MM-dd HH:mm'), refundAmount: 45000 },
+  { id: 'wr_h3', studentId: 's5', enrollmentId: 'primary', reason: '흥미 저하', requestedBy: 'parent', status: 'approved',
+    requestedAt: format(addMonths(new Date(), -3), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -3), 'yyyy-MM-dd HH:mm'), refundAmount: 62000 },
+  { id: 'wr_h4', studentId: 's6', enrollmentId: 'primary', reason: '개인 사정', requestedBy: 'parent', status: 'approved',
+    requestedAt: format(addMonths(new Date(), -2), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -2), 'yyyy-MM-dd HH:mm'), refundAmount: 38500 },
+  { id: 'wr_h5', studentId: 's7', enrollmentId: 'primary', reason: '이사', requestedBy: 'parent', status: 'approved',
+    requestedAt: format(addMonths(new Date(), -1), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -1), 'yyyy-MM-dd HH:mm'), refundAmount: 54200 },
 ];
 
 const INITIAL_EVENTS: AcademyEvent[] = [
@@ -1410,6 +1423,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // 2주 이상 여행/출장/수술 등 장기 결석 — 해당 월 수강료는 선납된 것으로 보고 자리를 비워둠 (자동 재개 없음)
   const pauseEnrollmentLongTerm = (studentId: string, enrollmentId: string, reason: string, expectedReturnDate: string) => {
     updateEnrollment(studentId, enrollmentId, { status: 'paused', pauseReason: reason, expectedReturnDate });
+    setStudents(prev => prev.map(s => s.id === studentId ? { ...s, pausedAt: format(new Date(), 'yyyy-MM-dd') } : s));
   };
 
   // ── WithdrawalRequest (퇴원 요청) ──────────────────────────────
@@ -1422,8 +1436,13 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const approveWithdrawalRequest = (id: string) => {
     const req = withdrawalRequests.find(r => r.id === id);
     if (!req) return;
+    const student = students.find(s => s.id === req.studentId);
+    const plan = student ? paymentPlans.find(p => p.id === student.paymentPlanId) : undefined;
+    const remainingSessions = student ? computeRemainingSessionsInMonth(format(new Date(), 'yyyy-MM-dd'), student.regularDays) : 0;
+    const perSessionRate = plan && plan.sessionsPerWeek > 0 ? Math.round(plan.monthlyPrice / (plan.sessionsPerWeek * 4)) : 0;
+    const refundAmount = remainingSessions * perSessionRate;
     updateEnrollment(req.studentId, req.enrollmentId, { status: 'ended', withdrawalReason: req.reason });
-    setWithdrawalRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : r));
+    setWithdrawalRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), refundAmount } : r));
     pushSystemAlert(req.studentId, '[퇴원 처리 완료]', '요청하신 퇴원이 확인되어 처리되었습니다. 그동안 함께해주셔서 감사합니다.');
   };
   const rejectWithdrawalRequest = (id: string) => {

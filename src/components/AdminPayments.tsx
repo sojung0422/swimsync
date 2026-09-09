@@ -7,6 +7,7 @@ import {
   ChevronDown, ChevronUp, Waves, AlertCircle, TrendingUp, Users, RefreshCw, Sparkles, Table2,
   Gift, Percent, BarChart3, UserMinus, UserPlus2
 } from 'lucide-react';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // ─── 보강 정책 설정 ────────────────────────────────────────────────────────────
 
@@ -488,15 +489,46 @@ function BarRow({ label, value, max, colorClass, valueLabel }: { label: string; 
   );
 }
 
+const REVENUE_LINE_COLORS = ['#0891b2', '#8b5cf6', '#f59e0b', '#10b981', '#ec4899', '#6366f1', '#f97316'];
+
+function RevenueTooltip({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const sorted = [...payload].sort((a, b) => b.value - a.value);
+  return (
+    <div className="bg-white border border-slate-200 rounded-xl shadow-lg px-3.5 py-2.5 text-xs max-w-[220px]">
+      <p className="font-bold text-slate-700 mb-1.5">{label}</p>
+      {sorted.map((p: any) => (
+        <div key={p.dataKey} className="flex items-center justify-between gap-3">
+          <span className="flex items-center gap-1.5 text-slate-500 truncate">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: p.color }} />{p.name}
+          </span>
+          <span className="font-semibold text-slate-700 shrink-0">{p.value.toLocaleString()}원</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function StatsDashboard() {
-  const { paymentRecords, students, withdrawalRequests, lessonClasses } = useStore();
+  const { paymentRecords, students, withdrawalRequests, lessonClasses, paymentPlans } = useStore();
 
   const months = Array.from({ length: 6 }, (_, i) => format(subMonths(new Date(), 5 - i), 'yyyy-MM'));
 
-  const revenueByMonth = months.map(m => ({
-    month: m,
-    total: paymentRecords.filter(p => p.billingMonth === m && p.status === 'paid').reduce((sum, p) => sum + p.paidAmount, 0),
-  }));
+  const planNameOf = (p: { studentId: string }) => {
+    const student = students.find(s => s.id === p.studentId);
+    const plan = student ? paymentPlans.find(pp => pp.id === student.paymentPlanId) : undefined;
+    return plan?.name ?? '기타';
+  };
+  const activePlanNames = Array.from(new Set(paymentRecords.filter(p => p.status === 'paid').map(planNameOf)));
+
+  const revenueByMonth = months.map(m => {
+    const paidThisMonth = paymentRecords.filter(p => p.billingMonth === m && p.status === 'paid');
+    const byPlan: Record<string, number> = {};
+    activePlanNames.forEach(name => { byPlan[name] = 0; });
+    paidThisMonth.forEach(p => { byPlan[planNameOf(p)] = (byPlan[planNameOf(p)] ?? 0) + p.paidAmount; });
+    const total = paidThisMonth.reduce((sum, p) => sum + p.paidAmount, 0);
+    return { month: m.slice(2), total, ...byPlan };
+  });
   const maxRevenue = Math.max(1, ...revenueByMonth.map(r => r.total));
 
   const newByMonth = months.map(m => ({ month: m, count: students.filter(s => s.registrationDate.startsWith(m)).length }));
@@ -542,13 +574,45 @@ function StatsDashboard() {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
           <BarChart3 className="w-4 h-4 text-cyan-600" />
-          <h2 className="text-[14px] font-semibold text-slate-700">월별 매출 추이 (최근 6개월, 완납 기준)</h2>
+          <h2 className="text-[14px] font-semibold text-slate-700">월별 수납 실적현황 (최근 6개월, 완납 기준)</h2>
         </div>
-        <div className="p-6 space-y-3">
-          {revenueByMonth.map(r => (
-            <BarRow key={r.month} label={r.month.slice(5)} value={r.total} max={maxRevenue} colorClass="bg-emerald-500" valueLabel={`${r.total.toLocaleString()}원`} />
-          ))}
+        <div className="p-6">
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={revenueByMonth} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `${Math.round(v / 10000)}만`} />
+              <Tooltip content={<RevenueTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="total" name="전체 총계" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+              {activePlanNames.map((name, i) => (
+                <Line key={name} type="monotone" dataKey={name} name={name} stroke={REVENUE_LINE_COLORS[i % REVENUE_LINE_COLORS.length]} strokeWidth={2} dot={{ r: 2.5 }} />
+              ))}
+            </ComposedChart>
+          </ResponsiveContainer>
           <p className="text-slate-400 text-xs pt-1">수강 중인 전체 학생의 월 결제 금액 합계(잠재 매출) 참고치: {totalActiveRevenuePotential.toLocaleString()}원</p>
+        </div>
+        <div className="overflow-x-auto border-t border-slate-100">
+          <table className="w-full text-sm whitespace-nowrap">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50">
+                <th className="px-4 py-2.5 text-left text-xs font-medium text-slate-500 sticky left-0 bg-slate-50">수강 플랜</th>
+                {revenueByMonth.map(r => <th key={r.month} className="px-4 py-2.5 text-right text-xs font-medium text-slate-500">{r.month}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-b border-slate-50 bg-slate-50/50">
+                <td className="px-4 py-2.5 font-bold text-slate-700 sticky left-0 bg-slate-50/50">전체 총계</td>
+                {revenueByMonth.map(r => <td key={r.month} className="px-4 py-2.5 text-right font-bold text-slate-700">{r.total.toLocaleString()}</td>)}
+              </tr>
+              {activePlanNames.map((name, i) => (
+                <tr key={name} className="border-b border-slate-50 last:border-0">
+                  <td className="px-4 py-2.5 font-medium sticky left-0 bg-white" style={{ color: REVENUE_LINE_COLORS[i % REVENUE_LINE_COLORS.length] }}>{name}</td>
+                  {revenueByMonth.map(r => <td key={r.month} className="px-4 py-2.5 text-right text-slate-600">{((r as any)[name] ?? 0).toLocaleString()}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
