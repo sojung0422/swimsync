@@ -62,6 +62,15 @@ export default function AdminEnrollmentStats() {
     };
   });
 
+  const rateData = chartData.map(d => {
+    const base = d.active + d.withdrawn;
+    return {
+      month: d.month,
+      재원율: base > 0 ? Math.round((d.active / base) * 1000) / 10 : 0,
+      퇴원율: base > 0 ? Math.round((d.withdrawn / base) * 1000) / 10 : 0,
+    };
+  });
+
   const thisMonth = months[months.length - 1];
   const thisMonthNew = chartData[chartData.length - 1].new;
   const thisMonthWithdrawn = chartData[chartData.length - 1].withdrawn;
@@ -186,6 +195,26 @@ export default function AdminEnrollmentStats() {
                   </tr>
                 </tbody>
               </table>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-cyan-600" />
+              <h2 className="text-[14px] font-semibold text-slate-700">월별 재원율/퇴원율</h2>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={220}>
+                <LineChart data={rateData} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" domain={[0, 100]} />
+                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="재원율" stroke="#0f172a" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="퇴원율" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>

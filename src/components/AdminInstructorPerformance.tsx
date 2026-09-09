@@ -1,6 +1,7 @@
-import { useStore } from '../store/StoreContext';
+import { useStore, computeInstructorMetrics } from '../store/StoreContext';
 import { Award, Users, TrendingUp, TrendingDown, Repeat, Info } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function MetricBar({ value, average, colorClass }: { value: number; average: number; colorClass: string }) {
   const pct = Math.max(2, Math.min(100, Math.round(value)));
@@ -19,31 +20,11 @@ function MetricBar({ value, average, colorClass }: { value: number; average: num
 export default function AdminInstructorPerformance() {
   const { instructors, students, withdrawalRequests, scheduleChangeRequests } = useStore();
 
-  const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
-  const twoMonthsAgo = format(subMonths(new Date(), 2), 'yyyy-MM-dd');
-
   const teachingInstructors = instructors.filter(i => i.status === 'active' && i.jobType === '강사');
 
   const rows = teachingInstructors.map(inst => {
-    const active = students.filter(s => s.status === 'active' && s.instructorId === inst.id);
-    const recentWithdrawn = withdrawalRequests.filter(r =>
-      r.status === 'approved' && r.resolvedAt >= sixMonthsAgo &&
-      students.find(s => s.id === r.studentId)?.instructorId === inst.id
-    );
-    const everAssigned = active.length + recentWithdrawn.length;
-
-    const retained = active.filter(s => s.registrationDate <= twoMonthsAgo).length;
-    const reRegRate = active.length > 0 ? (retained / active.length) * 100 : 0;
-
-    const withdrawalRate = everAssigned > 0 ? (recentWithdrawn.length / everAssigned) * 100 : 0;
-
-    const classChanges = scheduleChangeRequests.filter(r =>
-      r.status === 'approved' && r.resolvedAt >= sixMonthsAgo &&
-      r.currentInstructorId === inst.id && r.requestedInstructorId && r.requestedInstructorId !== r.currentInstructorId
-    );
-    const transferRate = everAssigned > 0 ? (classChanges.length / everAssigned) * 100 : 0;
-
-    return { inst, activeCount: active.length, reRegRate, withdrawalRate, transferRate };
+    const m = computeInstructorMetrics(inst.id, students, withdrawalRequests, scheduleChangeRequests);
+    return { inst, activeCount: m.activeCount, reRegRate: m.reRegRate, withdrawalRate: m.withdrawalRate, transferRate: m.transferRate };
   });
 
   const avg = (key: 'reRegRate' | 'withdrawalRate' | 'transferRate') =>
@@ -53,6 +34,21 @@ export default function AdminInstructorPerformance() {
   const avgTransfer = avg('transferRate');
 
   const sorted = [...rows].sort((a, b) => b.reRegRate - a.reRegRate);
+
+  const months = Array.from({ length: 12 }, (_, i) => format(subMonths(new Date(), 11 - i), 'yyyy-MM'));
+  // 각 월 시점 기준으로 조직 평균 재등록률/퇴원률/반이동률을 계산해 12개월 추이를 만듦
+  const orgTrend = months.map((m, i) => {
+    const refDate = subMonths(new Date(), 11 - i);
+    const perInstructor = teachingInstructors.map(inst => computeInstructorMetrics(inst.id, students, withdrawalRequests, scheduleChangeRequests, refDate));
+    const count = perInstructor.length || 1;
+    const avgOf = (key: 'reRegRate' | 'withdrawalRate' | 'transferRate') => perInstructor.reduce((s, p) => s + p[key], 0) / count;
+    return {
+      month: m.slice(2),
+      재등록률: Math.round(avgOf('reRegRate') * 10) / 10,
+      퇴원률: Math.round(avgOf('withdrawalRate') * 10) / 10,
+      반이동률: Math.round(avgOf('transferRate') * 10) / 10,
+    };
+  });
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -89,7 +85,7 @@ export default function AdminInstructorPerformance() {
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
               <Users className="w-4 h-4 text-cyan-600" />
-              <h2 className="text-[14px] font-semibold text-slate-700">강사별 역량 비교</h2>
+              <h2 className="text-[14px] font-semibold text-slate-700">강사별 역량 비교 (당월 기준)</h2>
             </div>
             <div className="divide-y divide-slate-50">
               {sorted.map(r => (
@@ -120,6 +116,27 @@ export default function AdminInstructorPerformance() {
               {sorted.length === 0 && (
                 <div className="py-12 text-center text-slate-400 text-sm">재직 중인 강사가 없습니다.</div>
               )}
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-cyan-600" />
+              <h2 className="text-[14px] font-semibold text-slate-700">월별(12개월) 조직 평균 추이</h2>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={orgTrend} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" />
+                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="재등록률" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="퇴원률" stroke="#f87171" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="반이동률" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>

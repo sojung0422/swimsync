@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, ReactNode } from 'react';
-import { startOfMonth, endOfMonth, addDays, addMonths, format, getDay, parseISO, differenceInCalendarDays } from 'date-fns';
+import { startOfMonth, endOfMonth, addDays, addMonths, subMonths, format, getDay, parseISO, differenceInCalendarDays } from 'date-fns';
 
 const DAY_MAP: Record<string, number> = { '일': 0, '월': 1, '화': 2, '수': 3, '목': 4, '금': 5, '토': 6 };
 
@@ -201,9 +201,18 @@ export type MakeupSettings = {
 };
 
 // 정규직 급여 계산 기준(기본급 템플릿·인센티브 항목·추가근무 단가) — 학원마다 다르게 초기 설정
+export type IncentiveFormulaRule = {
+  id: string; label: string;
+  metric: 'reRegRate' | 'withdrawalRate' | 'revenue';
+  comparator: 'gte' | 'lte';
+  threshold: number; // metric이 revenue면 원 단위, 나머지는 % 단위
+  amount: number; // 조건 충족 시 지급할 인센티브 금액
+};
+
 export type PayrollSettings = {
   baseSalaryDefault: number; // 신규 정규직 등록 시 제안되는 기본급
-  incentiveRules: { id: string; label: string; amount: number }[]; // 예: "신규 등록 1건", "레벨테스트 합격 1인당"
+  incentiveRules: { id: string; label: string; amount: number }[]; // 예: "신규 등록 1건", "레벨테스트 합격 1인당" — 참고용 표
+  incentiveFormulaRules: IncentiveFormulaRule[]; // 실제 인센티브 자동 계산에 쓰이는 규칙(지표+임계값+금액)
   overtimeHourlyRate: number; // 추가 근무 시간당 단가
 };
 
@@ -689,6 +698,46 @@ export type MandatoryMakeupRequirement = {
   assignedDate?: string; status: 'unassigned' | 'awaiting_parent' | 'scheduled' | 'completed';
 };
 
+// 강사별 재등록률/퇴원률/반이동률을 특정 시점(referenceDate) 기준으로 계산 — 강사 실적 대시보드와 인센티브 자동 계산이 공유하는 헬퍼
+export const computeInstructorMetrics = (
+  instructorId: string, students: Student[], withdrawalRequests: WithdrawalRequest[], scheduleChangeRequests: ScheduleChangeRequest[],
+  referenceDate: Date = new Date()
+): { activeCount: number; reRegRate: number; withdrawalRate: number; transferRate: number } => {
+  const sixMonthsAgo = format(subMonths(referenceDate, 6), 'yyyy-MM-dd');
+  const twoMonthsAgo = format(subMonths(referenceDate, 2), 'yyyy-MM-dd');
+  const refStr = format(referenceDate, 'yyyy-MM-dd');
+  const active = students.filter(s => s.status === 'active' && s.instructorId === instructorId && s.registrationDate <= refStr);
+  const recentWithdrawn = withdrawalRequests.filter(r =>
+    r.status === 'approved' && r.resolvedAt >= sixMonthsAgo && r.resolvedAt <= refStr &&
+    students.find(s => s.id === r.studentId)?.instructorId === instructorId
+  );
+  const everAssigned = active.length + recentWithdrawn.length;
+  const retained = active.filter(s => s.registrationDate <= twoMonthsAgo).length;
+  const reRegRate = active.length > 0 ? (retained / active.length) * 100 : 0;
+  const withdrawalRate = everAssigned > 0 ? (recentWithdrawn.length / everAssigned) * 100 : 0;
+  const classChanges = scheduleChangeRequests.filter(r =>
+    r.status === 'approved' && r.resolvedAt >= sixMonthsAgo && r.resolvedAt <= refStr &&
+    r.currentInstructorId === instructorId && r.requestedInstructorId && r.requestedInstructorId !== r.currentInstructorId
+  );
+  const transferRate = everAssigned > 0 ? (classChanges.length / everAssigned) * 100 : 0;
+  return { activeCount: active.length, reRegRate, withdrawalRate, transferRate };
+};
+
+// 관리자가 설정한 인센티브 규칙(재등록률/퇴원률/매출 기준)을 강사의 실제 실적에 대입해 자동으로 합산 — 발행 전 관리자가 여전히 수동으로 덮어쓸 수 있음
+export const computeAutoIncentive = (
+  instructorId: string, students: Student[], withdrawalRequests: WithdrawalRequest[], scheduleChangeRequests: ScheduleChangeRequest[],
+  rules: IncentiveFormulaRule[], referenceDate: Date = new Date()
+): number => {
+  const { reRegRate, withdrawalRate } = computeInstructorMetrics(instructorId, students, withdrawalRequests, scheduleChangeRequests, referenceDate);
+  const revenue = students.filter(s => s.status === 'active' && s.instructorId === instructorId).reduce((sum, s) => sum + (s.paymentAmount || 0), 0);
+  const valueOf = (metric: IncentiveFormulaRule['metric']) => metric === 'reRegRate' ? reRegRate : metric === 'withdrawalRate' ? withdrawalRate : revenue;
+  return rules.reduce((sum, rule) => {
+    const value = valueOf(rule.metric);
+    const met = rule.comparator === 'gte' ? value >= rule.threshold : value <= rule.threshold;
+    return met ? sum + rule.amount : sum;
+  }, 0);
+};
+
 // 같은 가족(모/부 연락처가 일치)으로 등록된 활성 학생 수 — 형제 할인 판단에 사용
 export const computeSiblingCount = (student: Student, allStudents: Student[]): number => {
   const motherKey = student.motherPhone;
@@ -843,6 +892,10 @@ const INITIAL_SETTINGS: AcademySettings = {
     incentiveRules: [
       { id: 'inc1', label: '신규 등록 1건', amount: 10000 },
       { id: 'inc2', label: '레벨테스트 합격 1인당', amount: 5000 },
+    ],
+    incentiveFormulaRules: [
+      { id: 'ifr1', label: '재등록률 80% 이상', metric: 'reRegRate', comparator: 'gte', threshold: 80, amount: 100000 },
+      { id: 'ifr2', label: '퇴원률 10% 이하', metric: 'withdrawalRate', comparator: 'lte', threshold: 10, amount: 50000 },
     ],
     overtimeHourlyRate: 15000,
   },

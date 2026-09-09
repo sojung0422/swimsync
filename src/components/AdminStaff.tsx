@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useStore, computeMonthlyHours, computeFreelancerPay } from '../store/StoreContext';
+import { useStore, computeMonthlyHours, computeFreelancerPay, computeAutoIncentive } from '../store/StoreContext';
+import type { IncentiveFormulaRule } from '../store/StoreContext';
 import type { Instructor, RateSlot, StaffRole } from '../store/StoreContext';
 import { Search, UserPlus, Save, Trash2, Users, Printer, Wallet, FileText, ChevronDown, ChevronUp, X, Plus, Settings2 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -127,6 +128,50 @@ function PayrollSettingsCard() {
               ))}
             </div>
           </div>
+          <div className="border-t border-slate-100 pt-4">
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs text-slate-500 font-medium">인센티브 자동 계산 규칙 (지표 충족 시 자동 합산, 발행 전 수동 조정 가능)</label>
+              <button onClick={() => updatePayrollSettings({ incentiveFormulaRules: [...ps.incentiveFormulaRules, { id: `ifr_${Date.now()}`, label: '새 규칙', metric: 'reRegRate', comparator: 'gte', threshold: 0, amount: 0 }] })}
+                className="flex items-center gap-1 text-cyan-700 text-xs font-semibold hover:text-cyan-800">
+                <Plus className="w-3.5 h-3.5" /> 규칙 추가
+              </button>
+            </div>
+            <div className="space-y-2">
+              {ps.incentiveFormulaRules.map((rule, idx) => {
+                const update = (patch: Partial<IncentiveFormulaRule>) => {
+                  const rules = [...ps.incentiveFormulaRules];
+                  rules[idx] = { ...rule, ...patch };
+                  updatePayrollSettings({ incentiveFormulaRules: rules });
+                };
+                return (
+                  <div key={rule.id} className="flex items-center gap-1.5 flex-wrap">
+                    <input value={rule.label} onChange={e => update({ label: e.target.value })}
+                      className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-xs" placeholder="규칙명" />
+                    <select value={rule.metric} onChange={e => update({ metric: e.target.value as IncentiveFormulaRule['metric'] })}
+                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                      <option value="reRegRate">재등록률</option>
+                      <option value="withdrawalRate">퇴원률</option>
+                      <option value="revenue">담당 매출</option>
+                    </select>
+                    <select value={rule.comparator} onChange={e => update({ comparator: e.target.value as IncentiveFormulaRule['comparator'] })}
+                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
+                      <option value="gte">이상</option>
+                      <option value="lte">이하</option>
+                    </select>
+                    <input type="number" value={rule.threshold} onChange={e => update({ threshold: parseInt(e.target.value) || 0 })}
+                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right" placeholder="기준값" />
+                    <span className="text-slate-400 text-xs shrink-0">{rule.metric === 'revenue' ? '원' : '%'} 이면</span>
+                    <input type="number" value={rule.amount} onChange={e => update({ amount: parseInt(e.target.value) || 0 })}
+                      className="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right" placeholder="지급액" />
+                    <span className="text-slate-400 text-xs shrink-0">원 지급</span>
+                    <button onClick={() => updatePayrollSettings({ incentiveFormulaRules: ps.incentiveFormulaRules.filter((_, i) => i !== idx) })} className="text-red-400 hover:text-red-600 shrink-0">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -134,7 +179,7 @@ function PayrollSettingsCard() {
 }
 
 function PayrollView() {
-  const { instructors, classes, payrollRecords, issuePayroll, settings } = useStore();
+  const { instructors, classes, payrollRecords, issuePayroll, settings, students, withdrawalRequests, scheduleChangeRequests } = useStore();
   const [month, setMonth] = useState(format(new Date(), 'yyyy-MM'));
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [payslipTarget, setPayslipTarget] = useState<{ instructor: Instructor; record: typeof payrollRecords[number] } | null>(null);
@@ -168,7 +213,8 @@ function PayrollView() {
             const hours = hoursDraft[inst.id] ?? estimatedHours;
             const freelancerCalc = computeFreelancerPay(inst, classes, month);
             const baseAmount = inst.type === '정규' ? inst.monthlySalary : (hoursDraft[inst.id] !== undefined ? Math.round(inst.hourlyRate * hours) : freelancerCalc.amount);
-            const incentiveAmount = incentiveDraft[inst.id] ?? 0;
+            const autoIncentive = computeAutoIncentive(inst.id, students, withdrawalRequests, scheduleChangeRequests, settings.payrollSettings.incentiveFormulaRules);
+            const incentiveAmount = incentiveDraft[inst.id] ?? autoIncentive;
             const overtimeHours = overtimeDraft[inst.id] ?? 0;
             const overtimeAmount = Math.round(overtimeHours * settings.payrollSettings.overtimeHourlyRate);
             const campIncentive = campDraft[inst.id] ?? 0;
@@ -209,7 +255,7 @@ function PayrollView() {
                     )}
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <label className="text-xs text-slate-500 font-medium">인센티브</label>
+                        <label className="text-xs text-slate-500 font-medium">인센티브 {incentiveDraft[inst.id] === undefined && autoIncentive > 0 && <span className="text-cyan-600">(규칙 자동계산)</span>}</label>
                         <input type="number" min={0} step={1000} value={incentiveAmount}
                           onChange={e => setIncentiveDraft(prev => ({ ...prev, [inst.id]: parseInt(e.target.value) || 0 }))}
                           className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-sm text-right" />
