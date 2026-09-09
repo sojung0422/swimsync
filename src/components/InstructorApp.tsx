@@ -4,7 +4,7 @@ import type { MakeupRequest, ClassSession, LeaveType } from '../store/StoreConte
 import {
   Calendar, Clock, Users, BookOpen, CheckCircle2, AlertCircle, UserCircle, RefreshCw,
   Wallet, CalendarClock, Image as ImageIcon, ChevronLeft, ChevronDown, ChevronUp, MessageCircle,
-  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand, Waves,
+  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand, Waves, Phone, Contact,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
 import { playBellSound } from '../lib/playBellSound';
@@ -222,7 +222,7 @@ export default function InstructorApp() {
     returnRequests, approveReturnRequest, rejectReturnRequest,
     leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings, instructorNotices,
   } = useStore();
-  const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages'>('schedule');
+  const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages' | 'contacts'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDoc, setShowDoc] = useState<string | null>(null);
@@ -330,7 +330,39 @@ export default function InstructorApp() {
         </div>
 
         {/* App Content */}
-        {activeTab === 'messages' ? (
+        {activeTab === 'contacts' ? (
+          <div className="flex-1 overflow-y-auto pb-20 bg-slate-50 px-4 py-5">
+            <h2 className="text-[15px] font-bold text-slate-800 px-1 mb-3">비상 연락망</h2>
+            <div className="space-y-2">
+              {instructors.filter(i => i.status === 'active').map(i => (
+                <div key={i.id} className="bg-white rounded-2xl p-4 border border-slate-100 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ backgroundColor: i.color || '#0891b2' }}>
+                    {i.name[0]}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-slate-800 text-sm font-semibold">{i.name}</p>
+                      <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">{i.role}</span>
+                    </div>
+                    <p className="text-slate-400 text-xs mt-0.5">
+                      {i.phone || '휴대폰 미등록'}{i.officePhone && ` · 원내 ${i.officePhone}${i.extNumber ? `(${i.extNumber})` : ''}`}
+                    </p>
+                  </div>
+                  {i.phone && (
+                    <a href={`tel:${i.phone}`} className="w-9 h-9 rounded-full bg-cyan-50 text-cyan-600 flex items-center justify-center shrink-0">
+                      <Phone className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              ))}
+              {instructors.filter(i => i.status === 'active').length === 0 && (
+                <div className="text-center py-12 text-slate-400 bg-white rounded-2xl border border-dashed border-slate-200 text-sm">
+                  등록된 직원이 없습니다.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'messages' ? (
           <div className="flex-1 overflow-hidden pb-20 flex flex-col bg-slate-50">
             {activeThreadStudentId ? (() => {
               const s = students.find(st => st.id === activeThreadStudentId);
@@ -884,6 +916,11 @@ export default function InstructorApp() {
             className={`flex flex-col items-center gap-1 ${activeTab === 'messages' ? 'text-cyan-600' : 'text-slate-400'}`}>
             <MessageCircle className="w-6 h-6" />
             <span className="text-[10px] font-medium">메시지</span>
+          </button>
+          <button onClick={() => setActiveTab('contacts')}
+            className={`flex flex-col items-center gap-1 ${activeTab === 'contacts' ? 'text-cyan-600' : 'text-slate-400'}`}>
+            <Contact className="w-6 h-6" />
+            <span className="text-[10px] font-medium">연락망</span>
           </button>
         </div>
       </div>
