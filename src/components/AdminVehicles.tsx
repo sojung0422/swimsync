@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { useStore, getAllEnrollments, isRegionServedByVehicle } from '../store/StoreContext';
+import { useStore, getAllEnrollments, isRegionServedByVehicle, getPrimaryContactPhone } from '../store/StoreContext';
 import type { Driver, Vehicle, Student, Enrollment } from '../store/StoreContext';
-import { Car, User, Plus, Edit2, Trash2, X, MapPin, Clock, Users, AlertCircle, ChevronDown, ChevronUp, CalendarDays, LogIn, LogOut } from 'lucide-react';
+import { Car, User, Plus, Edit2, Trash2, X, MapPin, Clock, Users, AlertCircle, ChevronDown, ChevronUp, CalendarDays, LogIn, LogOut, FileSpreadsheet } from 'lucide-react';
 import { EmptyStateGuide } from './GuideSystem';
 
 const WEEK_DAYS = ['월', '화', '수', '목', '금', '토', '일'];
@@ -401,12 +401,131 @@ function DailyRouteView({ onAddVehicle }: { onAddVehicle: () => void }) {
   );
 }
 
+// ─── 차량별 명단표 (엑셀 형식) ──────────────────────────────────────────────────
+
+const ROSTER_COLUMNS = ['담당 차량 선생님', '수업 시간', '이름', '승차시간', '승차지역', '호차', '하차지역', '승/하차', '성별', '나이', '수업일수', '전화번호', '특이사항'];
+
+function csvEscape(v: string) {
+  if (v.includes(',') || v.includes('"') || v.includes('\n')) return `"${v.replace(/"/g, '""')}"`;
+  return v;
+}
+
+function VehicleRosterView() {
+  const { vehicles, drivers, students, settings, updateStudent } = useStore();
+
+  const rosterRows = (vehicle: Vehicle) => {
+    const driver = drivers.find(d => d.id === vehicle.driverId);
+    return students
+      .filter(s => s.status === 'active' && s.vehicleId === vehicle.id)
+      .sort((a, b) => (a.pickupTime || vehicle.departureTime).localeCompare(b.pickupTime || vehicle.departureTime))
+      .map(s => ({
+        student: s,
+        driverName: driver?.name ?? '미배정',
+        classTime: s.regularTime,
+        pickupTime: s.pickupTime || vehicle.departureTime,
+        pickupRegion: s.address || s.region,
+        vehicleNumber: vehicle.vehicleNumber,
+        dropoffRegion: s.dropoffAddress || settings.academyName,
+        direction: '등원',
+        gender: s.gender,
+        age: s.age,
+        classDays: s.regularDays.join('·'),
+        phone: getPrimaryContactPhone(s),
+        notes: s.notes,
+      }));
+  };
+
+  const downloadCsv = (vehicle: Vehicle) => {
+    const rows = rosterRows(vehicle);
+    const lines = [
+      ROSTER_COLUMNS.join(','),
+      ...rows.map(r => [
+        r.driverName, r.classTime, r.student.studentName, r.pickupTime, r.pickupRegion,
+        r.vehicleNumber, r.dropoffRegion, r.direction, r.gender, String(r.age), r.classDays, r.phone, r.notes,
+      ].map(v => csvEscape(String(v))).join(',')),
+    ];
+    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${vehicle.vehicleNumber}_탑승명단.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-6">
+      {vehicles.map(vehicle => {
+        const rows = rosterRows(vehicle);
+        return (
+          <div key={vehicle.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Car className="w-4 h-4 text-cyan-600" />
+                <h2 className="text-[14px] font-semibold text-slate-700">{vehicle.vehicleNumber}</h2>
+                <span className="text-slate-400 text-xs">{drivers.find(d => d.id === vehicle.driverId)?.name ?? '담당 기사 미배정'} · {rows.length}명</span>
+              </div>
+              <button onClick={() => downloadCsv(vehicle)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors">
+                <FileSpreadsheet className="w-3.5 h-3.5" /> 엑셀(CSV) 다운로드
+              </button>
+            </div>
+            {rows.length === 0 ? (
+              <p className="px-6 py-6 text-slate-400 text-sm text-center">이 차량에 배정된 학생이 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs whitespace-nowrap">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50">
+                      {ROSTER_COLUMNS.map(c => <th key={c} className="px-3 py-2.5 text-left font-medium text-slate-500">{c}</th>)}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map(r => (
+                      <tr key={r.student.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                        <td className="px-3 py-2 text-slate-600">{r.driverName}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.classTime}</td>
+                        <td className="px-3 py-2 text-slate-800 font-medium">{r.student.studentName}</td>
+                        <td className="px-3 py-2">
+                          <input type="time" defaultValue={r.student.pickupTime || vehicle.departureTime}
+                            onBlur={e => updateStudent(r.student.id, { pickupTime: e.target.value })}
+                            className="border border-slate-200 rounded px-1.5 py-1 text-xs w-24 focus:outline-none focus:border-cyan-500" />
+                        </td>
+                        <td className="px-3 py-2 text-slate-600 max-w-[160px] truncate">{r.pickupRegion}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.vehicleNumber}</td>
+                        <td className="px-3 py-2">
+                          <input type="text" defaultValue={r.student.dropoffAddress || ''} placeholder={settings.academyName}
+                            onBlur={e => updateStudent(r.student.id, { dropoffAddress: e.target.value })}
+                            className="border border-slate-200 rounded px-1.5 py-1 text-xs w-28 focus:outline-none focus:border-cyan-500" />
+                        </td>
+                        <td className="px-3 py-2 text-slate-600">{r.direction}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.gender}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.age}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.classDays}</td>
+                        <td className="px-3 py-2 text-slate-600">{r.phone}</td>
+                        <td className="px-3 py-2 text-slate-400 max-w-[140px] truncate">{r.notes || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {vehicles.length === 0 && (
+        <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center text-slate-400">등록된 차량이 없습니다.</div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function AdminVehicles() {
   const { drivers, vehicles, students, addDriver, updateDriver, deleteDriver, addVehicle, updateVehicle, deleteVehicle } = useStore();
 
-  const [activeTab, setActiveTab] = useState<'drivers' | 'vehicles' | 'daily'>('drivers');
+  const [activeTab, setActiveTab] = useState<'drivers' | 'vehicles' | 'daily' | 'roster'>('drivers');
   const [driverModal, setDriverModal] = useState<{ mode: 'add' | 'edit'; driver?: Driver } | null>(null);
   const [vehicleModal, setVehicleModal] = useState<{ mode: 'add' | 'edit'; vehicle?: Vehicle } | null>(null);
   const [assignModal, setAssignModal] = useState<Vehicle | null>(null);
@@ -436,12 +555,17 @@ export default function AdminVehicles() {
           className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'daily' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
           <CalendarDays className="w-4 h-4" /> 일별 노선 관리
         </button>
+        <button onClick={() => setActiveTab('roster')}
+          className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'roster' ? 'border-cyan-600 text-cyan-700' : 'border-transparent text-slate-400 hover:text-slate-700'}`}>
+          <FileSpreadsheet className="w-4 h-4" /> 명단표(엑셀)
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-5xl mx-auto p-6 space-y-6">
 
           {activeTab === 'daily' && <DailyRouteView onAddVehicle={() => setVehicleModal({ mode: 'add' })} />}
+          {activeTab === 'roster' && <VehicleRosterView />}
 
           {/* ── Drivers ── */}
           {activeTab === 'drivers' && (

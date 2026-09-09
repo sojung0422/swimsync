@@ -80,6 +80,8 @@ export type Student = {
   // Extended fields
   address: string;
   vehicleId: string;
+  pickupTime?: string; // 차량 명단표용 — 이 학생을 태우는 시각(비워두면 차량 출발시간 기준으로 표시)
+  dropoffAddress?: string; // 차량 명단표용 — 하차 위치(비워두면 학원으로 표시)
   category: 'adult' | 'child';
   paymentPlanId: string;
   division: Division;
