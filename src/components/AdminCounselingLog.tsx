@@ -124,7 +124,7 @@ export default function AdminCounselingLog() {
     <div className="flex flex-col h-full bg-slate-50">
       <div className="shrink-0 px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2"><NotebookPen className="w-5 h-5 text-cyan-600" /> 상담일지</h1>
+          <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2"><NotebookPen className="w-5 h-5 text-cyan-600" /> 데스크 상담일지</h1>
           <p className="text-slate-400 text-xs mt-0.5">등록 전 문의·상담 기록을 구분 태그로 관리해요. 정규문의가 실제 등록하면 정규수강으로 전환할 수 있어요.</p>
         </div>
         <div className="flex items-center gap-2">

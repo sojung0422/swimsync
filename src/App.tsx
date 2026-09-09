@@ -49,8 +49,8 @@ const navGroups = [
       { id: 'schedule', icon: LayoutDashboard, text: '스케줄 관리' },
       { id: 'students-group', icon: Users, text: '강습생 관리', children: [
         { id: 'students',         text: '강습생 정보' },
-        { id: 'counseling',       text: '상담 관리' },
-        { id: 'counseling-log',   text: '상담일지' },
+        { id: 'counseling',       text: '회원 상담 관리' },
+        { id: 'counseling-log',   text: '데스크 상담일지' },
         { id: 'enrollment-stats', text: '증감 현황' },
         { id: 'registration-applications', text: '가입신청 이력' },
         { id: 'makeups',          text: '보강 요청 관리' },
@@ -149,7 +149,7 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
     ],
   },
   counseling: {
-    title: '상담 관리',
+    title: '회원 상담 관리',
     description: '강사별 담당 강습생의 정기 상담 현황과 상담 일지를 확인·관리하는 화면이에요. 강사 앱에서 강사가 작성한 상담 기록이 여기에 그대로 연동돼요.',
     features: [
       { label: '정기 상담 주기 설정', description: '1개월/2개월/3개월 중 골라서 우리 학원의 정기 상담 주기를 정해요. 이 설정에 따라 "다음 상담 예정일"이 자동 계산돼요.' },
@@ -171,7 +171,7 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
     ],
   },
   'counseling-log': {
-    title: '상담일지',
+    title: '데스크 상담일지',
     description: '아직 등록하지 않은 문의·상담 건을 구분 태그로 관리하는 CRM 화면이에요.',
     features: [
       { label: '구분(카테고리) 관리', description: '정규문의, 대기, 클레임 등 구분 태그를 자유롭게 추가·삭제할 수 있어요.' },

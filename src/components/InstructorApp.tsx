@@ -815,8 +815,8 @@ export default function InstructorApp() {
                   <div className="space-y-4">
                     <div className="bg-white rounded-2xl p-4 border border-slate-100 space-y-3">
                       <div className="flex items-center justify-between">
-                        <p className="text-slate-800 text-sm font-semibold">연차·근무불가 신청</p>
-                        {instructor?.type === '정규' && (
+                        <p className="text-slate-800 text-sm font-semibold">{settings.annualLeaveEnabled ? '연차·근무불가 신청' : '근무 조정 신청'}</p>
+                        {instructor?.type === '정규' && settings.annualLeaveEnabled && (
                           <span className="text-cyan-600 text-xs font-semibold bg-cyan-50 px-2.5 py-1 rounded-full">잔여 연차 {remainingLeave}일</span>
                         )}
                       </div>
@@ -825,7 +825,7 @@ export default function InstructorApp() {
                         <input type="date" value={leaveDate} onChange={e => setLeaveDate(e.target.value)}
                           className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors" />
                       </div>
-                      {instructor?.type === '정규' ? (
+                      {instructor?.type === '정규' && settings.annualLeaveEnabled ? (
                         <div>
                           <p className="text-slate-500 text-xs font-medium mb-1.5">종류</p>
                           <div className="flex gap-2">
@@ -838,7 +838,7 @@ export default function InstructorApp() {
                           </div>
                         </div>
                       ) : (
-                        <p className="text-slate-400 text-xs">프리랜서/비정규직은 연차 차감 없이 근무 불가일로만 등록돼요.</p>
+                        <p className="text-slate-400 text-xs">{settings.annualLeaveEnabled ? '프리랜서/비정규직은 연차 차감 없이 근무 불가일로만 등록돼요.' : '연차를 지급하지 않는 학원이라 근무 불가일로만 등록돼요.'}</p>
                       )}
                       <div>
                         <p className="text-slate-500 text-xs font-medium mb-1.5">사유</p>
@@ -847,7 +847,7 @@ export default function InstructorApp() {
                       </div>
                       {leaveError && <p className="text-red-500 text-xs">{leaveError}</p>}
                       <button onClick={() => {
-                        const type: LeaveType = instructor?.type === '정규' ? leaveType : 'unavailable';
+                        const type: LeaveType = (instructor?.type === '정규' && settings.annualLeaveEnabled) ? leaveType : 'unavailable';
                         const res = submitLeaveRequest(instructorId, leaveDate, type, leaveReason);
                         if (!res.ok) setLeaveError(res.error ?? '신청에 실패했습니다.');
                         else { setLeaveError(null); setLeaveReason(''); setLeaveSaved(true); setTimeout(() => setLeaveSaved(false), 1500); }

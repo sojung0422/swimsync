@@ -272,7 +272,7 @@ function PayrollView() {
 }
 
 export default function AdminStaff({ initialMode = 'info' }: { initialMode?: 'info' | 'payroll' }) {
-  const { instructors, addInstructor, updateInstructor, deleteInstructor, payrollRecords } = useStore();
+  const { instructors, addInstructor, updateInstructor, deleteInstructor, payrollRecords, settings } = useStore();
   const [mode, setMode] = useState<'info' | 'payroll'>(initialMode);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resigned'>('active');
   const [nameFilter, setNameFilter] = useState('');
@@ -519,15 +519,17 @@ export default function AdminStaff({ initialMode = 'info' }: { initialMode?: 'in
             <div className="grid grid-cols-2 gap-3 bg-emerald-50/40 border border-emerald-100 rounded-xl p-4">
               {form.type === '정규' ? (
                 <>
-                  <div>
+                  <div className={settings.annualLeaveEnabled ? '' : 'col-span-2'}>
                     <label className={labelCls}>월급 (기본급)</label>
                     <input type="number" min={0} step={10000} className={inputCls} value={form.monthlySalary} onChange={e => set('monthlySalary', parseInt(e.target.value) || 0)} />
                   </div>
-                  <div>
-                    <label className={labelCls}>연간 연차 일수</label>
-                    <input type="number" min={0} step={1} className={inputCls} value={form.annualLeaveTotal} onChange={e => set('annualLeaveTotal', parseInt(e.target.value) || 0)} />
-                    <p className="text-slate-400 text-[11px] mt-1">사용: {form.annualLeaveUsed}일 · 잔여: {form.annualLeaveTotal - form.annualLeaveUsed}일</p>
-                  </div>
+                  {settings.annualLeaveEnabled && (
+                    <div>
+                      <label className={labelCls}>연간 연차 일수</label>
+                      <input type="number" min={0} step={1} className={inputCls} value={form.annualLeaveTotal} onChange={e => set('annualLeaveTotal', parseInt(e.target.value) || 0)} />
+                      <p className="text-slate-400 text-[11px] mt-1">사용: {form.annualLeaveUsed}일 · 잔여: {form.annualLeaveTotal - form.annualLeaveUsed}일</p>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="col-span-2 space-y-3">

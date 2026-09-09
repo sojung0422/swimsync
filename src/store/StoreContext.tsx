@@ -215,10 +215,14 @@ export type AcademySettings = {
   makeupSettings: MakeupSettings;
   counselingIntervalMonths: number; // 정기 상담 주기 (몇 개월마다) — 관리자가 설정
   reRegistrationPeriod: { startDay: number; endDay: number }; // 매월 며칠~며칠이 재등록 기간인지 — 학원마다 다르게 설정
+  newRegistrationPeriod: { startDay: number; endDay: number }; // 신규 결제 기간 (재등록 기간과 별도 설정)
+  reRegistrationNoticeTemplate: string; // 재등록 기간 시작일에 학부모에게 보내는 안내 문구 — 학원이 직접 작성
   swimLevels: string[]; // 급수/레벨 체계 (예: 초급, 중급, 고급) — 학원마다 다르게 설정
   payrollSettings: PayrollSettings;
   closedDates: string[]; // 학원 휴무일 ('yyyy-MM-dd') — 다음 달 자동 청구 계산 시 제외
   skipFifthWeekOccurrence: boolean; // 그 달에 5번째로 돌아오는 요일은 휴무로 처리할지 (5주차 휴무 학원용)
+  operatingMode: 'standard' | 'fiveWeek'; // 운영 방침: 기존 캘린더 정확 계산(standard) 또는 5주차 대체보강 모드(fiveWeek)
+  annualLeaveEnabled: boolean; // 강사에게 연차를 지급하는 학원인지 — false면 직원 관리에서 연차 관련 UI 숨김
   freeSwimSlots: FreeSwimSlot[];
   leadCategories: string[]; // 상담일지 구분 태그 — 관리자가 추가·삭제 가능
 };
@@ -747,6 +751,8 @@ const INITIAL_SETTINGS: AcademySettings = {
   },
   counselingIntervalMonths: 2,
   reRegistrationPeriod: { startDay: 20, endDay: 25 },
+  newRegistrationPeriod: { startDay: 1, endDay: 25 },
+  reRegistrationNoticeTemplate: '[푸른바다 수영장] 재등록 기간이 시작되었습니다. 앱에서 다음 달 결제 정보를 확인해주세요.',
   swimLevels: ['초급', '중급', '고급'],
   payrollSettings: {
     baseSalaryDefault: 2500000,
@@ -758,6 +764,8 @@ const INITIAL_SETTINGS: AcademySettings = {
   },
   closedDates: [format(startOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-') + '15'],
   skipFifthWeekOccurrence: true,
+  operatingMode: 'standard',
+  annualLeaveEnabled: true,
   freeSwimSlots: [
     { id: 'fs1', days: ['월', '수', '금'], startTime: '20:00', endTime: '21:00', instructorId: 'i3' },
     { id: 'fs2', days: ['화', '목'], startTime: '19:00', endTime: '20:00', instructorId: 'i3' },

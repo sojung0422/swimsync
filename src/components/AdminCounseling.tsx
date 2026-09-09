@@ -106,7 +106,7 @@ export default function AdminCounseling() {
     <div className="flex flex-col h-full bg-slate-50">
       <div className="shrink-0 px-6 py-4 bg-white border-b border-slate-200 flex items-center justify-between">
         <div>
-          <h1 className="text-lg font-bold text-slate-800">상담 관리</h1>
+          <h1 className="text-lg font-bold text-slate-800">회원 상담 관리</h1>
           <p className="text-slate-400 text-xs mt-0.5">선생님별 강습생 상담 현황과 기록을 확인·관리합니다</p>
         </div>
         {totalOverdue > 0 && (

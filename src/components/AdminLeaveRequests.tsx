@@ -8,7 +8,7 @@ const LEAVE_LABEL: Record<LeaveRequest['leaveType'], string> = {
 };
 
 function RequestCard({ request, canApprove }: { request: LeaveRequest; canApprove: boolean }) {
-  const { instructors, currentInstructorId, approveLeaveRequest, rejectLeaveRequest } = useStore();
+  const { instructors, currentInstructorId, approveLeaveRequest, rejectLeaveRequest, settings } = useStore();
   const inst = instructors.find(i => i.id === request.instructorId);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,7 +34,7 @@ function RequestCard({ request, canApprove }: { request: LeaveRequest; canApprov
             )}
           </div>
           <p className="text-slate-600 text-sm mt-2">{request.date} · {request.reason || '사유 없음'}</p>
-          {request.leaveType !== 'unavailable' && (
+          {request.leaveType !== 'unavailable' && settings.annualLeaveEnabled && (
             <p className="text-slate-400 text-[11px] mt-1">차감 연차: {leaveDeduction(request.leaveType)}일 {inst && `(잔여 ${inst.annualLeaveTotal - inst.annualLeaveUsed}일)`}</p>
           )}
           <p className="text-slate-300 text-[11px] mt-2">신청: {request.requestedAt.slice(0, 16).replace('T', ' ')}{request.resolvedAt && ` · 처리: ${request.resolvedAt.slice(0, 16).replace('T', ' ')}`}</p>

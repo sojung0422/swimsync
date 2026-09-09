@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useStore, ClassSession, computeOpenMakeupSlots, computeMakeupCapacity, isRecentlyEnrolled, isRecentlyScheduleChanged, getClassOfferings } from '../store/StoreContext';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search, CalendarOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search, CalendarOff, Repeat } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
@@ -38,6 +38,11 @@ export default function AdminSchedule() {
   const [newLevel, setNewLevel] = useState('');
   const [newClosedDate, setNewClosedDate] = useState('');
   const [academyDraft, setAcademyDraft] = useState({ academyName: settings.academyName, branchName: settings.branchName, academyPhone: settings.academyPhone });
+  const [policyDraft, setPolicyDraft] = useState({
+    reRegStart: settings.reRegistrationPeriod.startDay, reRegEnd: settings.reRegistrationPeriod.endDay,
+    newRegStart: settings.newRegistrationPeriod.startDay, newRegEnd: settings.newRegistrationPeriod.endDay,
+    noticeTemplate: settings.reRegistrationNoticeTemplate,
+  });
   const [selectedClass, setSelectedClass] = useState<ClassSession | null>(null);
   const [weekFilterMode, setWeekFilterMode] = useState<'all' | 'individual'>('all');
   const [selectedInstructorId, setSelectedInstructorId] = useState<string>(instructors[0]?.id || '');
@@ -762,6 +767,70 @@ export default function AdminSchedule() {
                   </div>
                 </div>
                 <p className="text-slate-400 text-xs mt-2">여기서 바꾸면 학부모 앱, 관리자 화면 등 학원명이 표시되는 모든 곳에 바로 반영돼요.</p>
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2"><Repeat size={15} className="text-cyan-600" /> 운영 방침</h4>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1.5 font-medium">청구·보강 운영 방식</label>
+                    <div className="flex gap-2">
+                      <button onClick={() => updateSettings({ operatingMode: 'standard' })}
+                        className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-bold border transition-colors ${settings.operatingMode === 'standard' ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-cyan-300'}`}>
+                        기존 방식 (달력 정확 계산)
+                      </button>
+                      <button onClick={() => updateSettings({ operatingMode: 'fiveWeek' })}
+                        className={`flex-1 px-3 py-2.5 rounded-xl text-sm font-bold border transition-colors ${settings.operatingMode === 'fiveWeek' ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:border-cyan-300'}`}>
+                        5주차 대체보강 방식
+                      </button>
+                    </div>
+                    <p className="text-slate-400 text-xs mt-1.5">
+                      {settings.operatingMode === 'standard'
+                        ? '지금처럼 그 달 실제 수업일수(공휴일 제외)만큼만 청구해요.'
+                        : '금액은 표준 회차(주1회=4일/주2회=8일)로 고정하고, 부족한 달은 대체보강일로 채워줘요.'}
+                    </p>
+                  </div>
+                  <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
+                    <input type="checkbox" checked={settings.annualLeaveEnabled} className="w-4 h-4 accent-cyan-600"
+                      onChange={e => updateSettings({ annualLeaveEnabled: e.target.checked })} />
+                    강사에게 연차 지급 (끄면 직원 관리에서 연차 관련 화면이 숨겨져요)
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1 font-medium">재등록 결제 기간 (매월 며칠~며칠)</label>
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" min={1} max={31} className={`${inputCls} w-16`} value={policyDraft.reRegStart}
+                          onChange={e => setPolicyDraft({ ...policyDraft, reRegStart: parseInt(e.target.value) || 1 })}
+                          onBlur={() => updateSettings({ reRegistrationPeriod: { startDay: policyDraft.reRegStart, endDay: policyDraft.reRegEnd } })} />
+                        <span className="text-slate-400 text-xs">일 ~</span>
+                        <input type="number" min={1} max={31} className={`${inputCls} w-16`} value={policyDraft.reRegEnd}
+                          onChange={e => setPolicyDraft({ ...policyDraft, reRegEnd: parseInt(e.target.value) || 1 })}
+                          onBlur={() => updateSettings({ reRegistrationPeriod: { startDay: policyDraft.reRegStart, endDay: policyDraft.reRegEnd } })} />
+                        <span className="text-slate-400 text-xs">일</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1 font-medium">신규 결제 기간 (매월 며칠~며칠)</label>
+                      <div className="flex items-center gap-1.5">
+                        <input type="number" min={1} max={31} className={`${inputCls} w-16`} value={policyDraft.newRegStart}
+                          onChange={e => setPolicyDraft({ ...policyDraft, newRegStart: parseInt(e.target.value) || 1 })}
+                          onBlur={() => updateSettings({ newRegistrationPeriod: { startDay: policyDraft.newRegStart, endDay: policyDraft.newRegEnd } })} />
+                        <span className="text-slate-400 text-xs">일 ~</span>
+                        <input type="number" min={1} max={31} className={`${inputCls} w-16`} value={policyDraft.newRegEnd}
+                          onChange={e => setPolicyDraft({ ...policyDraft, newRegEnd: parseInt(e.target.value) || 1 })}
+                          onBlur={() => updateSettings({ newRegistrationPeriod: { startDay: policyDraft.newRegStart, endDay: policyDraft.newRegEnd } })} />
+                        <span className="text-slate-400 text-xs">일</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1 font-medium">재등록 기간 시작 알림 문구</label>
+                    <textarea className={`${inputCls} w-full`} rows={2} value={policyDraft.noticeTemplate}
+                      onChange={e => setPolicyDraft({ ...policyDraft, noticeTemplate: e.target.value })}
+                      onBlur={() => updateSettings({ reRegistrationNoticeTemplate: policyDraft.noticeTemplate })} />
+                    <p className="text-slate-400 text-xs mt-1">재등록 기간 시작일에 학부모 앱으로 자동 발송돼요.</p>
+                  </div>
+                </div>
               </div>
 
               <div>
