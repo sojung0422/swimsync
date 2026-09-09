@@ -405,8 +405,9 @@ export type CounselingRecord = {
 export type ChatMessage = {
   id: string; studentId: string;
   senderRole: 'parent' | 'instructor';
-  kind: 'text' | 'call_note'; // call_note = 실제 전화 통화 후 남긴 메모
+  kind: 'text' | 'call_note' | 'image' | 'video'; // call_note = 실제 전화 통화 후 남긴 메모
   text: string; createdAt: string; // ISO
+  mediaUrl?: string; // kind가 image/video일 때 첨부 파일(데이터 URL)
 };
 
 export type NotificationRecord = {
@@ -1090,7 +1091,7 @@ type StoreContextType = {
   deleteNotificationGroup: (id: string) => void;
   makeupRequests: MakeupRequest[];
   messages: ChatMessage[];
-  sendMessage: (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind?: ChatMessage['kind']) => void;
+  sendMessage: (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind?: ChatMessage['kind'], mediaUrl?: string) => void;
   counselingRecords: CounselingRecord[];
   addCounselingRecord: (c: Omit<CounselingRecord, 'id' | 'createdAt'>) => void;
   updateCounselingRecord: (id: string, updates: Partial<CounselingRecord>) => void;
@@ -1626,9 +1627,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ── ChatMessage (학부모↔강사 소통) ────────────────────────────────
-  const sendMessage = (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind: ChatMessage['kind'] = 'text') => {
-    if (!text.trim()) return;
-    setMessages(prev => [...prev, { id: `msg_${Date.now()}`, studentId, senderRole, kind, text: text.trim(), createdAt: new Date().toISOString() }]);
+  const sendMessage = (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind: ChatMessage['kind'] = 'text', mediaUrl?: string) => {
+    if (!text.trim() && !mediaUrl) return;
+    setMessages(prev => [...prev, { id: `msg_${Date.now()}`, studentId, senderRole, kind, text: text.trim(), createdAt: new Date().toISOString(), ...(mediaUrl ? { mediaUrl } : {}) }]);
   };
 
   // ── CounselingRecord (정기 상담 기록) ────────────────────────────

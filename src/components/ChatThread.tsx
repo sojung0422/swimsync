@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../store/StoreContext';
-import { Phone, Send, PhoneCall } from 'lucide-react';
+import { Phone, Send, PhoneCall, Paperclip } from 'lucide-react';
 import { format, parseISO, isToday } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import AddContactButton from './AddContactButton';
@@ -18,6 +18,7 @@ export default function ChatThread({ studentId, viewerRole, counterpartName, cou
   const [text, setText] = useState('');
   const [showCallNote, setShowCallNote] = useState(false);
   const [callNoteText, setCallNoteText] = useState('');
+  const [zoomMedia, setZoomMedia] = useState<string | null>(null);
 
   const thread = messages.filter(m => m.studentId === studentId).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 
@@ -25,6 +26,16 @@ export default function ChatThread({ studentId, viewerRole, counterpartName, cou
     if (!text.trim()) return;
     sendMessage(studentId, viewerRole, text, 'text');
     setText('');
+  };
+
+  const handleAttach = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const kind = file.type.startsWith('video/') ? 'video' : 'image';
+    const reader = new FileReader();
+    reader.onload = ev => sendMessage(studentId, viewerRole, '', kind, ev.target?.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const handleSaveCallNote = () => {
@@ -95,11 +106,20 @@ export default function ChatThread({ studentId, viewerRole, counterpartName, cou
             );
           }
           const isMine = m.senderRole === viewerRole;
+          const isMedia = m.kind === 'image' || m.kind === 'video';
           return (
             <div key={m.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] rounded-2xl px-3.5 py-2.5 ${isMine ? 'bg-cyan-600 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'}`}>
-                <p className="text-sm leading-5 whitespace-pre-wrap break-words">{m.text}</p>
-                <p className={`text-[10px] mt-1 ${isMine ? 'text-cyan-100' : 'text-slate-400'}`}>
+              <div className={`max-w-[75%] rounded-2xl overflow-hidden ${isMedia ? '' : 'px-3.5 py-2.5'} ${isMine ? 'bg-cyan-600 text-white rounded-br-sm' : 'bg-white border border-slate-200 text-slate-700 rounded-bl-sm'}`}>
+                {m.kind === 'image' && m.mediaUrl && (
+                  <button onClick={() => setZoomMedia(m.mediaUrl!)} className="block">
+                    <img src={m.mediaUrl} className="max-w-full max-h-56 object-cover" alt="첨부 이미지" />
+                  </button>
+                )}
+                {m.kind === 'video' && m.mediaUrl && (
+                  <video src={m.mediaUrl} controls className="max-w-full max-h-56" />
+                )}
+                {!isMedia && <p className="text-sm leading-5 whitespace-pre-wrap break-words">{m.text}</p>}
+                <p className={`text-[10px] ${isMedia ? 'px-3 py-1.5' : 'mt-1'} ${isMine ? 'text-cyan-100' : 'text-slate-400'}`}>
                   {isToday(parseISO(m.createdAt)) ? format(parseISO(m.createdAt), 'HH:mm') : format(parseISO(m.createdAt), 'M/d HH:mm', { locale: ko })}
                 </p>
               </div>
@@ -109,6 +129,10 @@ export default function ChatThread({ studentId, viewerRole, counterpartName, cou
       </div>
 
       <div className="shrink-0 bg-white border-t border-slate-100 px-3 py-3 flex items-center gap-2">
+        <label className="w-9 h-9 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-500 flex items-center justify-center shrink-0 cursor-pointer transition-colors" title="사진·동영상 첨부">
+          <Paperclip className="w-4 h-4" />
+          <input type="file" accept="image/*,video/*" className="hidden" onChange={handleAttach} />
+        </label>
         <input value={text} onChange={e => setText(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSend(); }}
           placeholder="메시지를 입력하세요"
@@ -118,6 +142,12 @@ export default function ChatThread({ studentId, viewerRole, counterpartName, cou
           <Send className="w-4 h-4" />
         </button>
       </div>
+
+      {zoomMedia && (
+        <div className="fixed inset-0 bg-black/70 z-[80] flex items-center justify-center p-6" onClick={() => setZoomMedia(null)}>
+          <img src={zoomMedia} className="max-w-full max-h-full rounded-xl shadow-2xl" alt="첨부 이미지 확대" />
+        </div>
+      )}
     </div>
   );
 }
