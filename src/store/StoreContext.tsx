@@ -77,6 +77,7 @@ export type Student = {
   parentName: string; age: number; region: string; passType: string;
   totalClasses: number; rescheduleLimit: number; usedReschedules: number;
   notes: string; progress: string;
+  progressMedia?: { url: string; kind: 'image' | 'video' }[]; // 진도 기록에 첨부한 사진/영상 — 강사가 등록, 학부모 앱 "나의 진도"에 노출
   // Extended fields
   address: string;
   vehicleId: string;

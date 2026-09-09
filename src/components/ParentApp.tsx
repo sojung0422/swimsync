@@ -231,6 +231,7 @@ export default function ParentApp() {
   const [activeModal, setActiveModal] = useState<'none' | 'absence' | 'reschedule' | 'event'>('none');
   const [eventDiscountId, setEventDiscountId] = useState<string>('');
   const [eventPhoto, setEventPhoto] = useState<string | null>(null);
+  const [zoomProgressMedia, setZoomProgressMedia] = useState<string | null>(null);
   const handleEventPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -700,11 +701,26 @@ export default function ParentApp() {
             {/* 진도 현황 (강사 기록) */}
             <div>
               <h2 className="text-[15px] font-bold text-slate-800 mb-3">나의 진도</h2>
-              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
-                  <TrendingUp className="w-5 h-5 text-cyan-600" />
+              <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
+                    <TrendingUp className="w-5 h-5 text-cyan-600" />
+                  </div>
+                  <p className="text-slate-700 text-sm font-medium">{student?.progress || '아직 강사님이 기록한 진도가 없어요.'}</p>
                 </div>
-                <p className="text-slate-700 text-sm font-medium">{student?.progress || '아직 강사님이 기록한 진도가 없어요.'}</p>
+                {!!student?.progressMedia?.length && (
+                  <div className="flex gap-2 mt-3 overflow-x-auto pb-0.5">
+                    {student.progressMedia.map((m, i) => (
+                      m.kind === 'image' ? (
+                        <button key={i} onClick={() => setZoomProgressMedia(m.url)} className="shrink-0">
+                          <img src={m.url} className="w-16 h-16 rounded-xl object-cover border border-slate-200" alt="진도 사진" />
+                        </button>
+                      ) : (
+                        <video key={i} src={m.url} className="w-16 h-16 rounded-xl object-cover border border-slate-200 shrink-0" controls />
+                      )
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1279,6 +1295,12 @@ export default function ParentApp() {
             <span className="text-[10px] font-medium">메시지</span>
           </button>
         </div>
+
+        {zoomProgressMedia && (
+          <div className="absolute inset-0 bg-black/70 z-50 flex items-center justify-center p-6" onClick={() => setZoomProgressMedia(null)}>
+            <img src={zoomProgressMedia} className="max-w-full max-h-full rounded-xl shadow-2xl" alt="진도 사진 확대" />
+          </div>
+        )}
       </div>
     </div>
   );
