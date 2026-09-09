@@ -439,6 +439,7 @@ export type WaitlistEntry = {
   category: 'adult' | 'child'; note: string;
   status: 'waiting' | 'notified' | 'converted' | 'cancelled';
   requestedAt: string; notifiedAt: string;
+  desiredInstructorId?: string; // 특정 강사를 콕 집어 대기하는 경우(요일이 안 맞는 등) — 그 강사 반에 자리가 나면 우선 안내
 };
 
 // 형제/다자녀 할인, 이벤트 할인 — 등록된 할인은 조건에 맞는 학생에게 자동으로 계산되어 적용된다
