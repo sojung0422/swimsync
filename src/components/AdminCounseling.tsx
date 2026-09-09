@@ -3,7 +3,7 @@ import { useStore, studentsForInstructor } from '../store/StoreContext';
 import { format, addMonths, subMonths, isAfter, parseISO } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import {
-  MessageSquareText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, X, AlertCircle, CheckCircle2, Settings2, CalendarDays, Users,
+  MessageSquareText, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Plus, X, AlertCircle, CheckCircle2, Settings2, CalendarDays, Users, Camera,
 } from 'lucide-react';
 
 function AddRecordModal({ studentId, instructorId, studentName, onClose }: {
@@ -12,10 +12,21 @@ function AddRecordModal({ studentId, instructorId, studentName, onClose }: {
   const { addCounselingRecord } = useStore();
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [content, setContent] = useState('');
+  const [media, setMedia] = useState<{ url: string; kind: 'image' | 'video' }[]>([]);
+
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const kind = file.type.startsWith('video/') ? 'video' : 'image';
+    const reader = new FileReader();
+    reader.onload = ev => setMedia(prev => [...prev, { url: ev.target?.result as string, kind }]);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
 
   const handleSave = () => {
     if (!content.trim()) return;
-    addCounselingRecord({ studentId, instructorId, date, content: content.trim() });
+    addCounselingRecord({ studentId, instructorId, date, content: content.trim(), media });
     onClose();
   };
 
@@ -37,6 +48,22 @@ function AddRecordModal({ studentId, instructorId, studentName, onClose }: {
             <textarea value={content} onChange={e => setContent(e.target.value)} rows={5}
               placeholder="상담에서 나눈 이야기와 다음 계획을 기록하세요"
               className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors resize-none" />
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1 font-medium">사진/영상 첨부</label>
+            <div className="flex flex-wrap gap-2">
+              {media.map((m, i) => (
+                <div key={i} className="relative w-14 h-14 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                  {m.kind === 'image' ? <img src={m.url} className="w-full h-full object-cover" alt="상담 첨부" /> : <video src={m.url} className="w-full h-full object-cover" />}
+                  <button onClick={() => setMedia(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full text-white text-[9px] flex items-center justify-center">✕</button>
+                </div>
+              ))}
+              <label className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
+                <Camera className="w-4 h-4 text-slate-400" />
+                <input type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaUpload} />
+              </label>
+            </div>
           </div>
           <button onClick={handleSave} disabled={!content.trim()}
             className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-colors">
@@ -206,6 +233,15 @@ export default function AdminCounseling() {
                                       <MessageSquareText className="w-3.5 h-3.5" /> {r.date}
                                     </div>
                                     <p className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap">{r.content}</p>
+                                    {!!r.media?.length && (
+                                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                                        {r.media.map((m, i) => (
+                                          m.kind === 'image'
+                                            ? <img key={i} src={m.url} className="w-12 h-12 rounded-lg object-cover border border-slate-200" alt="상담 첨부" />
+                                            : <video key={i} src={m.url} className="w-12 h-12 rounded-lg object-cover border border-slate-200" controls />
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
                                 ))
                               )}

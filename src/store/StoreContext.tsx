@@ -403,6 +403,7 @@ export type CounselingRecord = {
   id: string; studentId: string; instructorId: string;
   date: string; // 'yyyy-MM-dd' 상담 진행일
   content: string; // 상담 내용(일지)
+  media?: { url: string; kind: 'image' | 'video' }[]; // 상담 시 첨부한 사진/영상
   createdAt: string;
 };
 

@@ -176,17 +176,30 @@ function CounselingScreen({ studentId, instructorId, onClose }: { studentId: str
   const student = students.find(s => s.id === studentId);
   const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [content, setContent] = useState('');
+  const [media, setMedia] = useState<{ url: string; kind: 'image' | 'video' }[]>([]);
   const [saved, setSaved] = useState(false);
+  const [zoomMedia, setZoomMedia] = useState<string | null>(null);
 
   const records = counselingRecords.filter(c => c.studentId === studentId).sort((a, b) => b.date.localeCompare(a.date));
   const lastRecord = records[0];
   const nextDue = lastRecord ? format(addMonths(parseISO(lastRecord.date), settings.counselingIntervalMonths), 'yyyy-MM-dd') : null;
   const isOverdue = !nextDue || isAfter(new Date(), parseISO(nextDue));
 
+  const handleMediaUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const kind = file.type.startsWith('video/') ? 'video' : 'image';
+    const reader = new FileReader();
+    reader.onload = ev => setMedia(prev => [...prev, { url: ev.target?.result as string, kind }]);
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
   const handleSave = () => {
     if (!content.trim()) return;
-    addCounselingRecord({ studentId, instructorId, date, content: content.trim() });
+    addCounselingRecord({ studentId, instructorId, date, content: content.trim(), media });
     setContent('');
+    setMedia([]);
     setSaved(true);
     setTimeout(() => setSaved(false), 1500);
   };
@@ -230,6 +243,24 @@ function CounselingScreen({ studentId, instructorId, onClose }: { studentId: str
               placeholder="예: 물에 대한 두려움 감소, 발차기 자세 교정 진행 중. 가정 내 연습 방법 안내함."
               className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:border-cyan-500 transition-colors resize-none" />
           </div>
+          <div>
+            <p className="text-slate-500 text-xs font-medium mb-1.5">사진/영상 첨부</p>
+            <div className="flex flex-wrap gap-2">
+              {media.map((m, i) => (
+                <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                  {m.kind === 'image'
+                    ? <button onClick={() => setZoomMedia(m.url)} className="w-full h-full"><img src={m.url} className="w-full h-full object-cover" alt="상담 첨부" /></button>
+                    : <video src={m.url} className="w-full h-full object-cover" controls />}
+                  <button onClick={() => setMedia(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full text-white text-[9px] flex items-center justify-center">✕</button>
+                </div>
+              ))}
+              <label className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
+                <Camera className="w-4 h-4 text-slate-400" />
+                <input type="file" accept="image/*,video/*" className="hidden" onChange={handleMediaUpload} />
+              </label>
+            </div>
+          </div>
           <button onClick={handleSave} disabled={!content.trim()}
             className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors flex items-center justify-center gap-2">
             {saved ? <><CheckCircle2 className="w-4 h-4" /> 저장됨</> : '상담 기록 저장'}
@@ -242,6 +273,19 @@ function CounselingScreen({ studentId, instructorId, onClose }: { studentId: str
             <div key={r.id} className="bg-white rounded-2xl border border-slate-100 p-4">
               <p className="text-slate-800 text-xs font-bold">{r.date}</p>
               <p className="text-slate-600 text-sm mt-1.5 leading-relaxed whitespace-pre-wrap">{r.content}</p>
+              {!!r.media?.length && (
+                <div className="flex gap-1.5 mt-2 flex-wrap">
+                  {r.media.map((m, i) => (
+                    m.kind === 'image' ? (
+                      <button key={i} onClick={() => setZoomMedia(m.url)} className="shrink-0">
+                        <img src={m.url} className="w-14 h-14 rounded-lg object-cover border border-slate-200" alt="상담 첨부" />
+                      </button>
+                    ) : (
+                      <video key={i} src={m.url} className="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0" controls />
+                    )
+                  ))}
+                </div>
+              )}
             </div>
           ))}
           {records.length === 0 && (
@@ -251,6 +295,12 @@ function CounselingScreen({ studentId, instructorId, onClose }: { studentId: str
           )}
         </div>
       </div>
+
+      {zoomMedia && (
+        <div className="absolute inset-0 bg-black/70 z-40 flex items-center justify-center p-6" onClick={() => setZoomMedia(null)}>
+          <img src={zoomMedia} className="max-w-full max-h-full rounded-xl shadow-2xl" alt="상담 첨부 확대" />
+        </div>
+      )}
     </div>
   );
 }
