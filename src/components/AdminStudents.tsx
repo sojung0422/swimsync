@@ -1251,14 +1251,14 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
   student: Student; onBack: () => void; onEdit: (s: Student) => void;
   onDelete: (s: Student) => void; onExtend: (s: Student) => void; onDefer: (s: Student) => void;
 }) {
-  const { instructors, lessonClasses, vehicles, drivers, paymentPlans, updateStudent, students: allStudents, discounts, settings } = useStore();
+  const { instructors, lessonClasses, vehicles, drivers, paymentPlans, updateStudent, students: allStudents, discounts, settings, eventParticipations } = useStore();
   const instructor = instructors.find(i => i.id === student.instructorId);
   const lessonClass = lessonClasses.find(lc => lc.id === student.lessonClassId);
   const vehicle = vehicles.find(v => v.id === student.vehicleId);
   const driver = vehicle ? drivers.find(d => d.id === vehicle.driverId) : null;
   const paymentPlan = paymentPlans.find(p => p.id === student.paymentPlanId);
   const status = statusLabel[student.status] ?? statusLabel.active;
-  const { percent: discountPercent, matched: matchedDiscounts, customAmountOff } = computeApplicableDiscounts(student, allStudents, discounts);
+  const { percent: discountPercent, matched: matchedDiscounts, customAmountOff } = computeApplicableDiscounts(student, allStudents, discounts, new Date(), eventParticipations);
   const discountBase = paymentPlan?.monthlyPrice || student.paymentAmount;
   const suggestedAmount = Math.max(0, Math.round(discountBase * (1 - discountPercent / 100) / 100) * 100 - customAmountOff);
   const [editingCustomDiscount, setEditingCustomDiscount] = useState(false);

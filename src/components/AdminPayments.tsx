@@ -334,11 +334,16 @@ function DiscountFormModal({ initial, onClose, onSave, title }: {
 }
 
 function DiscountsPanel() {
-  const { discounts, students, addDiscount, updateDiscount, deleteDiscount } = useStore();
+  const { discounts, students, addDiscount, updateDiscount, deleteDiscount, eventParticipations, approveEventParticipation, rejectEventParticipation } = useStore();
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; discount?: Discount } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Discount | null>(null);
+  const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
+  const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
 
-  const matchingCount = (d: Discount) => students.filter(s => s.status === 'active' && computeApplicableDiscounts(s, students, [d]).matched.length > 0).length;
+  const matchingCount = (d: Discount) => students.filter(s => s.status === 'active' && computeApplicableDiscounts(s, students, [d], new Date(), eventParticipations).matched.length > 0).length;
+  const pendingParticipations = eventParticipations.filter(p => p.status === 'pending');
+  const togglePending = (id: string) => setSelectedPendingIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const approveSelected = () => { selectedPendingIds.forEach(approveEventParticipation); setSelectedPendingIds([]); };
 
   return (
     <div className="space-y-4">
@@ -348,6 +353,47 @@ function DiscountsPanel() {
           className="flex items-center gap-1.5 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-medium transition-colors shrink-0 ml-3">
           <Plus className="w-3.5 h-3.5" /> 할인·이벤트 추가
         </button>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-500" />
+            <h2 className="text-[14px] font-semibold text-slate-700">이벤트 참여 인증 대기</h2>
+            <span className="text-slate-400 text-xs">{pendingParticipations.length}건</span>
+          </div>
+          {selectedPendingIds.length > 0 && (
+            <button onClick={approveSelected} className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors">
+              <CheckCircle className="w-3.5 h-3.5" /> {selectedPendingIds.length}건 일괄 승인
+            </button>
+          )}
+        </div>
+        {pendingParticipations.length === 0 ? (
+          <p className="px-6 py-6 text-slate-400 text-sm text-center">대기 중인 참여 인증이 없습니다.</p>
+        ) : (
+          <div className="divide-y divide-slate-50">
+            {pendingParticipations.map(p => {
+              const student = students.find(s => s.id === p.studentId);
+              const discount = discounts.find(d => d.id === p.discountId);
+              return (
+                <div key={p.id} className="px-6 py-3.5 flex items-center gap-3">
+                  <input type="checkbox" checked={selectedPendingIds.includes(p.id)} onChange={() => togglePending(p.id)} className="w-4 h-4 accent-cyan-600 shrink-0" />
+                  <button onClick={() => setZoomPhoto(p.evidencePhoto)} className="shrink-0">
+                    <img src={p.evidencePhoto} className="w-12 h-12 rounded-lg object-cover border border-slate-200" alt="증빙" />
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-800 text-sm font-semibold">{student?.studentName ?? '알 수 없음'} <span className="text-slate-400 font-normal">· {discount?.name ?? '삭제된 이벤트'}</span></p>
+                    <p className="text-slate-400 text-xs mt-0.5">{p.submittedAt} 제출 · 승인 시 다음 달부터 할인 적용</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button onClick={() => approveEventParticipation(p.id)} className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors">승인</button>
+                    <button onClick={() => rejectEventParticipation(p.id)} className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg text-xs font-medium transition-colors">거절</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {discounts.length === 0 ? (
@@ -415,6 +461,12 @@ function DiscountsPanel() {
               <button onClick={() => { deleteDiscount(deleteConfirm.id); setDeleteConfirm(null); }} className="flex-1 py-2.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-sm font-medium transition-colors">삭제</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {zoomPhoto && (
+        <div className="fixed inset-0 bg-black/60 z-[70] flex items-center justify-center p-6" onClick={() => setZoomPhoto(null)}>
+          <img src={zoomPhoto} className="max-w-full max-h-full rounded-xl shadow-2xl" alt="증빙 확대" />
         </div>
       )}
     </div>

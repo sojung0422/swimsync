@@ -447,6 +447,13 @@ export type Discount = {
   active: boolean;
 };
 
+// 이벤트 할인 참여 인증 — kind='event' 할인은 학생이 스샷을 제출하고 관리자가 승인해야 다음 달부터 적용됨
+// (형제 할인처럼 조건만 맞으면 자동 적용되는 것과 달리, 이벤트는 실제 참여를 증빙 확인해야 함)
+export type EventParticipation = {
+  id: string; studentId: string; discountId: string; evidencePhoto: string;
+  submittedAt: string; status: 'pending' | 'approved' | 'rejected'; resolvedAt: string;
+};
+
 // 강사 급여 정산 — 정규직은 기본급+인센티브+추가근무, 파트(프리랜서)는 요일·시간대별 단가×근무시간으로 계산해 명세서를 발행한다
 export type PayrollRecord = {
   id: string; instructorId: string; month: string; // 'yyyy-MM'
@@ -600,7 +607,10 @@ export const computeSiblingCount = (student: Student, allStudents: Student[]): n
 };
 
 // 학생에게 지금 적용 가능한 할인(형제+이벤트+개별 설정)을 계산 — 퍼센트는 합산(최대 100%), 정액 할인은 별도로 반환
-export const computeApplicableDiscounts = (student: Student, allStudents: Student[], discounts: Discount[], today: Date = new Date()): { percent: number; matched: Discount[]; customAmountOff: number } => {
+// kind='event' 할인은 eventParticipations에 그 학생·그 할인에 대한 승인(approved) 기록이 있어야 매칭됨(형제 할인은 조건만 맞으면 자동 매칭)
+export const computeApplicableDiscounts = (
+  student: Student, allStudents: Student[], discounts: Discount[], today: Date = new Date(), eventParticipations: EventParticipation[] = []
+): { percent: number; matched: Discount[]; customAmountOff: number } => {
   const todayStr = format(today, 'yyyy-MM-dd');
   const siblingCount = computeSiblingCount(student, allStudents);
   const matched = discounts.filter(d => {
@@ -608,7 +618,7 @@ export const computeApplicableDiscounts = (student: Student, allStudents: Studen
     if (d.kind === 'sibling') return siblingCount >= d.minSiblingCount;
     if (d.startDate && todayStr < d.startDate) return false;
     if (d.endDate && todayStr > d.endDate) return false;
-    return true;
+    return eventParticipations.some(p => p.studentId === student.id && p.discountId === d.id && p.status === 'approved');
   });
   let percent = matched.reduce((sum, d) => sum + d.percent, 0);
   let customAmountOff = 0;
@@ -762,6 +772,13 @@ const INITIAL_LEADS: LeadRecord[] = [
 const INITIAL_DISCOUNTS: Discount[] = [
   { id: 'disc1', name: '형제 2인 이상 할인', kind: 'sibling', percent: 5, minSiblingCount: 2, startDate: '', endDate: '', active: true },
   { id: 'disc2', name: '형제 3인 이상 할인', kind: 'sibling', percent: 10, minSiblingCount: 3, startDate: '', endDate: '', active: true },
+  { id: 'disc3', name: '가을맞이 신규 등록 이벤트', kind: 'event', percent: 10, minSiblingCount: 0, startDate: format(startOfMonth(new Date()), 'yyyy-MM-dd'), endDate: format(endOfMonth(addMonths(new Date(), 1)), 'yyyy-MM-dd'), active: true },
+];
+
+// 참여 인증 데모용 예시 — 이미지는 1x1 투명 PNG(placeholder), 실제로는 사용자가 업로드한 스샷이 들어감
+const PLACEHOLDER_EVIDENCE_PHOTO = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+const INITIAL_EVENT_PARTICIPATIONS: EventParticipation[] = [
+  { id: 'ep_seed1', studentId: 's2', discountId: 'disc3', evidencePhoto: PLACEHOLDER_EVIDENCE_PHOTO, submittedAt: format(addDays(new Date(), -1), 'yyyy-MM-dd HH:mm'), status: 'pending', resolvedAt: '' },
 ];
 
 const INITIAL_WAITLIST: WaitlistEntry[] = [
@@ -1174,6 +1191,11 @@ type StoreContextType = {
   addDiscount: (d: Omit<Discount, 'id'>) => void;
   updateDiscount: (id: string, updates: Partial<Discount>) => void;
   deleteDiscount: (id: string) => void;
+  // 이벤트 할인 참여 인증
+  eventParticipations: EventParticipation[];
+  submitEventParticipation: (studentId: string, discountId: string, evidencePhoto: string) => void;
+  approveEventParticipation: (id: string) => void;
+  rejectEventParticipation: (id: string) => void;
   // 강사 급여 정산
   payrollRecords: PayrollRecord[];
   issuePayroll: (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => void;
@@ -1227,6 +1249,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [freeSwimBookings, setFreeSwimBookings] = useState<FreeSwimBooking[]>(INITIAL_FREE_SWIM_BOOKINGS);
   const [leads, setLeads] = useState<LeadRecord[]>(INITIAL_LEADS);
   const [discounts, setDiscounts] = useState<Discount[]>(INITIAL_DISCOUNTS);
+  const [eventParticipations, setEventParticipations] = useState<EventParticipation[]>(INITIAL_EVENT_PARTICIPATIONS);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
   const [levelTestRecords, setLevelTestRecords] = useState<LevelTestRecord[]>(INITIAL_LEVEL_TEST_RECORDS);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
@@ -1715,6 +1738,20 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const updateDiscount = (id: string, updates: Partial<Discount>) => setDiscounts(prev => prev.map(d => d.id === id ? { ...d, ...updates } : d));
   const deleteDiscount = (id: string) => setDiscounts(prev => prev.filter(d => d.id !== id));
 
+  // ── 이벤트 할인 참여 인증 ─────────────────────────────────────────
+  const submitEventParticipation = (studentId: string, discountId: string, evidencePhoto: string) => {
+    setEventParticipations(prev => [...prev, {
+      id: `ep_${Date.now()}`, studentId, discountId, evidencePhoto,
+      submittedAt: format(new Date(), 'yyyy-MM-dd HH:mm'), status: 'pending', resolvedAt: '',
+    }]);
+  };
+  const approveEventParticipation = (id: string) => {
+    setEventParticipations(prev => prev.map(p => p.id === id ? { ...p, status: 'approved', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : p));
+  };
+  const rejectEventParticipation = (id: string) => {
+    setEventParticipations(prev => prev.map(p => p.id === id ? { ...p, status: 'rejected', resolvedAt: format(new Date(), 'yyyy-MM-dd HH:mm') } : p));
+  };
+
   // ── 강사 급여 정산 ────────────────────────────────────────────
   const issuePayroll = (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => {
     const inst = instructors.find(i => i.id === instructorId);
@@ -1845,6 +1882,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
       leads, addLead, updateLead, deleteLead, convertLeadToEnrolled,
       discounts, addDiscount, updateDiscount, deleteDiscount,
+      eventParticipations, submitEventParticipation, approveEventParticipation, rejectEventParticipation,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,
       currentInstructorId, setCurrentInstructorId,

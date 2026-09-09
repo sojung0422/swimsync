@@ -8,7 +8,7 @@ import type { Enrollment } from '../store/StoreContext';
 import {
   Calendar as CalendarIcon, RefreshCw, Bell, Info, MapPin, Upload, CheckCircle, XCircle,
   Wallet, CalendarClock, Car, ChevronLeft, ChevronRight, TrendingUp, X as XIcon, CreditCard, ShieldAlert,
-  MessageCircle, Clock3, AlertTriangle, BellRing, Sparkles, Phone,
+  MessageCircle, Clock3, AlertTriangle, BellRing, Sparkles, Phone, Gift,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
 import AddContactButton from './AddContactButton';
@@ -213,6 +213,7 @@ export default function ParentApp() {
     rescheduleClass, markAbsent, makeupRequests, submitMakeupRequest, markPaymentPaid, scheduleChangeRequests,
     makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
     absenceRecords, cancelAbsence, freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
+    discounts, eventParticipations, submitEventParticipation,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
@@ -227,7 +228,16 @@ export default function ParentApp() {
   const [paySuccessId, setPaySuccessId] = useState<string | null>(null);
 
   // 결석 신청 (달력에서 날짜 선택)
-  const [activeModal, setActiveModal] = useState<'none' | 'absence' | 'reschedule'>('none');
+  const [activeModal, setActiveModal] = useState<'none' | 'absence' | 'reschedule' | 'event'>('none');
+  const [eventDiscountId, setEventDiscountId] = useState<string>('');
+  const [eventPhoto, setEventPhoto] = useState<string | null>(null);
+  const handleEventPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => setEventPhoto(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
   const [calMonth, setCalMonth] = useState(new Date());
   const [absenceDates, setAbsenceDates] = useState<Set<string>>(new Set());
   const toggleAbsenceDate = (dateStr: string) => setAbsenceDates(prev => {
@@ -271,6 +281,13 @@ export default function ParentApp() {
   const requiresDoc = student?.category === 'adult'
     ? makeupSettings.adultRequiresDocument
     : makeupSettings.childRequiresDocument;
+
+  const todayForEvents = format(new Date(), 'yyyy-MM-dd');
+  const activeEventDiscounts = discounts.filter(d =>
+    d.kind === 'event' && d.active && (!d.startDate || todayForEvents <= (d.endDate || '9999-12-31'))
+  );
+  const myEventParticipations = eventParticipations.filter(p => p.studentId === studentId);
+  const eventsAwaitingParticipation = activeEventDiscounts.filter(d => !myEventParticipations.some(p => p.discountId === d.id));
 
   const paymentPlan = student ? paymentPlans.find(p => p.id === student.paymentPlanId) : undefined;
   const nextMonthBilling = student && paymentPlan
@@ -740,6 +757,27 @@ export default function ParentApp() {
                     </p>
                   </div>
                 )}
+
+                {eventsAwaitingParticipation.map(d => (
+                  <div key={d.id} className="mt-3 pt-3 border-t border-slate-100 bg-violet-50 -mx-4 px-4 py-3 rounded-xl">
+                    <div className="flex items-center justify-between gap-2">
+                      <div>
+                        <p className="text-violet-700 text-sm font-semibold flex items-center gap-1"><Gift className="w-3.5 h-3.5" /> {d.name}</p>
+                        <p className="text-violet-500 text-[11px] mt-0.5">참여 인증하고 다음 달부터 {d.percent}% 할인받으세요</p>
+                      </div>
+                      <button onClick={() => { setEventDiscountId(d.id); setEventPhoto(null); setActiveModal('event'); }}
+                        className="px-3 py-1.5 bg-violet-600 hover:bg-violet-500 text-white rounded-lg text-xs font-semibold transition-colors shrink-0">인증하기</button>
+                    </div>
+                  </div>
+                ))}
+                {myEventParticipations.filter(p => p.status === 'pending').map(p => {
+                  const d = discounts.find(x => x.id === p.discountId);
+                  return (
+                    <div key={p.id} className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-amber-600">
+                      <Clock3 className="w-3.5 h-3.5" /> {d?.name} 참여 인증 확인 중이에요
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -912,6 +950,42 @@ export default function ParentApp() {
             </div>
           </div>
         )}
+
+        {/* ── 이벤트 참여 인증 모달 ── */}
+        {activeModal === 'event' && (() => {
+          const discount = discounts.find(d => d.id === eventDiscountId);
+          return (
+            <div className="absolute inset-0 bg-black/50 z-50 flex flex-col justify-end">
+              <div className="bg-white rounded-t-3xl p-6 animate-slide-up-modal">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold text-slate-800">이벤트 참여 인증</h3>
+                  <button onClick={() => setActiveModal('none')} className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 text-sm font-bold">✕</button>
+                </div>
+                <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 mb-4 text-xs text-violet-700">
+                  <strong>{discount?.name}</strong> — 승인되면 다음 달부터 {discount?.percent}% 할인이 적용돼요.
+                </div>
+                <p className="text-slate-700 text-sm font-semibold mb-2">참여 인증 스크린샷 업로드</p>
+                {eventPhoto ? (
+                  <div className="relative mb-4">
+                    <img src={eventPhoto} className="w-full h-40 object-cover rounded-xl border border-slate-200" alt="참여 인증" />
+                    <button onClick={() => setEventPhoto(null)} className="absolute top-2 right-2 w-6 h-6 bg-white rounded-full flex items-center justify-center text-slate-500 shadow-sm">✕</button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center w-full h-28 border-2 border-dashed border-slate-200 rounded-xl cursor-pointer hover:bg-slate-50 transition-colors mb-4">
+                    <Upload className="w-5 h-5 text-slate-400 mb-1" />
+                    <span className="text-slate-400 text-xs">파일 선택</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleEventPhotoUpload} />
+                  </label>
+                )}
+                <button onClick={() => { if (eventDiscountId && eventPhoto) { submitEventParticipation(studentId, eventDiscountId, eventPhoto); setActiveModal('none'); } }}
+                  disabled={!eventPhoto}
+                  className="w-full py-3.5 bg-violet-600 hover:bg-violet-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-bold text-sm transition-colors">
+                  제출하기
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* ── 결석 신청 모달 (달력) ── */}
         {activeModal === 'absence' && (
