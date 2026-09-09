@@ -232,6 +232,7 @@ export type AcademySettings = {
   skipFifthWeekOccurrence: boolean; // 그 달에 5번째로 돌아오는 요일은 휴무로 처리할지 (5주차 휴무 학원용)
   operatingMode: 'standard' | 'fiveWeek'; // 운영 방침: 기존 캘린더 정확 계산(standard) 또는 5주차 대체보강 모드(fiveWeek)
   annualLeaveEnabled: boolean; // 강사에게 연차를 지급하는 학원인지 — false면 직원 관리에서 연차 관련 UI 숨김
+  roleGuides: { role: string; content: string }[]; // "업무 안내" 페이지에 실릴 역할별(강사/차량/데스크) 업무 내용 — 관리자가 직접 작성
   freeSwimSlots: FreeSwimSlot[];
   leadCategories: string[]; // 상담일지 구분 태그 — 관리자가 추가·삭제 가능
 };
@@ -512,6 +513,32 @@ export const leaveDeduction = (leaveType: LeaveType): number => {
 
 // 원장/팀장만 연차·대타를 승인할 수 있음
 export const canApproveStaffRequests = (role: StaffRole): boolean => role === '원장' || role === '팀장';
+
+// 케어팀(청소) 체크리스트 항목 정의 — 일간/주간·월간/분기별로 나뉨
+export const CARE_CHECKLIST_ITEMS: { category: 'daily' | 'weekly' | 'quarterly'; itemName: string }[] = [
+  { category: 'daily', itemName: '거울 닦기' },
+  { category: 'daily', itemName: '샤워실 청소' },
+  { category: 'daily', itemName: '샤워실입구 발판 물때 제거' },
+  { category: 'daily', itemName: '탈의실&샤워실 머리카락 제거' },
+  { category: 'daily', itemName: '빗 머리카락 제거' },
+  { category: 'daily', itemName: '신발장 정리' },
+  { category: 'daily', itemName: '드라이어 필터 체크' },
+  { category: 'daily', itemName: '수건/용품 채우기' },
+  { category: 'daily', itemName: '재활용 분리수거' },
+  { category: 'weekly', itemName: '남자 샤워실 청소' },
+  { category: 'weekly', itemName: '바구니 청소' },
+  { category: 'weekly', itemName: '샤워기 유막 제거' },
+  { category: 'weekly', itemName: '샤워실 락스 청소' },
+  { category: 'quarterly', itemName: '에어컨 필터 청소' },
+  { category: 'quarterly', itemName: '대걸레 세척' },
+];
+// 체크 상태 저장 키 — 일간: 일자(1~31), 주간·월간: 주차(1~4), 분기별: 분기(1~4)
+export const careChecklistKey = (year: number, month: number, category: 'daily' | 'weekly' | 'quarterly', itemName: string, period: number) =>
+  `${year}_${category === 'quarterly' ? 'q' : month}_${category}_${itemName}_${period}`;
+
+// 비품(소모품) 재고 — 품목별로 입고/출고 내역을 기록하고 잔여수량은 누적으로 계산
+export type InventoryItem = { id: string; name: string };
+export type InventoryTransaction = { id: string; itemId: string; date: string; inAmount: number; outAmount: number };
 
 // 강사 간 대타 요청 — 같은 시간대에 수업 없는 강사들에게 동시에 노출되고, 먼저 수락하는 사람이 확정된다
 export type SubRequest = {
@@ -904,6 +931,11 @@ const INITIAL_SETTINGS: AcademySettings = {
   skipFifthWeekOccurrence: true,
   operatingMode: 'standard',
   annualLeaveEnabled: true,
+  roleGuides: [
+    { role: '강사', content: '수업 15분 전 입실, 출석·진도 기록, 정기 상담 작성, 보강 요청 확인' },
+    { role: '차량', content: '운행 전 차량 점검, 정해진 시간표대로 등하원 운행, 결석·보강 학생 명단 확인' },
+    { role: '데스크', content: '전화 응대, 신규 문의 상담일지 기록, 수납 확인, 비품 재고 체크' },
+  ],
   freeSwimSlots: [
     { id: 'fs1', days: ['월', '수', '금'], startTime: '20:00', endTime: '21:00', instructorId: 'i3' },
     { id: 'fs2', days: ['화', '목'], startTime: '19:00', endTime: '20:00', instructorId: 'i3' },
@@ -1368,6 +1400,14 @@ type StoreContextType = {
   generateFiveWeekPlan: (year: number) => { suggestedCount: number; mandatoryCount: number };
   confirmSubstituteMakeupDay: (id: string) => void;
   assignMandatoryMakeup: (id: string, date: string) => void;
+  // 케어팀 체크리스트 / 비품 관리
+  careChecklist: Record<string, boolean>;
+  toggleCareChecklistItem: (key: string) => void;
+  inventoryItems: InventoryItem[];
+  addInventoryItem: (name: string) => void;
+  deleteInventoryItem: (id: string) => void;
+  inventoryTransactions: InventoryTransaction[];
+  recordInventoryTransaction: (itemId: string, date: string, inAmount: number, outAmount: number) => void;
   // 강사 급여 정산
   payrollRecords: PayrollRecord[];
   issuePayroll: (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => void;
@@ -1425,6 +1465,11 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [sentReminderMonths, setSentReminderMonths] = useState<string[]>([]);
   const [substituteMakeupDays, setSubstituteMakeupDays] = useState<SubstituteMakeupDay[]>([]);
   const [mandatoryMakeupRequirements, setMandatoryMakeupRequirements] = useState<MandatoryMakeupRequirement[]>([]);
+  const [careChecklist, setCareChecklist] = useState<Record<string, boolean>>({});
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
+    { id: 'inv1', name: '가방(빨강)' }, { id: 'inv2', name: '가방(파랑)' }, { id: 'inv3', name: '수건' }, { id: 'inv4', name: '흰색 수모' },
+  ]);
+  const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
   const [levelTestRecords, setLevelTestRecords] = useState<LevelTestRecord[]>(INITIAL_LEVEL_TEST_RECORDS);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
@@ -1983,6 +2028,19 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setMandatoryMakeupRequirements(prev => prev.map(r => r.id === id ? { ...r, assignedDate: date, status: 'scheduled' } : r));
   };
 
+  // ── 케어팀 체크리스트 / 비품 관리 ────────────────────────────────
+  const toggleCareChecklistItem = (key: string) => {
+    setCareChecklist(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+  const addInventoryItem = (name: string) => setInventoryItems(prev => [...prev, { id: `inv_${Date.now()}`, name }]);
+  const deleteInventoryItem = (id: string) => {
+    setInventoryItems(prev => prev.filter(i => i.id !== id));
+    setInventoryTransactions(prev => prev.filter(t => t.itemId !== id));
+  };
+  const recordInventoryTransaction = (itemId: string, date: string, inAmount: number, outAmount: number) => {
+    setInventoryTransactions(prev => [...prev, { id: `it_${Date.now()}`, itemId, date, inAmount, outAmount }]);
+  };
+
   // ── 강사 급여 정산 ────────────────────────────────────────────
   const issuePayroll = (instructorId: string, month: string, opts?: { hoursOverride?: number; incentiveAmount?: number; overtimeHours?: number; campIncentive?: number; survivalSwimIncentive?: number; privateLessonFee?: number }) => {
     const inst = instructors.find(i => i.id === instructorId);
@@ -2125,6 +2183,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       discounts, addDiscount, updateDiscount, deleteDiscount,
       eventParticipations, submitEventParticipation, approveEventParticipation, rejectEventParticipation,
       substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay, assignMandatoryMakeup,
+      careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,
       currentInstructorId, setCurrentInstructorId,

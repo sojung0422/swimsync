@@ -8,7 +8,7 @@ import {
   LayoutDashboard, Users, Smartphone, UserCircle, LogOut,
   FileText, Waves, Bell, Car, CreditCard, Truck, Sparkles,
   RefreshCw, IdCard, HelpCircle, MessageSquareText, CalendarClock,
-  CalendarCheck, Repeat, ChevronDown, UserPlus
+  CalendarCheck, Repeat, ChevronDown, UserPlus, ClipboardCheck, BookOpen
 } from 'lucide-react';
 import AdminSchedule from './components/AdminSchedule';
 import AdminStudents from './components/AdminStudents';
@@ -26,6 +26,8 @@ import AdminLeaveRequests from './components/AdminLeaveRequests';
 import AdminSubRequests from './components/AdminSubRequests';
 import AdminRegistrationApplications from './components/AdminRegistrationApplications';
 import AdminInstructorPerformance from './components/AdminInstructorPerformance';
+import AdminCareOps from './components/AdminCareOps';
+import AdminWorkGuide from './components/AdminWorkGuide';
 import RegistrationApplicationForm from './components/RegistrationApplicationForm';
 import InstructorApp from './components/InstructorApp';
 import ParentApp from './components/ParentApp';
@@ -69,6 +71,10 @@ const navGroups = [
       ]},
       { id: 'notifications', icon: Bell, text: '공지 발송' },
       { id: 'vehicles',      icon: Car,  text: '차량 관리' },
+      { id: 'ops-group', icon: ClipboardCheck, text: '운영', children: [
+        { id: 'work-guide', text: '업무 안내' },
+        { id: 'care-ops',   text: '케어팀·비품 관리' },
+      ]},
     ],
   },
   {
@@ -89,7 +95,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'instructor-performance' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications'
+  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'instructor-performance' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications' | 'work-guide' | 'care-ops'
   | 'instructor-app' | 'parent-app' | 'driver-app' | 'registration-application'
   | 'business-plan';
 
@@ -302,6 +308,23 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '신청 상세', description: '신청자 이름·연락처·구분·희망 반·지역·전달사항을 한눈에 확인해요.' },
     ],
   },
+  'work-guide': {
+    title: '업무 안내',
+    description: '급여·인센티브 기준, 역할별 업무 내용, 체크리스트, 자유수영, 연차 기준, 운영 방침을 한 곳에서 확인하는 참조 페이지예요.',
+    features: [
+      { label: '운영 방침 확인', description: '현재 청구·보강 운영 방식(기존/5주차)과 연차 지급 여부를 확인해요.' },
+      { label: '재등록·신규 결제 기간', description: '매월 며칠부터 며칠까지가 결제 기간인지 여기서 바로 수정할 수 있어요.' },
+      { label: '역할별 업무 내용', description: '강사·차량·데스크 업무 내용을 관리자가 직접 작성·수정해요.' },
+    ],
+  },
+  'care-ops': {
+    title: '케어팀·비품 관리',
+    description: '일간·주간·월간·분기별 청소 체크리스트와 비품 입출고·잔여수량을 관리하는 화면이에요.',
+    features: [
+      { label: '체크리스트 탭', description: '월을 넘기면서 그 달의 일간·주간·분기 체크 상태를 표시하고, 칸을 클릭하면 바로 완료 처리돼요.' },
+      { label: '비품 관리 탭', description: '품목을 추가하고 입고/출고 수량을 기록하면 잔여수량이 자동으로 계산돼요.' },
+    ],
+  },
   'driver-app': {
     title: '기사 앱 (미리보기)',
     description: '통학 차량 기사가 실제로 보게 될 모바일 화면을 미리 확인할 수 있어요.',
@@ -429,6 +452,8 @@ function AppContent() {
       case 'notifications':  return <AdminNotifications />;
       case 'vehicles':       return <AdminVehicles />;
       case 'registration-applications': return <AdminRegistrationApplications />;
+      case 'work-guide':     return <AdminWorkGuide onNavigate={id => setActive(id as TabId)} />;
+      case 'care-ops':       return <AdminCareOps />;
       case 'instructor-app': return <InstructorApp />;
       case 'parent-app':     return <ParentApp />;
       case 'driver-app':     return <DriverApp />;
