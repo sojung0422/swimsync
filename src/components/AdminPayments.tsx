@@ -14,6 +14,7 @@ function MakeupPolicyCard() {
   const { settings, updateMakeupSettings } = useStore();
   const { makeupPolicies, childRequiresDocument, adultRequiresDocument } = settings.makeupSettings;
   const [showAdd, setShowAdd] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [newSessions, setNewSessions] = useState(2);
   const [newMax, setNewMax] = useState(2);
 
@@ -35,18 +36,23 @@ function MakeupPolicyCard() {
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+      <button onClick={() => setCollapsed(p => !p)} className="w-full px-6 py-4 border-b border-slate-100 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
         <div className="flex items-center gap-2">
           <RefreshCw className="w-4 h-4 text-cyan-600" />
           <h2 className="text-[14px] font-semibold text-slate-700">보강 가능 횟수 정책</h2>
+          {collapsed && <span className="text-slate-400 text-xs">{makeupPolicies.length}개 규칙 · 펼쳐서 보기</span>}
         </div>
-        <button onClick={() => setShowAdd(p => !p)}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-medium transition-colors">
-          <Plus className="w-3.5 h-3.5" /> 규칙 추가
-        </button>
-      </div>
+        {collapsed ? <ChevronDown className="w-4 h-4 text-slate-400" /> : <ChevronUp className="w-4 h-4 text-slate-400" />}
+      </button>
 
+      {!collapsed && (
       <div className="p-6 space-y-3">
+        <div className="flex justify-end">
+          <button onClick={() => setShowAdd(p => !p)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-medium transition-colors">
+            <Plus className="w-3.5 h-3.5" /> 규칙 추가
+          </button>
+        </div>
         {showAdd && (
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3">
             <span className="text-xs text-slate-500">주</span>
@@ -91,6 +97,7 @@ function MakeupPolicyCard() {
         </div>
         <p className="text-slate-400 text-xs">서류가 필요한 경우, 학부모 앱에서 즉시 보강 예약 대신 사진 제출 후 강사·학원 승인을 거쳐 보강 또는 이월 처리됩니다.</p>
       </div>
+      )}
     </div>
   );
 }
