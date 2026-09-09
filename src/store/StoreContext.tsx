@@ -417,6 +417,11 @@ export type NotificationRecord = {
   recipientPhones?: string[]; // 아직 등록하지 않은 상담일지 리드 등, 학생 ID가 없는 대상에게 보낼 때 사용
 };
 
+// 공지 발송 시 반별로 묶어 한 번에 선택하기 위한 그룹 — 대분류(성인/아동) 아래 관리자가 직접 만드는 중분류
+export type NotificationGroup = {
+  id: string; name: string; category: 'adult' | 'child'; studentIds: string[];
+};
+
 // 상담일지(리드 CRM) — 아직 등록(Student)하지 않은 문의/상담 건을 구분 태그로 관리
 export type LeadRecord = {
   id: string; name: string; phone: string; category: string; note: string;
@@ -1062,6 +1067,10 @@ type StoreContextType = {
   paymentPlans: PaymentPlan[];
   paymentRecords: PaymentRecord[];
   notifications: NotificationRecord[];
+  notificationGroups: NotificationGroup[];
+  addNotificationGroup: (g: Omit<NotificationGroup, 'id'>) => void;
+  updateNotificationGroup: (id: string, updates: Partial<NotificationGroup>) => void;
+  deleteNotificationGroup: (id: string) => void;
   makeupRequests: MakeupRequest[];
   messages: ChatMessage[];
   sendMessage: (studentId: string, senderRole: ChatMessage['senderRole'], text: string, kind?: ChatMessage['kind']) => void;
@@ -1207,6 +1216,10 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [returnRequests, setReturnRequests] = useState<ReturnRequest[]>([]);
   const [registrationApplications, setRegistrationApplications] = useState<RegistrationApplication[]>([]);
   const [notifications, setNotifications] = useState<NotificationRecord[]>(INITIAL_NOTIFICATIONS);
+  const [notificationGroups, setNotificationGroups] = useState<NotificationGroup[]>([]);
+  const addNotificationGroup = (g: Omit<NotificationGroup, 'id'>) => setNotificationGroups(prev => [...prev, { ...g, id: `ng_${Date.now()}` }]);
+  const updateNotificationGroup = (id: string, updates: Partial<NotificationGroup>) => setNotificationGroups(prev => prev.map(g => g.id === id ? { ...g, ...updates } : g));
+  const deleteNotificationGroup = (id: string) => setNotificationGroups(prev => prev.filter(g => g.id !== id));
   const [makeupRequests, setMakeupRequests] = useState<MakeupRequest[]>([]);
   const [makeupCancellations, setMakeupCancellations] = useState<MakeupCancellationNotice[]>([]);
   const [absenceRecords, setAbsenceRecords] = useState<AbsenceRecord[]>([]);
@@ -1806,7 +1819,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   return (
     <StoreContext.Provider value={{
       instructors, students, classes, events, settings, lessonClasses,
-      drivers, vehicles, paymentPlans, paymentRecords, notifications, makeupRequests,
+      drivers, vehicles, paymentPlans, paymentRecords, notifications, notificationGroups, makeupRequests,
       messages, sendMessage,
       counselingRecords, addCounselingRecord, updateCounselingRecord, deleteCounselingRecord,
       scheduleChangeRequests, submitScheduleChangeRequest, approveScheduleChangeRequest, rejectScheduleChangeRequest,
@@ -1825,6 +1838,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addPaymentPlan, updatePaymentPlan, deletePaymentPlan,
       addPaymentRecord, markPaymentPaid,
       addNotification, sendNotification, deleteNotification,
+      addNotificationGroup, updateNotificationGroup, deleteNotificationGroup,
       submitMakeupRequest, approveMakeupRequestAsSlot, approveMakeupRequestAsCarryover, rejectMakeupRequest, cancelScheduledMakeup,
       makeupCancellations,
       waitlistEntries, addWaitlistEntry, markWaitlistNotified, convertWaitlistEntry, cancelWaitlistEntry, deleteWaitlistEntry,
