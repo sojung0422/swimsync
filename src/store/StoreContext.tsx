@@ -1483,7 +1483,8 @@ type StoreContextType = {
   careChecklist: Record<string, boolean>;
   toggleCareChecklistItem: (key: string) => void;
   inventoryItems: InventoryItem[];
-  addInventoryItem: (name: string) => void;
+  addInventoryItem: (name: string, unitPrice?: number) => void;
+  updateInventoryItem: (id: string, updates: Partial<InventoryItem>) => void;
   deleteInventoryItem: (id: string) => void;
   inventoryTransactions: InventoryTransaction[];
   recordInventoryTransaction: (itemId: string, date: string, inAmount: number, outAmount: number) => void;
@@ -2328,7 +2329,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       vendors, addVendor, updateVendor, deleteVendor,
       feedbackNotes, addFeedbackNote, markFeedbackReviewed, deleteFeedbackNote,
       enrollmentApplications, saveEnrollmentApplication,
-      careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
+      careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, updateInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,
       currentInstructorId, setCurrentInstructorId,

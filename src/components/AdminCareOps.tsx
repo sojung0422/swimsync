@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useStore, CARE_CHECKLIST_ITEMS, careChecklistKey } from '../store/StoreContext';
-import { ClipboardCheck, Package, Plus, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ClipboardCheck, Package, Plus, Trash2, ChevronLeft, ChevronRight, Wallet } from 'lucide-react';
+import { format, subMonths } from 'date-fns';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 function CareChecklistTab() {
   const { careChecklist, toggleCareChecklistItem } = useStore();
@@ -106,22 +108,44 @@ function CareChecklistTab() {
   );
 }
 
+const INVENTORY_BAR_COLORS = ['#0891b2', '#8b5cf6', '#f59e0b', '#10b981', '#ec4899', '#6366f1', '#f97316'];
+
 function InventoryTab() {
-  const { inventoryItems, addInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction } = useStore();
+  const { inventoryItems, addInventoryItem, updateInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction } = useStore();
   const [newItemName, setNewItemName] = useState('');
+  const [newItemPrice, setNewItemPrice] = useState('');
   const [draft, setDraft] = useState<Record<string, { in: string; out: string }>>({});
+  const [priceDraft, setPriceDraft] = useState<Record<string, string>>({});
   const today = new Date().toISOString().slice(0, 10);
 
   const remainingOf = (itemId: string) => inventoryTransactions
     .filter(t => t.itemId === itemId)
     .reduce((sum, t) => sum + t.inAmount - t.outAmount, 0);
 
+  const months = Array.from({ length: 6 }, (_, i) => format(subMonths(new Date(), 5 - i), 'yyyy-MM'));
+  const monthlySpendData = months.map(m => {
+    const row: Record<string, string | number> = { month: m.slice(2) };
+    let total = 0;
+    inventoryItems.forEach(item => {
+      const spend = inventoryTransactions
+        .filter(t => t.itemId === item.id && t.date.startsWith(m))
+        .reduce((sum, t) => sum + t.inAmount * item.unitPrice, 0);
+      row[item.name] = spend;
+      total += spend;
+    });
+    row['합계'] = total;
+    return row;
+  });
+  const totalSpend6mo = monthlySpendData.reduce((sum, r) => sum + (r['합계'] as number), 0);
+
   return (
     <div className="space-y-5">
       <div className="flex items-center gap-2">
         <input value={newItemName} onChange={e => setNewItemName(e.target.value)} placeholder="새 품목명 (예: 수모)"
-          className="border border-slate-200 rounded-xl px-3 py-2 text-sm w-56" />
-        <button onClick={() => { if (newItemName.trim()) { addInventoryItem(newItemName.trim()); setNewItemName(''); } }}
+          className="border border-slate-200 rounded-xl px-3 py-2 text-sm w-48" />
+        <input type="number" value={newItemPrice} onChange={e => setNewItemPrice(e.target.value)} placeholder="개당 금액"
+          className="border border-slate-200 rounded-xl px-3 py-2 text-sm w-32" />
+        <button onClick={() => { if (newItemName.trim()) { addInventoryItem(newItemName.trim(), parseInt(newItemPrice) || 0); setNewItemName(''); setNewItemPrice(''); } }}
           className="flex items-center gap-1 px-3 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-medium transition-colors">
           <Plus className="w-3.5 h-3.5" /> 품목 추가
         </button>
@@ -132,9 +156,17 @@ function InventoryTab() {
         <div className="divide-y divide-slate-50">
           {inventoryItems.map(item => {
             const d = draft[item.id] ?? { in: '', out: '' };
+            const remaining = remainingOf(item.id);
             return (
-              <div key={item.id} className="px-5 py-3.5 flex items-center gap-4">
-                <p className="text-slate-800 text-sm font-semibold flex-1 min-w-0">{item.name}</p>
+              <div key={item.id} className="px-5 py-3.5 flex items-center gap-3 flex-wrap">
+                <p className="text-slate-800 text-sm font-semibold w-28 shrink-0 truncate">{item.name}</p>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-slate-400">개당</span>
+                  <input type="number" value={priceDraft[item.id] ?? item.unitPrice} onChange={e => setPriceDraft(prev => ({ ...prev, [item.id]: e.target.value }))}
+                    onBlur={() => updateInventoryItem(item.id, { unitPrice: parseInt(priceDraft[item.id] ?? String(item.unitPrice)) || 0 })}
+                    className="w-20 border border-slate-200 rounded-lg px-2 py-1 text-xs text-right" />
+                  <span className="text-xs text-slate-400">원</span>
+                </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-slate-400">입고</span>
                   <input type="number" value={d.in} onChange={e => setDraft(prev => ({ ...prev, [item.id]: { ...d, in: e.target.value } }))}
@@ -147,12 +179,39 @@ function InventoryTab() {
                     setDraft(prev => ({ ...prev, [item.id]: { in: '', out: '' } }));
                   }} className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-xs font-medium transition-colors">기록</button>
                 </div>
-                <p className="text-cyan-700 font-bold text-sm w-24 text-right shrink-0">잔여 {remainingOf(item.id)}개</p>
+                <div className="flex-1" />
+                <p className="text-cyan-700 font-bold text-sm text-right shrink-0">잔여 {remaining}개</p>
+                <p className="text-slate-400 text-xs w-24 text-right shrink-0">(총 {(remaining * item.unitPrice).toLocaleString()}원)</p>
                 <button onClick={() => deleteInventoryItem(item.id)} className="text-red-400 hover:text-red-600 shrink-0"><Trash2 className="w-3.5 h-3.5" /></button>
               </div>
             );
           })}
           {inventoryItems.length === 0 && <div className="py-12 text-center text-slate-400 text-sm">등록된 품목이 없습니다.</div>}
+        </div>
+      </div>
+
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between">
+          <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2"><Wallet className="w-4 h-4 text-cyan-600" /> 월별 비품 지출 (입고 금액 기준, 최근 6개월)</h3>
+          <span className="text-slate-400 text-xs">합계 {totalSpend6mo.toLocaleString()}원</span>
+        </div>
+        <div className="p-5">
+          {inventoryItems.length === 0 ? (
+            <p className="text-slate-400 text-sm text-center py-8">등록된 품목이 없습니다.</p>
+          ) : (
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={monthlySpendData} margin={{ top: 10, right: 20, left: 10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickFormatter={v => `${Math.round(v / 1000)}천`} />
+                <Tooltip formatter={(v: number) => `${v.toLocaleString()}원`} />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                {inventoryItems.map((item, i) => (
+                  <Bar key={item.id} dataKey={item.name} stackId="spend" fill={INVENTORY_BAR_COLORS[i % INVENTORY_BAR_COLORS.length]} />
+                ))}
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
     </div>
