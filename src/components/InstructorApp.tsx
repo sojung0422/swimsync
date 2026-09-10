@@ -311,8 +311,11 @@ export default function InstructorApp() {
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
     leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings, instructorNotices,
-    substituteMakeupDays, mandatoryMakeupDays, notifications,
+    substituteMakeupDays, mandatoryMakeupDays, notifications, addFeedbackNote,
   } = useStore();
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackDraft, setFeedbackDraft] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages' | 'contacts'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -519,6 +522,11 @@ export default function InstructorApp() {
                 </div>
               </div>
             )}
+
+            <button onClick={() => setShowFeedbackModal(true)}
+              className="w-full mt-5 flex items-center justify-center gap-2 py-3 bg-white hover:bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-slate-500 text-sm font-medium transition-colors">
+              <MessageCircle className="w-4 h-4" /> 의견 남기기
+            </button>
           </div>
         ) : activeTab === 'messages' ? (
           <div className="flex-1 overflow-hidden pb-20 flex flex-col bg-slate-50">
@@ -1096,6 +1104,35 @@ export default function InstructorApp() {
           </button>
         </div>
       </div>
+
+      {showFeedbackModal && (
+        <div className="absolute inset-0 bg-black/30 z-50 flex items-center justify-center p-6" onClick={() => setShowFeedbackModal(false)}>
+          <div className="bg-white rounded-2xl p-5 w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            {feedbackSent ? (
+              <div className="text-center py-4">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                <p className="text-slate-700 text-sm font-semibold">의견이 전달됐어요</p>
+              </div>
+            ) : (
+              <>
+                <p className="text-slate-800 text-sm font-bold mb-1">의견 남기기</p>
+                <p className="text-slate-400 text-xs mb-3">모든 의견이 그대로 반영되진 않지만, 필요한 기능이라 판단되면 참고할게요.</p>
+                <textarea value={feedbackDraft} onChange={e => setFeedbackDraft(e.target.value)} rows={4}
+                  placeholder="자유롭게 의견을 남겨주세요" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-cyan-500" />
+                <div className="flex gap-2 mt-3">
+                  <button onClick={() => setShowFeedbackModal(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-500 text-sm">취소</button>
+                  <button onClick={() => {
+                    if (!feedbackDraft.trim()) return;
+                    addFeedbackNote({ sourceApp: 'instructor', authorName: instructor ? `${instructor.name} (${instructor.role})` : '강사', content: feedbackDraft.trim() });
+                    setFeedbackDraft(''); setFeedbackSent(true);
+                    setTimeout(() => { setFeedbackSent(false); setShowFeedbackModal(false); }, 1500);
+                  }} disabled={!feedbackDraft.trim()} className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded-xl text-sm font-bold">제출</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -28,6 +28,8 @@ import AdminRegistrationApplications from './components/AdminRegistrationApplica
 import AdminInstructorPerformance from './components/AdminInstructorPerformance';
 import AdminCareOps from './components/AdminCareOps';
 import AdminWorkGuide from './components/AdminWorkGuide';
+import AdminVendors from './components/AdminVendors';
+import AdminFeedback from './components/AdminFeedback';
 import RegistrationApplicationForm from './components/RegistrationApplicationForm';
 import InstructorApp from './components/InstructorApp';
 import ParentApp from './components/ParentApp';
@@ -74,6 +76,8 @@ const navGroups = [
       { id: 'ops-group', icon: ClipboardCheck, text: '운영', children: [
         { id: 'work-guide', text: '업무 안내' },
         { id: 'care-ops',   text: '케어팀·비품 관리' },
+        { id: 'vendors',    text: '거래처 관리' },
+        { id: 'feedback',   text: '의견함' },
       ]},
     ],
   },
@@ -95,7 +99,7 @@ const navGroups = [
 ] as const;
 
 type TabId =
-  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'instructor-performance' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications' | 'work-guide' | 'care-ops'
+  | 'schedule' | 'students' | 'staff' | 'staff-payroll' | 'instructor-performance' | 'counseling' | 'counseling-log' | 'enrollment-stats' | 'payments' | 'free-swim' | 'makeups' | 'schedule-changes' | 'leave-requests' | 'sub-requests' | 'notifications' | 'vehicles' | 'registration-applications' | 'work-guide' | 'care-ops' | 'vendors' | 'feedback'
   | 'instructor-app' | 'parent-app' | 'driver-app' | 'registration-application'
   | 'business-plan';
 
@@ -325,6 +329,23 @@ const PAGE_GUIDES: Record<TabId, { title: string; description: string; features:
       { label: '비품 관리 탭', description: '품목을 추가하고 입고/출고 수량을 기록하면 잔여수량이 자동으로 계산돼요.' },
     ],
   },
+  vendors: {
+    title: '거래처 관리',
+    description: '비품·용품 업체 등 학원 운영에 필요한 외부 거래처 정보를 관리해요.',
+    features: [
+      { label: '거래처 등록/수정', description: '사업자정보, 담당자, 계좌, 주소 등을 입력·관리해요.' },
+      { label: '검색/필터', description: '거래처명으로 검색하고 사용/미사용 여부로 걸러볼 수 있어요.' },
+      { label: '담당자 SMS 발송', description: '여러 거래처를 선택해 한 번에 안내 문자를 보낼 수 있어요.' },
+    ],
+  },
+  feedback: {
+    title: '의견함',
+    description: '학부모·성인 회원·강사·데스크가 앱에서 남긴 건의사항을 모아보는 화면이에요.',
+    features: [
+      { label: '출처별 필터', description: '학부모/성인 앱에서 온 의견과 강사/데스크(강사 앱)에서 온 의견을 구분해서 볼 수 있어요.' },
+      { label: '확인 처리', description: '검토를 마친 의견은 "확인" 버튼으로 표시해 새 의견과 구분해요.' },
+    ],
+  },
   'driver-app': {
     title: '기사 앱 (미리보기)',
     description: '통학 차량 기사가 실제로 보게 될 모바일 화면을 미리 확인할 수 있어요.',
@@ -454,6 +475,8 @@ function AppContent() {
       case 'registration-applications': return <AdminRegistrationApplications />;
       case 'work-guide':     return <AdminWorkGuide onNavigate={id => setActive(id as TabId)} />;
       case 'care-ops':       return <AdminCareOps />;
+      case 'vendors':        return <AdminVendors />;
+      case 'feedback':       return <AdminFeedback />;
       case 'instructor-app': return <InstructorApp />;
       case 'parent-app':     return <ParentApp />;
       case 'driver-app':     return <DriverApp />;

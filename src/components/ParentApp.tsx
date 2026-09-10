@@ -214,9 +214,12 @@ export default function ParentApp() {
     makeupCancellations, withdrawalRequests, submitWithdrawalRequest, returnRequests, submitReturnRequest,
     absenceRecords, cancelAbsence, freeSwimBookings, bookFreeSwim, cancelFreeSwimBooking,
     discounts, eventParticipations, submitEventParticipation,
-    mandatoryMakeupRequirements, assignMandatoryMakeup, checkMonthlyPaymentReminder,
+    mandatoryMakeupRequirements, assignMandatoryMakeup, checkMonthlyPaymentReminder, addFeedbackNote,
   } = useStore();
   useEffect(() => { checkMonthlyPaymentReminder(); }, []);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackDraft, setFeedbackDraft] = useState('');
+  const [feedbackSent, setFeedbackSent] = useState(false);
   const [activeTab, setActiveTab] = useState<'home' | 'reschedule' | 'absence' | 'messages'>('home');
   const [scheduleChangeTarget, setScheduleChangeTarget] = useState<Enrollment | null>(null);
   const [withdrawEnrollmentTarget, setWithdrawEnrollmentTarget] = useState<Enrollment | null>(null);
@@ -508,6 +511,36 @@ export default function ParentApp() {
             <BellRing className="w-4 h-4 text-cyan-300 shrink-0" />
             <p className="flex-1 min-w-0 text-xs font-medium truncate">새 {unreadNotices[0].type === 'notice' ? '공지' : '이벤트'}: {unreadNotices[0].title}</p>
             <button onClick={() => setShowNewNoticeAlert(false)} className="shrink-0 text-slate-400 hover:text-white"><XIcon className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
+
+        {/* 의견함 제출 모달 */}
+        {showFeedbackModal && (
+          <div className="absolute inset-0 bg-black/30 z-50 flex items-center justify-center p-6" onClick={() => setShowFeedbackModal(false)}>
+            <div className="bg-white rounded-2xl p-5 w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+              {feedbackSent ? (
+                <div className="text-center py-4">
+                  <CheckCircle className="w-10 h-10 text-emerald-500 mx-auto mb-2" />
+                  <p className="text-slate-700 text-sm font-semibold">의견이 전달됐어요</p>
+                </div>
+              ) : (
+                <>
+                  <p className="text-slate-800 text-sm font-bold mb-1">의견 남기기</p>
+                  <p className="text-slate-400 text-xs mb-3">모든 의견이 그대로 반영되진 않지만, 필요한 기능이라 판단되면 참고할게요.</p>
+                  <textarea value={feedbackDraft} onChange={e => setFeedbackDraft(e.target.value)} rows={4}
+                    placeholder="자유롭게 의견을 남겨주세요" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-cyan-500" />
+                  <div className="flex gap-2 mt-3">
+                    <button onClick={() => setShowFeedbackModal(false)} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-500 text-sm">취소</button>
+                    <button onClick={() => {
+                      if (!feedbackDraft.trim()) return;
+                      addFeedbackNote({ sourceApp: 'parent', authorName: student?.parentName || `${student?.studentName ?? ''} 학부모`, content: feedbackDraft.trim() });
+                      setFeedbackDraft(''); setFeedbackSent(true);
+                      setTimeout(() => { setFeedbackSent(false); setShowFeedbackModal(false); }, 1500);
+                    }} disabled={!feedbackDraft.trim()} className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-40 text-white rounded-xl text-sm font-bold">제출</button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         )}
 
@@ -885,6 +918,11 @@ export default function ParentApp() {
                 ))}
               </div>
             </div>
+
+            <button onClick={() => setShowFeedbackModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-white hover:bg-slate-50 border border-dashed border-slate-300 rounded-2xl text-slate-500 text-sm font-medium transition-colors">
+              <MessageCircle className="w-4 h-4" /> 의견 남기기
+            </button>
 
             {/* 자유수영 예약 (자유수영 포함 플랜만) */}
             {paymentPlan?.hasFreeSwim && (

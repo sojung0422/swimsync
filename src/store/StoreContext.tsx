@@ -414,6 +414,20 @@ export type RegistrationApplication = {
   submittedAt: string;
 };
 
+// 학부모·강사·데스크가 앱에서 남기는 건의/의견 — 전부 반영되는 건 아니고, 관리자가 검토 후 필요하면 참고하는 용도
+export type FeedbackNote = {
+  id: string; sourceApp: 'parent' | 'instructor'; authorName: string; content: string; createdAt: string; status: 'new' | 'reviewed';
+};
+
+// 거래처(비품·용품 업체 등) 관리 — 학원 운영에 필요한 외부 업체 연락처·계좌 정보
+export type Vendor = {
+  id: string; name: string; bizType: string; bizRegNo: string; corpRegNo: string;
+  industry: string; category: string; ceoName: string; vendorType: string;
+  phone: string; fax: string; contactName: string; contactPhone: string;
+  bank: string; accountNumber: string; accountHolder: string;
+  address: string; note: string; active: boolean;
+};
+
 // 학생별 월별 수납 이력(원장) — 어떤 반(enrollment)에 대해, 언제, 얼마를, 어떻게 수납했는지 추적
 export type PaymentRecord = {
   id: string; studentId: string; enrollmentId: string; // 'primary' 또는 additionalEnrollments의 id
@@ -1437,6 +1451,16 @@ type StoreContextType = {
   mandatoryMakeupDays: MandatoryMakeupDay[];
   addMandatoryMakeupDay: (date: string, note?: string) => void;
   removeMandatoryMakeupDay: (id: string) => void;
+  // 거래처 관리
+  vendors: Vendor[];
+  addVendor: (v: Omit<Vendor, 'id'>) => void;
+  updateVendor: (id: string, updates: Partial<Vendor>) => void;
+  deleteVendor: (id: string) => void;
+  // 의견함
+  feedbackNotes: FeedbackNote[];
+  addFeedbackNote: (n: Omit<FeedbackNote, 'id' | 'createdAt' | 'status'>) => void;
+  markFeedbackReviewed: (id: string) => void;
+  deleteFeedbackNote: (id: string) => void;
   // 케어팀 체크리스트 / 비품 관리
   careChecklist: Record<string, boolean>;
   toggleCareChecklistItem: (key: string) => void;
@@ -1503,6 +1527,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [substituteMakeupDays, setSubstituteMakeupDays] = useState<SubstituteMakeupDay[]>([]);
   const [mandatoryMakeupRequirements, setMandatoryMakeupRequirements] = useState<MandatoryMakeupRequirement[]>([]);
   const [mandatoryMakeupDays, setMandatoryMakeupDays] = useState<MandatoryMakeupDay[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [feedbackNotes, setFeedbackNotes] = useState<FeedbackNote[]>([]);
   const [careChecklist, setCareChecklist] = useState<Record<string, boolean>>({});
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
     { id: 'inv1', name: '가방(빨강)' }, { id: 'inv2', name: '가방(파랑)' }, { id: 'inv3', name: '수건' }, { id: 'inv4', name: '흰색 수모' },
@@ -2080,6 +2106,18 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
   const removeMandatoryMakeupDay = (id: string) => setMandatoryMakeupDays(prev => prev.filter(d => d.id !== id));
 
+  // ── 거래처 관리 ──────────────────────────────────────────────
+  const addVendor = (v: Omit<Vendor, 'id'>) => setVendors(prev => [...prev, { ...v, id: `vd_${Date.now()}` }]);
+  const updateVendor = (id: string, updates: Partial<Vendor>) => setVendors(prev => prev.map(v => v.id === id ? { ...v, ...updates } : v));
+  const deleteVendor = (id: string) => setVendors(prev => prev.filter(v => v.id !== id));
+
+  // ── 의견함 ────────────────────────────────────────────────────
+  const addFeedbackNote = (n: Omit<FeedbackNote, 'id' | 'createdAt' | 'status'>) => {
+    setFeedbackNotes(prev => [...prev, { ...n, id: `fb_${Date.now()}`, createdAt: format(new Date(), 'yyyy-MM-dd HH:mm'), status: 'new' }]);
+  };
+  const markFeedbackReviewed = (id: string) => setFeedbackNotes(prev => prev.map(n => n.id === id ? { ...n, status: 'reviewed' } : n));
+  const deleteFeedbackNote = (id: string) => setFeedbackNotes(prev => prev.filter(n => n.id !== id));
+
   // ── 케어팀 체크리스트 / 비품 관리 ────────────────────────────────
   const toggleCareChecklistItem = (key: string) => {
     setCareChecklist(prev => ({ ...prev, [key]: !prev[key] }));
@@ -2236,6 +2274,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       eventParticipations, submitEventParticipation, approveEventParticipation, rejectEventParticipation,
       substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay, assignMandatoryMakeup,
       addManualSubstituteMakeupDay, removeSubstituteMakeupDay, mandatoryMakeupDays, addMandatoryMakeupDay, removeMandatoryMakeupDay,
+      vendors, addVendor, updateVendor, deleteVendor,
+      feedbackNotes, addFeedbackNote, markFeedbackReviewed, deleteFeedbackNote,
       careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,
