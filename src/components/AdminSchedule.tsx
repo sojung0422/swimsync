@@ -26,9 +26,20 @@ export default function AdminSchedule() {
     classes, instructors, students, events, settings, vehicles, absenceRecords, scheduleChangeRequests, lessonClasses,
     addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
     substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay,
+    subRequests, leaveRequests,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [categoryFilters, setCategoryFilters] = useState<Set<'event' | 'notice' | 'class' | 'sub' | 'leave'>>(
+    new Set(['event', 'notice', 'class', 'sub', 'leave'])
+  );
+  const toggleCategoryFilter = (cat: 'event' | 'notice' | 'class' | 'sub' | 'leave') => {
+    setCategoryFilters(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat); else next.add(cat);
+      return next;
+    });
+  };
 
   const [selectedMonthDay, setSelectedMonthDay] = useState<Date | null>(null);
   const [showEventModal, setShowEventModal] = useState(false);
@@ -104,10 +115,27 @@ export default function AdminSchedule() {
       r.requestedInstructorId === instructorId && r.requestedTime === time && r.requestedDays.includes(dayLabel)
     );
 
-  const getClassesForDate = (date: Date) => classes.filter(c => c.date === format(date, 'yyyy-MM-dd'));
+  const getClassesForDate = (date: Date) => {
+    if (!categoryFilters.has('class')) return [];
+    return classes.filter(c => c.date === format(date, 'yyyy-MM-dd'));
+  };
   const getEventsForDate  = (date: Date) => {
     const d = format(date, 'yyyy-MM-dd');
-    return events.filter(e => d >= e.date && d <= (e.endDate || e.date));
+    return events.filter(e => {
+      if (e.type === 'event' && !categoryFilters.has('event')) return false;
+      if (e.type === 'notice' && !categoryFilters.has('notice')) return false;
+      return d >= e.date && d <= (e.endDate || e.date);
+    });
+  };
+  const getSubsForDate = (date: Date) => {
+    if (!categoryFilters.has('sub')) return [];
+    const d = format(date, 'yyyy-MM-dd');
+    return subRequests.filter(r => r.status === 'filled' && r.date === d);
+  };
+  const getLeavesForDate = (date: Date) => {
+    if (!categoryFilters.has('leave')) return [];
+    const d = format(date, 'yyyy-MM-dd');
+    return leaveRequests.filter(r => r.status === 'approved' && r.date === d);
   };
 
   const monthStart = startOfMonth(currentDate);
@@ -228,6 +256,17 @@ export default function AdminSchedule() {
         {/* Month View */}
         {view === 'month' && (
           <div>
+            <div className="px-5 py-2.5 border-b border-slate-100 flex items-center gap-2 flex-wrap bg-slate-50/50">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wide">분류별 보기 (중복 선택 가능)</span>
+              {([
+                ['event', '특강/이벤트'], ['notice', '공지'], ['class', '강습'], ['sub', '대타'], ['leave', '연차'],
+              ] as const).map(([key, label]) => (
+                <button key={key} onClick={() => toggleCategoryFilter(key)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-colors ${categoryFilters.has(key) ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-400'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
             <div className="grid grid-cols-7 border-b border-slate-100">
               {['일', '월', '화', '수', '목', '금', '토'].map((d, i) => (
                 <div key={d} className={`py-3 text-center text-xs font-bold ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-slate-400'}`}>{d}</div>
@@ -237,6 +276,8 @@ export default function AdminSchedule() {
               {monthDays.map((day, i) => {
                 const dayEvents  = getEventsForDate(day);
                 const dayClasses = getClassesForDate(day);
+                const daySubs    = getSubsForDate(day);
+                const dayLeaves  = getLeavesForDate(day);
                 const inMonth = day >= monthStart && day <= monthEnd;
                 const isToday = isSameDay(day, new Date());
                 const isSun = i % 7 === 0, isSat = i % 7 === 6;
@@ -252,6 +293,12 @@ export default function AdminSchedule() {
                       ))}
                       {dayClasses.length > 0 && (
                         <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-700 truncate font-semibold">강습 {dayClasses.length}건</div>
+                      )}
+                      {daySubs.length > 0 && (
+                        <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-orange-100 text-orange-700 truncate font-semibold">대타 {daySubs.length}건</div>
+                      )}
+                      {dayLeaves.length > 0 && (
+                        <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 truncate font-semibold">연차 {dayLeaves.length}건</div>
                       )}
                     </div>
                   </div>
@@ -675,7 +722,26 @@ export default function AdminSchedule() {
                   <div className="font-medium">{e.title}</div>
                 </div>
               ))}
-              {getEventsForDate(selectedMonthDay).length === 0 && (
+              {getSubsForDate(selectedMonthDay).map(r => {
+                const requester = instructors.find(i => i.id === r.requestingInstructorId);
+                const filler = instructors.find(i => i.id === r.substituteInstructorId);
+                return (
+                  <div key={r.id} className="p-3 rounded-xl text-sm border bg-orange-50 border-orange-100 text-orange-800">
+                    <div className="text-[10px] font-bold mb-1 opacity-60">대타</div>
+                    <div className="font-medium">{r.time} — {requester?.name} 강사 → {filler?.name} 강사 대타</div>
+                  </div>
+                );
+              })}
+              {getLeavesForDate(selectedMonthDay).map(r => {
+                const inst = instructors.find(i => i.id === r.instructorId);
+                return (
+                  <div key={r.id} className="p-3 rounded-xl text-sm border bg-rose-50 border-rose-100 text-rose-800">
+                    <div className="text-[10px] font-bold mb-1 opacity-60">연차</div>
+                    <div className="font-medium">{inst?.name} 강사 — {r.leaveType === 'annual' ? '연차' : r.leaveType === 'half' ? '반차' : r.leaveType === 'quarter' ? '반반차' : '근무 불가'}{r.reason ? ` (${r.reason})` : ''}</div>
+                  </div>
+                );
+              })}
+              {getEventsForDate(selectedMonthDay).length === 0 && getSubsForDate(selectedMonthDay).length === 0 && getLeavesForDate(selectedMonthDay).length === 0 && (
                 <div className="text-slate-400 text-sm text-center py-8 bg-slate-50 rounded-xl border border-slate-100">등록된 일정이 없습니다.</div>
               )}
             </div>

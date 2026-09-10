@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore, canApproveStaffRequests, leaveDeduction } from '../store/StoreContext';
 import type { LeaveRequest } from '../store/StoreContext';
-import { Clock, CheckCircle2, XCircle, AlertCircle, RefreshCw, ShieldAlert } from 'lucide-react';
+import { Clock, CheckCircle2, XCircle, AlertCircle, RefreshCw, ShieldAlert, CalendarDays } from 'lucide-react';
 
 const LEAVE_LABEL: Record<LeaveRequest['leaveType'], string> = {
   annual: '연차', half: '반차', quarter: '반반차', unavailable: '근무 불가일',
@@ -64,7 +64,7 @@ function RequestCard({ request, canApprove }: { request: LeaveRequest; canApprov
   );
 }
 
-export default function AdminLeaveRequests() {
+export default function AdminLeaveRequests({ onNavigateToSchedule }: { onNavigateToSchedule?: () => void }) {
   const { leaveRequests, instructors, currentInstructorId } = useStore();
   const [filter, setFilter] = useState<'pending' | 'resolved'>('pending');
 
@@ -84,11 +84,19 @@ export default function AdminLeaveRequests() {
             {canApprove ? `${currentInstructor?.name}님(${currentInstructor?.role})으로 승인 가능` : '연차·근무불가 신청은 원장·팀장만 승인할 수 있어요'}
           </p>
         </div>
-        {pending.length > 0 && (
-          <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
-            <AlertCircle className="w-3.5 h-3.5" /> {pending.length}건 대기 중
-          </span>
-        )}
+        <div className="flex items-center gap-2">
+          {pending.length > 0 && (
+            <span className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-3 py-1.5 rounded-full">
+              <AlertCircle className="w-3.5 h-3.5" /> {pending.length}건 대기 중
+            </span>
+          )}
+          {onNavigateToSchedule && (
+            <button onClick={onNavigateToSchedule}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-full transition-colors">
+              <CalendarDays className="w-3.5 h-3.5" /> 월간 스케줄 관리로 이동
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="shrink-0 flex border-b border-slate-200 bg-white px-6">

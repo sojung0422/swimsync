@@ -447,8 +447,8 @@ function AppContent() {
       case 'free-swim':      return <AdminFreeSwim />;
       case 'makeups':        return <AdminMakeups />;
       case 'schedule-changes': return <AdminScheduleChanges />;
-      case 'leave-requests': return <AdminLeaveRequests />;
-      case 'sub-requests':   return <AdminSubRequests />;
+      case 'leave-requests': return <AdminLeaveRequests onNavigateToSchedule={() => setActive('schedule')} />;
+      case 'sub-requests':   return <AdminSubRequests onNavigateToSchedule={() => setActive('schedule')} />;
       case 'notifications':  return <AdminNotifications />;
       case 'vehicles':       return <AdminVehicles />;
       case 'registration-applications': return <AdminRegistrationApplications />;
