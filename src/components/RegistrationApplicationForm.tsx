@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useStore, getClassOfferings } from '../store/StoreContext';
 import { CheckCircle2, MapPin, Waves, AlertCircle, Clock3 } from 'lucide-react';
+import { ApplicationFormFields, blankApplication } from './EnrollmentApplicationCard';
 
 const DAYS = ['월', '화', '수', '목', '금', '토', '일'];
 
@@ -19,6 +20,7 @@ export default function RegistrationApplicationForm() {
   const [dayFilters, setDayFilters] = useState<string[]>([]);
   const [instructorFilter, setInstructorFilter] = useState<string>('');
   const [waitlisted, setWaitlisted] = useState(false);
+  const [appDetails, setAppDetails] = useState(blankApplication());
 
   const allOfferings = getClassOfferings(null, students, instructors)
     .map(o => {
@@ -66,7 +68,7 @@ export default function RegistrationApplicationForm() {
       applicantName: applicantName.trim(), phone: phone.trim(), category, region: region.trim(),
       desiredLessonClassId: selected.lessonClassId, desiredInstructorId: selected.instructorId,
       desiredDays: selected.days, desiredTime: selected.time, note: note.trim(),
-    });
+    }, appDetails);
     setResult(res);
   };
 
@@ -79,7 +81,7 @@ export default function RegistrationApplicationForm() {
           <p className="text-slate-500 text-sm mt-2">
             {instructors.find(i => i.id === instructorFilter)?.name} 강사님 반에 자리가 나면 순서대로 안내드릴게요.
           </p>
-          <button onClick={() => { setWaitlisted(false); setApplicantName(''); setPhone(''); setRegion(''); setNote(''); setSelectedKey(null); setDayFilters([]); setInstructorFilter(''); }}
+          <button onClick={() => { setWaitlisted(false); setApplicantName(''); setPhone(''); setRegion(''); setNote(''); setSelectedKey(null); setDayFilters([]); setInstructorFilter(''); setAppDetails(blankApplication()); }}
             className="mt-6 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 text-sm font-medium transition-colors">
             새로 작성하기
           </button>
@@ -98,7 +100,7 @@ export default function RegistrationApplicationForm() {
             {selected?.lc?.name} · {selected?.instructor?.name} 강사 · {selected?.days.join('·')} {selected?.time}
           </p>
           <p className="text-slate-400 text-xs mt-4">바로 등록이 완료되어 전체 스케줄표에 반영됐어요. 학원에서 곧 연락드릴게요.</p>
-          <button onClick={() => { setResult(null); setApplicantName(''); setPhone(''); setRegion(''); setNote(''); setSelectedKey(null); }}
+          <button onClick={() => { setResult(null); setApplicantName(''); setPhone(''); setRegion(''); setNote(''); setSelectedKey(null); setAppDetails(blankApplication()); }}
             className="mt-6 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 text-sm font-medium transition-colors">
             새로 작성하기
           </button>
@@ -221,6 +223,11 @@ export default function RegistrationApplicationForm() {
                   ))}
                 </div>
               )}
+            </div>
+
+            <div className="pt-2 border-t border-slate-200">
+              <p className="text-slate-700 text-sm font-semibold mb-3 mt-2">추가 정보 (방문경로·수업 관련·특이사항)</p>
+              <ApplicationFormFields value={appDetails} onChange={setAppDetails} />
             </div>
 
             <div>

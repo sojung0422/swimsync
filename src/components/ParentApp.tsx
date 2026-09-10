@@ -698,16 +698,21 @@ export default function ParentApp() {
                     .map(c => {
                       const record = absenceRecords.find(r => r.studentId === studentId && r.classId === c.id && r.status === 'active');
                       const cancellable = record ? isAbsenceCancellable(record) : false;
+                      // record가 없으면 단순 결석 신청이 아니라 보강 신청(rescheduleClass)으로 이미 대체 수업이 배정된 경우 — 색과 문구를 다르게 안내
+                      const isResolvedByMakeup = !record;
                       return (
-                        <div key={c.id} className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 flex items-center justify-between gap-2">
+                        <div key={c.id} className={`border rounded-xl px-4 py-2.5 flex items-center justify-between gap-2 ${isResolvedByMakeup ? 'bg-cyan-50 border-cyan-200' : 'bg-red-50 border-red-200'}`}>
                           <div>
-                            <span className="text-red-600 text-sm font-semibold line-through decoration-red-300">
+                            <span className={`text-sm font-semibold line-through ${isResolvedByMakeup ? 'text-cyan-700 decoration-cyan-300' : 'text-red-600 decoration-red-300'}`}>
                               {format(parseISO(c.date), 'M월 d일 (E)', { locale: ko })} {c.time}
                             </span>
                             {record && (
                               <p className="text-red-400 text-[11px] mt-0.5">
                                 {cancellable ? `${format(parseISO(record.cancelDeadline), 'M/d HH:mm')}까지 취소 가능` : '취소 가능 기간이 지났어요'}
                               </p>
+                            )}
+                            {isResolvedByMakeup && (
+                              <p className="text-cyan-500 text-[11px] mt-0.5">보강 신청으로 다른 수업일에 배정됐어요</p>
                             )}
                           </div>
                           {record ? (
@@ -716,7 +721,7 @@ export default function ParentApp() {
                               결석 취소
                             </button>
                           ) : (
-                            <span className="text-[10px] font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full shrink-0">결석</span>
+                            <span className="text-[10px] font-bold text-cyan-700 bg-cyan-100 px-2 py-0.5 rounded-full shrink-0">보강 완료</span>
                           )}
                         </div>
                       );

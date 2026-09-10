@@ -1548,26 +1548,24 @@ function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s
     const status = statusLabel[student.status] ?? statusLabel.active;
     return (
       <div key={student.id} onClick={() => onSelect(student)}
-        className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group">
-        <Avatar student={student} size="sm" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-800 text-sm font-medium group-hover:text-cyan-700 transition-colors truncate">{student.studentName}</span>
-            <span className="text-slate-400 text-xs">#{student.studentNumber}</span>
-            <button onClick={e => { e.stopPropagation(); setQuickViewStudent(student); }} title="입회 신청서 보기"
-              className="text-slate-300 hover:text-cyan-600 transition-colors shrink-0">
-              <FileText className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-slate-400 text-xs">{student.regularDays.join('·')} {student.regularTime}</span>
-            {instructor && <span className="text-slate-400 text-xs">· {instructor.name}</span>}
+        className="p-3 border border-slate-100 hover:border-cyan-200 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group">
+        <div className="flex items-center gap-2.5">
+          <Avatar student={student} size="sm" />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-slate-800 text-sm font-medium group-hover:text-cyan-700 transition-colors truncate">{student.studentName}</span>
+              <button onClick={e => { e.stopPropagation(); setQuickViewStudent(student); }} title="입회 신청서 보기"
+                className="text-slate-300 hover:text-cyan-600 transition-colors shrink-0">
+                <FileText className="w-3.5 h-3.5" />
+              </button>
+            </div>
+            <p className="text-slate-400 text-[11px] truncate">#{student.studentNumber} · {student.regularDays.join('·')} {student.regularTime}{instructor && ` · ${instructor.name}`}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <span className={`px-2 py-0.5 rounded-full text-xs border ${levelColor[student.level] ?? levelColor['초급']}`}>{student.level}</span>
-          <span className={`px-2 py-0.5 rounded-full text-xs border ${status.color}`}>{status.text}</span>
-          {!student.paymentCompleted && <span className="px-2 py-0.5 rounded-full text-xs border bg-amber-50 text-amber-700 border-amber-200">미결제</span>}
+        <div className="flex items-center gap-1.5 flex-wrap mt-2">
+          <span className={`px-2 py-0.5 rounded-full text-[10.5px] border ${levelColor[student.level] ?? levelColor['초급']}`}>{student.level}</span>
+          <span className={`px-2 py-0.5 rounded-full text-[10.5px] border ${status.color}`}>{status.text}</span>
+          {!student.paymentCompleted && <span className="px-2 py-0.5 rounded-full text-[10.5px] border bg-amber-50 text-amber-700 border-amber-200">미결제</span>}
         </div>
       </div>
     );
@@ -1587,7 +1585,7 @@ function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s
           {lcStudents.length === 0 ? (
             <p className="text-slate-400 text-sm px-5 py-4">등록된 강습생이 없습니다.</p>
           ) : (
-            <div className="p-2 space-y-0.5">{lcStudents.map(renderStudent)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 p-3">{lcStudents.map(renderStudent)}</div>
           )}
         </div>
       ))}
@@ -1597,7 +1595,7 @@ function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s
             <h3 className="text-slate-400 font-semibold text-sm">미배정</h3>
             <span className="text-slate-400 text-sm">{unclassed.length}명</span>
           </div>
-          <div className="p-2 space-y-0.5">{unclassed.map(renderStudent)}</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 p-3">{unclassed.map(renderStudent)}</div>
         </div>
       )}
       {quickViewStudent && (

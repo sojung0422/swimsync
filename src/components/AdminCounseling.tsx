@@ -193,30 +193,33 @@ export default function AdminCounseling() {
                     {overdueOnly ? '상담이 필요한 강습생이 없습니다.' : '담당 강습생이 없습니다.'}
                   </div>
                 ) : (
-                  <div className="divide-y divide-slate-50">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-4 items-start">
                     {rows.map(({ student, monthRecords, last, nextDue, overdue }) => {
                       const isExpanded = expandedStudentId === student.id;
                       return (
-                        <div key={student.id}>
+                        <div key={student.id} className="border border-slate-100 rounded-xl overflow-hidden">
                           <button onClick={() => setExpandedStudentId(isExpanded ? null : student.id)}
-                            className="w-full flex items-center gap-3 px-6 py-3.5 hover:bg-slate-50 transition-colors text-left">
+                            className="w-full flex items-center gap-2.5 px-3.5 py-3 hover:bg-slate-50 transition-colors text-left">
                             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
                               {student.studentName[0]}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-slate-800 text-sm font-semibold">{student.studentName}</p>
-                              <p className="text-slate-400 text-xs">
-                                {last ? `최근 상담 ${last.date} · 다음 예정 ${nextDue}` : '상담 기록 없음'}
+                              <p className="text-slate-800 text-sm font-semibold truncate">{student.studentName}</p>
+                              <p className="text-slate-400 text-[11px] truncate">
+                                {last ? `최근 ${last.date}` : '상담 기록 없음'}
                                 {monthRecords.length > 0 && ` · ${format(selectedMonth, 'M월', { locale: ko })} ${monthRecords.length}건`}
                               </p>
                             </div>
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border shrink-0 ${overdue ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                              {overdue ? '상담 필요' : '상담 완료'}
-                            </span>
                             {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />}
                           </button>
+                          <div className="px-3.5 pb-2.5 -mt-1">
+                            <span className={`px-2.5 py-1 rounded-full text-[10.5px] font-bold border ${overdue ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                              {overdue ? '상담 필요' : '상담 완료'}
+                            </span>
+                            {nextDue && <span className="text-slate-400 text-[10.5px] ml-2">다음 예정 {nextDue}</span>}
+                          </div>
                           {isExpanded && (
-                            <div className="px-6 pb-4 space-y-2.5 animate-fade-up">
+                            <div className="px-3.5 pb-4 space-y-2.5 animate-fade-up border-t border-slate-50 pt-3">
                               <div className="flex items-center justify-between">
                                 <p className="text-slate-500 text-xs font-semibold">{format(selectedMonth, 'yyyy년 M월', { locale: ko })} 상담 기록</p>
                                 <button onClick={() => setAddRecordFor({ studentId: student.id, instructorId: instructor.id, studentName: student.studentName })}

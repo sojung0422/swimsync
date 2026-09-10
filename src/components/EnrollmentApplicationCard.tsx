@@ -7,7 +7,7 @@ const VISIT_ROUTES: VisitRoute[] = ['인터넷검색', '홍보물', '지인추�
 const STROKES = ['자유형', '배영', '평영', '접영'];
 const SWIM_LEVELS: SwimLevelSelfReport[] = ['매우잘함', '잘함', '보통', '부족함', '매우부족함'];
 
-const blankApplication = (): Omit<EnrollmentApplication, 'id' | 'studentId'> => ({
+export const blankApplication = (): Omit<EnrollmentApplication, 'id' | 'studentId'> => ({
   visitRoute: '직접', visitRouteNote: '',
   hasFearOfWater: false,
   priorAcademy: '', priorStrokes: [], priorMonths: 0,
@@ -21,13 +21,12 @@ const inputCls = 'w-full border border-slate-200 rounded-lg px-2.5 py-2 text-sm 
 const labelCls = 'block text-xs text-slate-500 mb-1 font-medium';
 const chipCls = (active: boolean) => `px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${active ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`;
 
-function ApplicationForm({ initial, onSave, onCancel }: {
-  initial: Omit<EnrollmentApplication, 'id' | 'studentId'>;
-  onSave: (data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => void;
-  onCancel: () => void;
+// 입회원서 항목만 렌더링하는 컨트롤드 컴포넌트 — 관리자 카드(저장/취소 버튼 포함)와 셀프 가입신청서(자체 제출 버튼 사용) 양쪽에서 재사용
+export function ApplicationFormFields({ value: form, onChange: setForm }: {
+  value: Omit<EnrollmentApplication, 'id' | 'studentId'>;
+  onChange: (data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => void;
 }) {
-  const [form, setForm] = useState(initial);
-  const set = <K extends keyof typeof form>(key: K, val: (typeof form)[K]) => setForm(prev => ({ ...prev, [key]: val }));
+  const set = <K extends keyof typeof form>(key: K, val: (typeof form)[K]) => setForm({ ...form, [key]: val });
   const toggleStroke = (s: string) => set('priorStrokes', form.priorStrokes.includes(s) ? form.priorStrokes.filter(x => x !== s) : [...form.priorStrokes, s]);
 
   return (
@@ -118,7 +117,20 @@ function ApplicationForm({ initial, onSave, onCancel }: {
           <input type="date" className={inputCls} value={form.submittedAt} onChange={e => set('submittedAt', e.target.value)} />
         </div>
       </div>
+    </div>
+  );
+}
 
+// 관리자 카드용 — 위 필드 컴포넌트를 저장/취소 버튼으로 감쌈
+function ApplicationForm({ initial, onSave, onCancel }: {
+  initial: Omit<EnrollmentApplication, 'id' | 'studentId'>;
+  onSave: (data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => void;
+  onCancel: () => void;
+}) {
+  const [form, setForm] = useState(initial);
+  return (
+    <div className="space-y-4">
+      <ApplicationFormFields value={form} onChange={setForm} />
       <div className="flex gap-2 pt-1">
         <button onClick={onCancel} className="flex-1 py-2.5 border border-slate-200 rounded-xl text-slate-500 text-sm">취소</button>
         <button onClick={() => onSave(form)} className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-sm font-semibold transition-colors">저장</button>

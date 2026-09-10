@@ -580,7 +580,7 @@ export const careChecklistKey = (year: number, month: number, category: 'daily' 
   `${year}_${category === 'quarterly' ? 'q' : month}_${category}_${itemName}_${period}`;
 
 // 비품(소모품) 재고 — 품목별로 입고/출고 내역을 기록하고 잔여수량은 누적으로 계산
-export type InventoryItem = { id: string; name: string };
+export type InventoryItem = { id: string; name: string; unitPrice: number };
 export type InventoryTransaction = { id: string; itemId: string; date: string; inAmount: number; outAmount: number };
 
 // 강사 간 대타 요청 — 같은 시간대에 수업 없는 강사들에게 동시에 노출되고, 먼저 수락하는 사람이 확정된다
@@ -1359,7 +1359,7 @@ type StoreContextType = {
   rejectScheduleChangeRequest: (id: string) => void;
   instructorNotices: InstructorNotice[];
   // Student ops
-  addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => { ok: boolean; error?: string };
+  addStudent: (s: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>) => { ok: boolean; error?: string; studentId?: string };
   updateStudent: (id: string, updates: Partial<Student>) => void;
   deleteStudent: (id: string) => void;
   extendStudentClasses: (id: string, months: number) => void;
@@ -1380,7 +1380,7 @@ type StoreContextType = {
   rejectReturnRequest: (id: string) => void;
   // 온보딩 셀프 가입신청서
   registrationApplications: RegistrationApplication[];
-  submitRegistrationApplication: (app: Omit<RegistrationApplication, 'id' | 'status' | 'failReason' | 'submittedAt'>) => { ok: boolean; error?: string };
+  submitRegistrationApplication: (app: Omit<RegistrationApplication, 'id' | 'status' | 'failReason' | 'submittedAt'>, enrollmentDetails?: Omit<EnrollmentApplication, 'id' | 'studentId'>) => { ok: boolean; error?: string };
   // Class ops
   rescheduleClass: (studentId: string, fromClassId: string, toClassId: string) => boolean;
   markAbsent: (studentId: string, classId: string) => void;
@@ -1550,7 +1550,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [enrollmentApplications, setEnrollmentApplications] = useState<EnrollmentApplication[]>([]);
   const [careChecklist, setCareChecklist] = useState<Record<string, boolean>>({});
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
-    { id: 'inv1', name: '가방(빨강)' }, { id: 'inv2', name: '가방(파랑)' }, { id: 'inv3', name: '수건' }, { id: 'inv4', name: '흰색 수모' },
+    { id: 'inv1', name: '가방(빨강)', unitPrice: 8000 }, { id: 'inv2', name: '가방(파랑)', unitPrice: 8000 },
+    { id: 'inv3', name: '수건', unitPrice: 3000 }, { id: 'inv4', name: '흰색 수모', unitPrice: 1500 },
   ]);
   const [inventoryTransactions, setInventoryTransactions] = useState<InventoryTransaction[]>([]);
   const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
@@ -1580,7 +1581,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // ── Student ──────────────────────────────────────────────────
-  const addStudent = (studentData: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>): { ok: boolean; error?: string } => {
+  const addStudent = (studentData: Omit<Student, 'id' | 'studentNumber' | 'usedReschedules' | 'additionalEnrollments'>): { ok: boolean; error?: string; studentId?: string } => {
     if (studentData.lessonClassId && studentData.instructorId && studentData.regularTime) {
       const capCheck = checkRegistrationCapacity(studentData.lessonClassId, studentData.instructorId, studentData.regularTime, students, instructors);
       if (!capCheck.ok) return { ok: false, error: '해당 반·강사·시간대는 이미 정원이 가득 찼습니다. 다른 시간대를 선택하거나 보강으로 진행해주세요.' };
@@ -1593,7 +1594,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setStudents(prev => [...prev, newStudent]);
     if (newStudent.vehicleId) syncVehicleAssignment(newStudent.id, newStudent.vehicleId);
     setClasses(prev => buildClassesForStudent(newStudent.id, getAllEnrollments(newStudent), startOfMonth(addDays(new Date(), -15)), 90, prev));
-    return { ok: true };
+    return { ok: true, studentId: newStudent.id };
   };
 
   const updateStudent = (studentId: string, updates: Partial<Student>) => {
@@ -1773,7 +1774,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   // ── 온보딩 셀프 가입신청서 ────────────────────────────────────────
   // 제출 즉시 정원을 확인해 가능하면 바로 학생으로 등록(반배정 + 스케줄표 반영)하고, 정원이 없으면 등록하지 않고 사유를 남긴다.
   const submitRegistrationApplication = (
-    app: Omit<RegistrationApplication, 'id' | 'status' | 'failReason' | 'submittedAt'>
+    app: Omit<RegistrationApplication, 'id' | 'status' | 'failReason' | 'submittedAt'>,
+    enrollmentDetails?: Omit<EnrollmentApplication, 'id' | 'studentId'>
   ): { ok: boolean; error?: string } => {
     const result = addStudent({
       studentName: app.applicantName, nickname: '', birthDate: '', registrationDate: format(new Date(), 'yyyy-MM-dd'),
@@ -1791,6 +1793,9 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       ...app, id: `ra_${Date.now()}`, submittedAt: format(new Date(), 'yyyy-MM-dd HH:mm'),
       status: result.ok ? 'registered' : 'failed', failReason: result.ok ? '' : (result.error ?? '등록 실패'),
     }]);
+    if (result.ok && result.studentId && enrollmentDetails) {
+      saveEnrollmentApplication(result.studentId, enrollmentDetails);
+    }
     return result;
   };
 
@@ -2150,7 +2155,8 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const toggleCareChecklistItem = (key: string) => {
     setCareChecklist(prev => ({ ...prev, [key]: !prev[key] }));
   };
-  const addInventoryItem = (name: string) => setInventoryItems(prev => [...prev, { id: `inv_${Date.now()}`, name }]);
+  const addInventoryItem = (name: string, unitPrice: number = 0) => setInventoryItems(prev => [...prev, { id: `inv_${Date.now()}`, name, unitPrice }]);
+  const updateInventoryItem = (id: string, updates: Partial<InventoryItem>) => setInventoryItems(prev => prev.map(i => i.id === id ? { ...i, ...updates } : i));
   const deleteInventoryItem = (id: string) => {
     setInventoryItems(prev => prev.filter(i => i.id !== id));
     setInventoryTransactions(prev => prev.filter(t => t.itemId !== id));
