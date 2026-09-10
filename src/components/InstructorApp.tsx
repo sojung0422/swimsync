@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { useStore, getPrimaryContactPhone, teachesStudent, studentsForInstructor, getFreeInstructorsAt, getRoleGuideKeyForInstructor } from '../store/StoreContext';
-import type { MakeupRequest, ClassSession, LeaveType } from '../store/StoreContext';
+import type { MakeupRequest, ClassSession, LeaveType, Student } from '../store/StoreContext';
 import {
   Calendar, Clock, Users, BookOpen, CheckCircle2, AlertCircle, UserCircle, RefreshCw,
   Wallet, CalendarClock, Image as ImageIcon, ChevronLeft, ChevronDown, ChevronUp, MessageCircle,
-  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand, Waves, Phone, Contact, Camera,
+  MessageSquareText, BellRing, CalendarCheck, Repeat, Hand, Waves, Phone, Contact, Camera, Info, ShieldAlert,
 } from 'lucide-react';
 import ChatThread from './ChatThread';
 import { playBellSound } from '../lib/playBellSound';
@@ -169,6 +169,72 @@ function ProgressRecordScreen({ cls, onClose }: { cls: ClassSession; onClose: ()
   );
 }
 
+// ─── 보강 학생 정보 보기 (평소 안 가르치던 학생을 보강으로 맡을 때 진도·특이사항 확인용) ──
+
+function MakeupStudentInfoModal({ student, onClose }: { student: Student; onClose: () => void }) {
+  const { enrollmentApplications } = useStore();
+  const app = enrollmentApplications.find(a => a.studentId === student.id);
+
+  return (
+    <div className="absolute inset-0 bg-black/50 z-40 flex items-end justify-center" onClick={onClose}>
+      <div className="bg-white rounded-t-3xl w-full max-h-[88%] overflow-y-auto p-5 space-y-3.5" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-full bg-gradient-to-br from-orange-400 to-amber-500 flex items-center justify-center text-white text-base font-bold shrink-0">
+            {student.studentName.charAt(0)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-slate-800 font-bold text-[15px] flex items-center gap-1.5">
+              {student.studentName}
+              <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">보강</span>
+            </p>
+            <p className="text-slate-400 text-xs mt-0.5">{student.level} · {student.division}</p>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 shrink-0">✕</button>
+        </div>
+
+        <div className="bg-cyan-50 border border-cyan-100 rounded-xl p-3">
+          <p className="text-cyan-700 text-xs font-semibold mb-1">진도 현황</p>
+          <p className="text-cyan-800 text-sm">{student.progress || '아직 기록된 진도가 없습니다.'}</p>
+        </div>
+
+        {student.notes && (
+          <div className="bg-amber-50 border border-amber-100 rounded-xl p-3">
+            <p className="text-amber-700 text-xs font-semibold mb-1">특이사항 (담당 강사 기록)</p>
+            <p className="text-amber-800 text-sm whitespace-pre-wrap">{student.notes}</p>
+          </div>
+        )}
+
+        {app ? (
+          <>
+            {(app.hasFearOfWater || app.healthNote || (app.hasAllergy && app.allergyNote)) && (
+              <div className="bg-red-50 border border-red-100 rounded-xl p-3 space-y-1.5">
+                <p className="text-red-700 text-xs font-semibold flex items-center gap-1"><ShieldAlert className="w-3.5 h-3.5" /> 건강·안전 참고사항</p>
+                {app.hasFearOfWater && <p className="text-red-700 text-sm">· 물에 대한 두려움이 있어요</p>}
+                {app.healthNote && <p className="text-red-700 text-sm">· 건강상태: {app.healthNote}</p>}
+                {app.hasAllergy && app.allergyNote && <p className="text-red-700 text-sm">· 알레르기: {app.allergyNote}</p>}
+              </div>
+            )}
+            {app.habitNote && (
+              <div className="bg-violet-50 border border-violet-100 rounded-xl p-3">
+                <p className="text-violet-700 text-xs font-semibold mb-1">습관·성격</p>
+                <p className="text-violet-800 text-sm">{app.habitNote}</p>
+              </div>
+            )}
+            {app.teacherNote && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                <p className="text-slate-600 text-xs font-semibold mb-1">선생님 참고사항 (입회 시 기록)</p>
+                <p className="text-slate-700 text-sm">{app.teacherNote}</p>
+              </div>
+            )}
+          </>
+        ) : (
+          <p className="text-slate-400 text-xs px-1">입회신청서에 등록된 추가 정보가 없습니다.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── 정기 상담 기록 화면 ────────────────────────────────────────────────────────
 
 function CounselingScreen({ studentId, instructorId, onClose }: { studentId: string; instructorId: string; onClose: () => void }) {
@@ -321,6 +387,7 @@ export default function InstructorApp() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDoc, setShowDoc] = useState<string | null>(null);
   const [progressClassId, setProgressClassId] = useState<string | null>(null);
+  const [infoStudentId, setInfoStudentId] = useState<string | null>(null);
   const [activeThreadStudentId, setActiveThreadStudentId] = useState<string | null>(null);
   const [counselingStudentId, setCounselingStudentId] = useState<string | null>(null);
   const [leaveDate, setLeaveDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -658,11 +725,17 @@ export default function InstructorApp() {
                     </div>
                     <div className="space-y-1.5">
                       {upcomingMakeupEntries.slice(0, 4).map(({ cls, student }) => (
-                        <button key={`${cls.id}-${student.id}`} onClick={() => setSelectedDate(parseISO(cls.date))}
-                          className="w-full flex items-center justify-between bg-white rounded-xl px-3 py-2 border border-orange-100 hover:bg-orange-50/60 transition-colors">
-                          <span className="text-slate-800 text-xs font-semibold">{student.studentName}</span>
-                          <span className="text-slate-400 text-[11px]">{format(parseISO(cls.date), 'M/d (E)', { locale: ko })} {cls.time}</span>
-                        </button>
+                        <div key={`${cls.id}-${student.id}`} className="w-full flex items-center gap-1.5 bg-white rounded-xl pl-3 pr-1.5 py-1.5 border border-orange-100">
+                          <button onClick={() => setSelectedDate(parseISO(cls.date))}
+                            className="flex-1 min-w-0 flex items-center justify-between hover:opacity-70 transition-opacity">
+                            <span className="text-slate-800 text-xs font-semibold">{student.studentName}</span>
+                            <span className="text-slate-400 text-[11px] mr-1.5">{format(parseISO(cls.date), 'M/d (E)', { locale: ko })} {cls.time}</span>
+                          </button>
+                          <button onClick={() => setInfoStudentId(student.id)} title="진도·특이사항 보기"
+                            className="text-orange-600 p-1.5 hover:bg-orange-50 rounded-full transition-colors shrink-0">
+                            <Info className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -738,11 +811,20 @@ export default function InstructorApp() {
                                 <div className="text-xs text-slate-400">{student.level}</div>
                               </div>
                             </div>
-                            <button onClick={() => setProgressClassId(cls.id)}
-                              title="진도 및 특이사항 기록하기"
-                              className="text-cyan-600 p-2 hover:bg-cyan-50 rounded-full transition-colors">
-                              <BookOpen className="w-4 h-4" />
-                            </button>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {cls.makeupStudentIds.includes(student.id) && (
+                                <button onClick={() => setInfoStudentId(student.id)}
+                                  title="보강 학생 진도·특이사항 보기"
+                                  className="text-orange-600 p-2 hover:bg-orange-50 rounded-full transition-colors">
+                                  <Info className="w-4 h-4" />
+                                </button>
+                              )}
+                              <button onClick={() => setProgressClassId(cls.id)}
+                                title="진도 및 특이사항 기록하기"
+                                className="text-cyan-600 p-2 hover:bg-cyan-50 rounded-full transition-colors">
+                                <BookOpen className="w-4 h-4" />
+                              </button>
+                            </div>
                           </div>
                         ))}
                         {absentStudents.map(student => (
@@ -1058,6 +1140,12 @@ export default function InstructorApp() {
         {counselingStudentId && (
           <CounselingScreen studentId={counselingStudentId} instructorId={instructorId} onClose={() => setCounselingStudentId(null)} />
         )}
+
+        {/* 보강 학생 정보 보기 */}
+        {infoStudentId && (() => {
+          const s = students.find(s => s.id === infoStudentId);
+          return s ? <MakeupStudentInfoModal student={s} onClose={() => setInfoStudentId(null)} /> : null;
+        })()}
 
         {/* Document viewer overlay */}
         {showDoc && (

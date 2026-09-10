@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, subMonths } from 'date-fns';
 import { useStore, computeLinearSessionRates, computeApplicableDiscounts, getAllEnrollments } from '../store/StoreContext';
-import type { PaymentPlan, MakeupPolicyRule, Discount } from '../store/StoreContext';
+import type { PaymentPlan, MakeupPolicyRule, Discount, EventParticipation, Student } from '../store/StoreContext';
 import {
   CreditCard, Plus, Edit2, Trash2, X, CheckCircle, XCircle,
   ChevronDown, ChevronUp, Waves, AlertCircle, TrendingUp, Users, RefreshCw, Sparkles, Table2,
@@ -334,17 +334,61 @@ function DiscountFormModal({ initial, onClose, onSave, title }: {
   );
 }
 
+function PendingParticipationRow({ p, students, discounts, selected, onToggle, onZoom, onApprove, onReject, hideEventName }: {
+  p: EventParticipation; students: Student[]; discounts: Discount[]; selected: boolean;
+  onToggle: (id: string) => void; onZoom: (photo: string) => void;
+  onApprove: (id: string) => void; onReject: (id: string) => void; hideEventName?: boolean;
+}) {
+  const student = students.find(s => s.id === p.studentId);
+  const discount = discounts.find(d => d.id === p.discountId);
+  return (
+    <div className="px-6 py-3.5 flex items-center gap-3">
+      <input type="checkbox" checked={selected} onChange={() => onToggle(p.id)} className="w-4 h-4 accent-cyan-600 shrink-0" />
+      <button onClick={() => onZoom(p.evidencePhoto)} className="shrink-0">
+        <img src={p.evidencePhoto} className="w-12 h-12 rounded-lg object-cover border border-slate-200" alt="증빙" />
+      </button>
+      <div className="flex-1 min-w-0">
+        <p className="text-slate-800 text-sm font-semibold">{student?.studentName ?? '알 수 없음'}{!hideEventName && <span className="text-slate-400 font-normal"> · {discount?.name ?? '삭제된 이벤트'}</span>}</p>
+        <p className="text-slate-400 text-xs mt-0.5">{p.submittedAt} 제출 · 승인 시 다음 달부터 할인 적용</p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        <button onClick={() => onApprove(p.id)} className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors">승인</button>
+        <button onClick={() => onReject(p.id)} className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg text-xs font-medium transition-colors">거절</button>
+      </div>
+    </div>
+  );
+}
+
 function DiscountsPanel() {
   const { discounts, students, addDiscount, updateDiscount, deleteDiscount, eventParticipations, approveEventParticipation, rejectEventParticipation } = useStore();
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; discount?: Discount } | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<Discount | null>(null);
   const [zoomPhoto, setZoomPhoto] = useState<string | null>(null);
   const [selectedPendingIds, setSelectedPendingIds] = useState<string[]>([]);
+  const [kindFilter, setKindFilter] = useState<'all' | 'sibling' | 'event'>('all');
+  const [collapsedEventIds, setCollapsedEventIds] = useState<Set<string>>(new Set());
 
   const matchingCount = (d: Discount) => students.filter(s => s.status === 'active' && computeApplicableDiscounts(s, students, [d], new Date(), eventParticipations).matched.length > 0).length;
   const pendingParticipations = eventParticipations.filter(p => p.status === 'pending');
   const togglePending = (id: string) => setSelectedPendingIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const approveSelected = () => { selectedPendingIds.forEach(approveEventParticipation); setSelectedPendingIds([]); };
+  const filteredDiscounts = discounts.filter(d => kindFilter === 'all' || d.kind === kindFilter);
+
+  // 참여 인증 대기 건이 여러 이벤트에 걸쳐 있으면 이벤트별로 묶어서 아코디언으로 표시
+  const pendingByEvent = pendingParticipations.reduce<Record<string, typeof pendingParticipations>>((acc, p) => {
+    (acc[p.discountId] ??= []).push(p);
+    return acc;
+  }, {});
+  const pendingEventIds = Object.keys(pendingByEvent);
+  const toggleEventCollapsed = (id: string) => setCollapsedEventIds(prev => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+  const toggleAllInEvent = (ids: string[]) => {
+    const allSelected = ids.every(id => selectedPendingIds.includes(id));
+    setSelectedPendingIds(prev => allSelected ? prev.filter(id => !ids.includes(id)) : [...new Set([...prev, ...ids])]);
+  };
 
   return (
     <div className="space-y-4">
@@ -371,25 +415,40 @@ function DiscountsPanel() {
         </div>
         {pendingParticipations.length === 0 ? (
           <p className="px-6 py-6 text-slate-400 text-sm text-center">대기 중인 참여 인증이 없습니다.</p>
-        ) : (
+        ) : pendingEventIds.length <= 1 ? (
           <div className="divide-y divide-slate-50">
-            {pendingParticipations.map(p => {
-              const student = students.find(s => s.id === p.studentId);
-              const discount = discounts.find(d => d.id === p.discountId);
+            {pendingParticipations.map(p => (
+              <PendingParticipationRow key={p.id} p={p} students={students} discounts={discounts} selected={selectedPendingIds.includes(p.id)}
+                onToggle={togglePending} onZoom={setZoomPhoto} onApprove={approveEventParticipation} onReject={rejectEventParticipation} />
+            ))}
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100">
+            {pendingEventIds.map(eventId => {
+              const items = pendingByEvent[eventId];
+              const discount = discounts.find(d => d.id === eventId);
+              const collapsed = collapsedEventIds.has(eventId);
+              const groupIds = items.map(i => i.id);
               return (
-                <div key={p.id} className="px-6 py-3.5 flex items-center gap-3">
-                  <input type="checkbox" checked={selectedPendingIds.includes(p.id)} onChange={() => togglePending(p.id)} className="w-4 h-4 accent-cyan-600 shrink-0" />
-                  <button onClick={() => setZoomPhoto(p.evidencePhoto)} className="shrink-0">
-                    <img src={p.evidencePhoto} className="w-12 h-12 rounded-lg object-cover border border-slate-200" alt="증빙" />
+                <div key={eventId}>
+                  <button onClick={() => toggleEventCollapsed(eventId)}
+                    className="w-full px-6 py-3 flex items-center gap-2.5 hover:bg-slate-50/60 transition-colors text-left">
+                    {collapsed ? <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" /> : <ChevronUp className="w-4 h-4 text-slate-400 shrink-0" />}
+                    <span className="text-slate-700 text-sm font-semibold flex-1 min-w-0 truncate">{discount?.name ?? '삭제된 이벤트'}</span>
+                    <span className="text-slate-400 text-xs shrink-0">{items.length}건</span>
+                    <span onClick={e => { e.stopPropagation(); toggleAllInEvent(groupIds); }}
+                      className="text-cyan-600 hover:text-cyan-700 text-[11px] font-medium shrink-0 px-2 py-1 hover:bg-cyan-50 rounded-lg transition-colors">
+                      {groupIds.every(id => selectedPendingIds.includes(id)) ? '전체 해제' : '전체 선택'}
+                    </span>
                   </button>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-slate-800 text-sm font-semibold">{student?.studentName ?? '알 수 없음'} <span className="text-slate-400 font-normal">· {discount?.name ?? '삭제된 이벤트'}</span></p>
-                    <p className="text-slate-400 text-xs mt-0.5">{p.submittedAt} 제출 · 승인 시 다음 달부터 할인 적용</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => approveEventParticipation(p.id)} className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-medium transition-colors">승인</button>
-                    <button onClick={() => rejectEventParticipation(p.id)} className="px-2.5 py-1.5 bg-red-50 hover:bg-red-100 border border-red-200 text-red-600 rounded-lg text-xs font-medium transition-colors">거절</button>
-                  </div>
+                  {!collapsed && (
+                    <div className="divide-y divide-slate-50 border-t border-slate-50">
+                      {items.map(p => (
+                        <PendingParticipationRow key={p.id} p={p} students={students} discounts={discounts} selected={selectedPendingIds.includes(p.id)}
+                          onToggle={togglePending} onZoom={setZoomPhoto} onApprove={approveEventParticipation} onReject={rejectEventParticipation} hideEventName />
+                      ))}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -397,14 +456,23 @@ function DiscountsPanel() {
         )}
       </div>
 
-      {discounts.length === 0 ? (
+      <div className="flex items-center gap-1.5">
+        {([['all', '전체'], ['sibling', '형제·다자녀'], ['event', '이벤트 기간']] as const).map(([val, label]) => (
+          <button key={val} onClick={() => setKindFilter(val)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${kindFilter === val ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {filteredDiscounts.length === 0 ? (
         <div className="bg-white border border-slate-200 rounded-2xl py-16 text-center text-slate-400">
           <Gift className="w-10 h-10 mx-auto mb-3 opacity-30" />
-          <p className="text-sm">등록된 할인·이벤트가 없습니다.</p>
+          <p className="text-sm">{discounts.length === 0 ? '등록된 할인·이벤트가 없습니다.' : '조건에 맞는 할인·이벤트가 없습니다.'}</p>
         </div>
       ) : (
         <div className="space-y-2.5">
-          {discounts.map(d => (
+          {filteredDiscounts.map(d => (
             <div key={d.id} className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-4">
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${d.kind === 'sibling' ? 'bg-violet-50 border-violet-100' : 'bg-amber-50 border-amber-100'}`}>
                 {d.kind === 'sibling' ? <Users className={`w-5 h-5 text-violet-600`} /> : <Gift className="w-5 h-5 text-amber-600" />}
