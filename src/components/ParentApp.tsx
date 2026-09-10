@@ -338,6 +338,50 @@ export default function ParentApp() {
     setReadNotificationIds(new Set(myNotifications.map(n => n.id)));
   };
 
+  // ── 공지/이벤트 캐러셀 — 안 읽은(새) 공지를 먼저 보여주고, 읽음 여부는 로컬에 저장 ──
+  const noticeEvents = events
+    .filter(e => e.type === 'notice' || e.type === 'event')
+    .slice()
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 8);
+  const [readNoticeIds, setReadNoticeIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('swimsync_read_notices') || '[]')); } catch { return new Set(); }
+  });
+  const unreadNotices = noticeEvents.filter(e => !readNoticeIds.has(e.id));
+  const orderedNotices = [...unreadNotices, ...noticeEvents.filter(e => readNoticeIds.has(e.id))];
+  const [noticeIndex, setNoticeIndex] = useState(0);
+  const noticeScrollRef = useRef<HTMLDivElement>(null);
+  const [showNewNoticeAlert, setShowNewNoticeAlert] = useState(true);
+
+  const markNoticeRead = (id: string) => {
+    setReadNoticeIds(prev => {
+      if (prev.has(id)) return prev;
+      const next = new Set(prev); next.add(id);
+      try { localStorage.setItem('swimsync_read_notices', JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  };
+  useEffect(() => {
+    if (orderedNotices.length === 0) return;
+    const t = setTimeout(() => markNoticeRead(orderedNotices[0].id), 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const handleNoticeScroll = () => {
+    const el = noticeScrollRef.current;
+    if (!el || el.clientWidth === 0) return;
+    const idx = Math.round(el.scrollLeft / el.clientWidth);
+    setNoticeIndex(idx);
+    const notice = orderedNotices[idx];
+    if (notice) markNoticeRead(notice.id);
+  };
+  const scrollNoticeTo = (i: number) => {
+    const el = noticeScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' });
+    setNoticeIndex(i);
+  };
+
   const myClasses = classes
     .filter(c => (c.studentIds.includes(studentId) || c.makeupStudentIds.includes(studentId)) && !c.absentStudentIds.includes(studentId))
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -458,6 +502,15 @@ export default function ParentApp() {
           <div className="w-3.5 h-3.5 rounded-full bg-slate-800" />
         </div>
 
+        {/* 새 공지 알림 배너 — 캐러셀과 별개로 잠깐 떠서 새 공지가 있음을 알려줌 */}
+        {activeTab === 'home' && showNewNoticeAlert && unreadNotices.length > 0 && (
+          <div className="absolute top-14 inset-x-3 z-40 bg-slate-900 text-white rounded-xl px-3.5 py-2.5 shadow-lg flex items-center gap-2.5 animate-fade-up">
+            <BellRing className="w-4 h-4 text-cyan-300 shrink-0" />
+            <p className="flex-1 min-w-0 text-xs font-medium truncate">새 {unreadNotices[0].type === 'notice' ? '공지' : '이벤트'}: {unreadNotices[0].title}</p>
+            <button onClick={() => setShowNewNoticeAlert(false)} className="shrink-0 text-slate-400 hover:text-white"><XIcon className="w-3.5 h-3.5" /></button>
+          </div>
+        )}
+
         {/* App Content */}
         {activeTab === 'messages' ? (
           <div className="flex-1 overflow-hidden pb-20">
@@ -525,25 +578,38 @@ export default function ParentApp() {
             })}
 
             {/* 공지사항 / 이벤트 — 메모(memo)는 학원 내부용이라 학부모 앱에는 노출되지 않음 */}
-            {events
-              .filter(e => e.type === 'notice' || e.type === 'event')
-              .slice()
-              .sort((a, b) => b.date.localeCompare(a.date))
-              .slice(0, 3)
-              .map(notice => (
-                <div key={notice.id} className="rounded-2xl p-5 text-white shadow-md relative overflow-hidden" style={{ background: notice.type === 'notice' ? 'linear-gradient(135deg,#0891b2,#3b82f6)' : 'linear-gradient(135deg,#059669,#0d9488)' }}>
-                  <div className="absolute top-0 right-0 w-28 h-28 bg-white/10 rounded-full -mr-8 -mt-8" />
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-white/20 px-2 py-0.5 rounded text-xs font-bold">{notice.type === 'notice' ? '공지' : '이벤트'}</span>
-                  </div>
-                  <h3 className="font-bold text-base mb-1">{notice.title}</h3>
-                  <p className="text-blue-100 text-sm">
-                    {notice.endDate && notice.endDate !== notice.date
-                      ? `${format(parseISO(notice.date), 'M월 d일', { locale: ko })} ~ ${format(parseISO(notice.endDate), 'M월 d일', { locale: ko })}`
-                      : `${format(parseISO(notice.date), 'M월 d일', { locale: ko })} 진행 예정`}
-                  </p>
+            {orderedNotices.length > 0 && (
+              <div>
+                <div ref={noticeScrollRef} onScroll={handleNoticeScroll}
+                  className="flex overflow-x-auto snap-x snap-mandatory -mx-5 px-5 gap-2.5 [&::-webkit-scrollbar]:hidden"
+                  style={{ scrollbarWidth: 'none' }}>
+                  {orderedNotices.map(notice => (
+                    <div key={notice.id}
+                      className="snap-center shrink-0 w-full rounded-xl px-4 py-3 text-white shadow-md relative overflow-hidden flex items-center justify-between gap-3"
+                      style={{ background: notice.type === 'notice' ? 'linear-gradient(135deg,#0891b2,#3b82f6)' : 'linear-gradient(135deg,#059669,#0d9488)' }}>
+                      <div className="absolute top-0 right-0 w-16 h-16 bg-white/10 rounded-full -mr-4 -mt-4" />
+                      <div className="min-w-0 flex items-center gap-2.5 relative">
+                        <span className="shrink-0 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold">{notice.type === 'notice' ? '공지' : '이벤트'}</span>
+                        <h3 className="font-bold text-sm truncate">{notice.title}</h3>
+                      </div>
+                      <p className="text-white/85 text-xs shrink-0 whitespace-nowrap relative">
+                        {notice.endDate && notice.endDate !== notice.date
+                          ? `${format(parseISO(notice.date), 'M/d', { locale: ko })}~${format(parseISO(notice.endDate), 'M/d', { locale: ko })}`
+                          : `${format(parseISO(notice.date), 'M월 d일', { locale: ko })}`}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+                {orderedNotices.length > 1 && (
+                  <div className="flex justify-center gap-1.5 mt-2">
+                    {orderedNotices.map((n, i) => (
+                      <button key={n.id} onClick={() => scrollNoticeTo(i)}
+                        className={`h-1.5 rounded-full transition-all ${i === noticeIndex ? 'w-4 bg-cyan-600' : 'w-1.5 bg-slate-300'}`} />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Next class */}
             <div>
@@ -732,12 +798,12 @@ export default function ParentApp() {
             <div>
               <h2 className="text-[15px] font-bold text-slate-800 mb-3">결제 현황</h2>
               <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-1">
-                  <div>
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div className="flex-1 min-w-0">
                     <p className="text-slate-800 font-bold text-lg">{(student?.paymentAmount ?? 0).toLocaleString()}원</p>
                     <p className="text-slate-400 text-xs mt-0.5">{paymentPlan?.name ?? '결제 플랜 미지정'}{student?.paymentRenewalDate ? ` · 다음 갱신 ${student.paymentRenewalDate}` : ''}</p>
                   </div>
-                  <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${myUnpaidRecords.length === 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                  <span className={`shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold border ${myUnpaidRecords.length === 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
                     {myUnpaidRecords.length === 0 ? '결제 완료' : '결제 대기'}
                   </span>
                 </div>

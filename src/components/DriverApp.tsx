@@ -100,7 +100,7 @@ function ActiveRouteScreen({ vehicleId, onEnd }: { vehicleId: string; onEnd: () 
 }
 
 export default function DriverApp() {
-  const { drivers, vehicles, students, classes } = useStore();
+  const { drivers, vehicles, students, classes, settings } = useStore();
   const [activeTab, setActiveTab] = useState<'route' | 'students'>('route');
   const [expandedStudentId, setExpandedStudentId] = useState<string | null>(null);
   const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
@@ -360,16 +360,16 @@ export default function DriverApp() {
                   <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
                     <Car className="w-5 h-5 text-cyan-600" />
                   </div>
-                  <div className="flex-1">
-                    <p className="text-slate-800 text-sm font-semibold">{driver?.name}</p>
-                    <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5">
-                      <Phone className="w-3 h-3" /> {driver?.phone}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-slate-800 text-sm font-semibold truncate">{driver?.name}</p>
+                    <p className="text-slate-400 text-xs flex items-center gap-1 mt-0.5 min-w-0">
+                      <Phone className="w-3 h-3 shrink-0" /> <span className="truncate">{driver?.phone}</span>
                     </p>
                     {driver && <AddContactButton name={driver.name} phone={driver.phone} className="mt-1" />}
                   </div>
-                  <div className="text-right">
+                  <div className="text-right shrink-0">
                     {myVehicles.map(v => (
-                      <p key={v.id} className="text-xs">
+                      <p key={v.id} className="text-xs whitespace-nowrap">
                         <span className="text-slate-500">{v.vehicleNumber}</span>{' '}
                         <span className="text-cyan-600 font-medium">{v.route}</span>
                       </p>
@@ -377,6 +377,24 @@ export default function DriverApp() {
                   </div>
                 </div>
               </div>
+
+              {(() => {
+                const myRoleGuide = settings.roleGuides.find(rg => rg.role === '차량');
+                if (!myRoleGuide || myRoleGuide.tasks.length === 0) return null;
+                return (
+                  <div className="bg-white rounded-2xl border border-slate-200 p-4">
+                    <p className="text-slate-500 text-xs font-medium mb-2">내 업무</p>
+                    <div className="space-y-2">
+                      {myRoleGuide.tasks.map(task => (
+                        <div key={task.id} className="flex items-center gap-2 text-sm text-slate-600">
+                          <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
+                          {task.text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>

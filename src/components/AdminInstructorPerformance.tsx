@@ -84,6 +84,27 @@ export default function AdminInstructorPerformance() {
 
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-cyan-600" />
+              <h2 className="text-[14px] font-semibold text-slate-700">월별(12개월) 조직 평균 추이</h2>
+            </div>
+            <div className="p-6">
+              <ResponsiveContainer width="100%" height={240}>
+                <LineChart data={orgTrend} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" />
+                  <Tooltip formatter={(v: number) => `${v}%`} />
+                  <Legend wrapperStyle={{ fontSize: 12 }} />
+                  <Line type="monotone" dataKey="재등록률" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="퇴원률" stroke="#f87171" strokeWidth={2} dot={{ r: 3 }} />
+                  <Line type="monotone" dataKey="반이동률" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
               <Users className="w-4 h-4 text-cyan-600" />
               <h2 className="text-[14px] font-semibold text-slate-700">강사별 역량 비교 (당월 기준)</h2>
             </div>
@@ -116,27 +137,6 @@ export default function AdminInstructorPerformance() {
               {sorted.length === 0 && (
                 <div className="py-12 text-center text-slate-400 text-sm">재직 중인 강사가 없습니다.</div>
               )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-cyan-600" />
-              <h2 className="text-[14px] font-semibold text-slate-700">월별(12개월) 조직 평균 추이</h2>
-            </div>
-            <div className="p-6">
-              <ResponsiveContainer width="100%" height={240}>
-                <LineChart data={orgTrend} margin={{ top: 10, right: 20, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-                  <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} unit="%" />
-                  <Tooltip formatter={(v: number) => `${v}%`} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Line type="monotone" dataKey="재등록률" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="퇴원률" stroke="#f87171" strokeWidth={2} dot={{ r: 3 }} />
-                  <Line type="monotone" dataKey="반이동률" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3 }} />
-                </LineChart>
-              </ResponsiveContainer>
             </div>
           </div>
         </div>

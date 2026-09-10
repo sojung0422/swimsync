@@ -88,26 +88,25 @@ function PayrollSettingsCard() {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       <button onClick={() => setOpen(o => !o)} className="w-full flex items-center justify-between px-5 py-3.5 text-left">
-        <span className="flex items-center gap-2 text-slate-700 text-sm font-semibold"><Settings2 className="w-4 h-4 text-cyan-600" /> 급여 계산 기준 설정</span>
+        <span className="flex items-center gap-2 text-slate-700 text-sm font-semibold"><Settings2 className="w-4 h-4 text-cyan-600" /> 급여 계산 기준</span>
         {open ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
       </button>
       {open && (
         <div className="px-5 pb-5 border-t border-slate-100 pt-4 space-y-4">
-          <div>
-            <label className="block text-xs text-slate-500 mb-1 font-medium">신규 정규직 기본급 제안값</label>
-            <input type="number" min={0} step={10000} value={ps.baseSalaryDefault}
-              onChange={e => updatePayrollSettings({ baseSalaryDefault: parseInt(e.target.value) || 0 })}
-              className="w-48 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-slate-400 text-xs mb-1">신규 정규직 기본급</p>
+              <p className="font-semibold text-slate-700">{ps.baseSalaryDefault.toLocaleString()}원</p>
+            </div>
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-slate-400 text-xs mb-1">추가 근무 시간당 단가</p>
+              <p className="font-semibold text-slate-700">{ps.overtimeHourlyRate.toLocaleString()}원</p>
+            </div>
           </div>
-          <div>
-            <label className="block text-xs text-slate-500 mb-1 font-medium">추가 근무 시간당 단가</label>
-            <input type="number" min={0} step={1000} value={ps.overtimeHourlyRate}
-              onChange={e => updatePayrollSettings({ overtimeHourlyRate: parseInt(e.target.value) || 0 })}
-              className="w-48 border border-slate-200 rounded-lg px-3 py-2 text-sm" />
-          </div>
-          <div>
+          <p className="text-slate-400 text-xs">전체 기준(기본급 제안값·추가근무 단가·인센티브 자동계산 규칙)은 운영 &gt; 업무 안내에서 설정해요. 여기서는 직원별 월급을 개별로 조정할 수 있어요.</p>
+          <div className="border-t border-slate-100 pt-4">
             <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs text-slate-500 font-medium">인센티브 항목</label>
+              <label className="block text-xs text-slate-500 font-medium">인센티브 항목 (참고용)</label>
               <button onClick={() => updatePayrollSettings({ incentiveRules: [...ps.incentiveRules, { id: `inc_${Date.now()}`, label: '새 항목', amount: 0 }] })}
                 className="flex items-center gap-1 text-cyan-700 text-xs font-semibold hover:text-cyan-800">
                 <Plus className="w-3.5 h-3.5" /> 항목 추가
@@ -126,50 +125,6 @@ function PayrollSettingsCard() {
                   </button>
                 </div>
               ))}
-            </div>
-          </div>
-          <div className="border-t border-slate-100 pt-4">
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-xs text-slate-500 font-medium">인센티브 자동 계산 규칙 (지표 충족 시 자동 합산, 발행 전 수동 조정 가능)</label>
-              <button onClick={() => updatePayrollSettings({ incentiveFormulaRules: [...ps.incentiveFormulaRules, { id: `ifr_${Date.now()}`, label: '새 규칙', metric: 'reRegRate', comparator: 'gte', threshold: 0, amount: 0 }] })}
-                className="flex items-center gap-1 text-cyan-700 text-xs font-semibold hover:text-cyan-800">
-                <Plus className="w-3.5 h-3.5" /> 규칙 추가
-              </button>
-            </div>
-            <div className="space-y-2">
-              {ps.incentiveFormulaRules.map((rule, idx) => {
-                const update = (patch: Partial<IncentiveFormulaRule>) => {
-                  const rules = [...ps.incentiveFormulaRules];
-                  rules[idx] = { ...rule, ...patch };
-                  updatePayrollSettings({ incentiveFormulaRules: rules });
-                };
-                return (
-                  <div key={rule.id} className="flex items-center gap-1.5 flex-wrap">
-                    <input value={rule.label} onChange={e => update({ label: e.target.value })}
-                      className="w-28 border border-slate-200 rounded-lg px-2 py-1.5 text-xs" placeholder="규칙명" />
-                    <select value={rule.metric} onChange={e => update({ metric: e.target.value as IncentiveFormulaRule['metric'] })}
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
-                      <option value="reRegRate">재등록률</option>
-                      <option value="withdrawalRate">퇴원률</option>
-                      <option value="revenue">담당 매출</option>
-                    </select>
-                    <select value={rule.comparator} onChange={e => update({ comparator: e.target.value as IncentiveFormulaRule['comparator'] })}
-                      className="border border-slate-200 rounded-lg px-2 py-1.5 text-xs">
-                      <option value="gte">이상</option>
-                      <option value="lte">이하</option>
-                    </select>
-                    <input type="number" value={rule.threshold} onChange={e => update({ threshold: parseInt(e.target.value) || 0 })}
-                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right" placeholder="기준값" />
-                    <span className="text-slate-400 text-xs shrink-0">{rule.metric === 'revenue' ? '원' : '%'} 이면</span>
-                    <input type="number" value={rule.amount} onChange={e => update({ amount: parseInt(e.target.value) || 0 })}
-                      className="w-24 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-right" placeholder="지급액" />
-                    <span className="text-slate-400 text-xs shrink-0">원 지급</span>
-                    <button onClick={() => updatePayrollSettings({ incentiveFormulaRules: ps.incentiveFormulaRules.filter((_, i) => i !== idx) })} className="text-red-400 hover:text-red-600 shrink-0">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                );
-              })}
             </div>
           </div>
         </div>
@@ -325,7 +280,7 @@ export default function AdminStaff({ initialMode = 'info' }: { initialMode?: 'in
   const [selectedId, setSelectedId] = useState<string | null>(instructors[0]?.id ?? null);
   const [form, setForm] = useState<StaffForm>(() => {
     const first = instructors[0];
-    return first ? { ...first } : blankForm();
+    return first ? { ...first } : { ...blankForm(), monthlySalary: settings.payrollSettings.baseSalaryDefault };
   });
   const [deleteConfirm, setDeleteConfirm] = useState<Instructor | null>(null);
   const [savedFlash, setSavedFlash] = useState(false);
@@ -348,7 +303,7 @@ export default function AdminStaff({ initialMode = 'info' }: { initialMode?: 'in
 
   const startNew = () => {
     setSelectedId(null);
-    setForm(blankForm());
+    setForm({ ...blankForm(), monthlySalary: settings.payrollSettings.baseSalaryDefault });
   };
 
   const handleSave = () => {

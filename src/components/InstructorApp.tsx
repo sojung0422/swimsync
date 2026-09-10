@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useStore, getPrimaryContactPhone, teachesStudent, studentsForInstructor, getFreeInstructorsAt } from '../store/StoreContext';
+import { useStore, getPrimaryContactPhone, teachesStudent, studentsForInstructor, getFreeInstructorsAt, getRoleGuideKeyForInstructor } from '../store/StoreContext';
 import type { MakeupRequest, ClassSession, LeaveType } from '../store/StoreContext';
 import {
   Calendar, Clock, Users, BookOpen, CheckCircle2, AlertCircle, UserCircle, RefreshCw,
@@ -453,6 +453,25 @@ export default function InstructorApp() {
                 </div>
               )}
             </div>
+
+            {(() => {
+              const myGuideKey = instructor ? getRoleGuideKeyForInstructor(instructor) : null;
+              const myRoleGuide = settings.roleGuides.find(rg => rg.role === myGuideKey);
+              if (!myRoleGuide || myRoleGuide.tasks.length === 0) return null;
+              return (
+                <div className="mt-5">
+                  <h2 className="text-[15px] font-bold text-slate-800 px-1 mb-3">내 업무 ({myRoleGuide.role})</h2>
+                  <div className="bg-white rounded-2xl p-4 border border-slate-100 space-y-2">
+                    {myRoleGuide.tasks.map(task => (
+                      <div key={task.id} className="flex items-center gap-2 text-sm text-slate-600">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-500 shrink-0" />
+                        {task.text}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {(settings.closedDates.length > 0 || substituteMakeupDays.some(d => d.status === 'confirmed')) && (
               <div className="mt-5">

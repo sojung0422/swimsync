@@ -216,6 +216,19 @@ export type PayrollSettings = {
   overtimeHourlyRate: number; // 추가 근무 시간당 단가
 };
 
+// 역할별(강사/차량/데스크 등) 업무를 항목 하나하나 개별 블록으로 등록 — 자유 텍스트 한 덩어리가 아니라 담당자에게 그대로 배분해 보여줄 수 있도록 구조화
+export type RoleTask = { id: string; text: string };
+export type RoleGuide = { role: string; tasks: RoleTask[] };
+
+// roleGuides의 role 키('강사'/'차량'/'데스크')는 직원의 jobType이나 role(직급) 중 실제로 그 업무를 하는 값과 매칭됨.
+// 차량 담당은 StaffRole 쪽에만 '차량' 값이 있고, 강사·데스크는 jobType 쪽 값을 그대로 씀.
+export const getRoleGuideKeyForInstructor = (instructor: { jobType: string; role: string }): string | null => {
+  if (instructor.role === '차량') return '차량';
+  if (instructor.jobType === '강사') return '강사';
+  if (instructor.jobType === '데스크') return '데스크';
+  return null;
+};
+
 export type AcademySettings = {
   academyName: string;
   branchName: string;
@@ -232,7 +245,7 @@ export type AcademySettings = {
   skipFifthWeekOccurrence: boolean; // 그 달에 5번째로 돌아오는 요일은 휴무로 처리할지 (5주차 휴무 학원용)
   operatingMode: 'standard' | 'fiveWeek'; // 운영 방침: 기존 캘린더 정확 계산(standard) 또는 5주차 대체보강 모드(fiveWeek)
   annualLeaveEnabled: boolean; // 강사에게 연차를 지급하는 학원인지 — false면 직원 관리에서 연차 관련 UI 숨김
-  roleGuides: { role: string; content: string }[]; // "업무 안내" 페이지에 실릴 역할별(강사/차량/데스크) 업무 내용 — 관리자가 직접 작성
+  roleGuides: RoleGuide[]; // "업무 안내" 페이지에 실릴 역할별(강사/차량/데스크) 업무 내용 — 관리자가 개별 업무 블록으로 등록
   freeSwimSlots: FreeSwimSlot[];
   leadCategories: string[]; // 상담일지 구분 태그 — 관리자가 추가·삭제 가능
 };
@@ -932,9 +945,23 @@ const INITIAL_SETTINGS: AcademySettings = {
   operatingMode: 'standard',
   annualLeaveEnabled: true,
   roleGuides: [
-    { role: '강사', content: '수업 15분 전 입실, 출석·진도 기록, 정기 상담 작성, 보강 요청 확인' },
-    { role: '차량', content: '운행 전 차량 점검, 정해진 시간표대로 등하원 운행, 결석·보강 학생 명단 확인' },
-    { role: '데스크', content: '전화 응대, 신규 문의 상담일지 기록, 수납 확인, 비품 재고 체크' },
+    { role: '강사', tasks: [
+      { id: 'rt1', text: '수업 15분 전 입실' },
+      { id: 'rt2', text: '출석·진도 기록' },
+      { id: 'rt3', text: '정기 상담 작성' },
+      { id: 'rt4', text: '보강 요청 확인' },
+    ] },
+    { role: '차량', tasks: [
+      { id: 'rt5', text: '운행 전 차량 점검' },
+      { id: 'rt6', text: '정해진 시간표대로 등하원 운행' },
+      { id: 'rt7', text: '결석·보강 학생 명단 확인' },
+    ] },
+    { role: '데스크', tasks: [
+      { id: 'rt8', text: '전화 응대' },
+      { id: 'rt9', text: '신규 문의 상담일지 기록' },
+      { id: 'rt10', text: '수납 확인' },
+      { id: 'rt11', text: '비품 재고 체크' },
+    ] },
   ],
   freeSwimSlots: [
     { id: 'fs1', days: ['월', '수', '금'], startTime: '20:00', endTime: '21:00', instructorId: 'i3' },
