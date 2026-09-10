@@ -16,7 +16,7 @@ export default function RegistrationApplicationForm() {
   const [note, setNote] = useState('');
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; error?: string } | null>(null);
-  const [dayFilter, setDayFilter] = useState<string | null>(null);
+  const [dayFilters, setDayFilters] = useState<string[]>([]);
   const [instructorFilter, setInstructorFilter] = useState<string>('');
   const [waitlisted, setWaitlisted] = useState(false);
 
@@ -34,12 +34,12 @@ export default function RegistrationApplicationForm() {
   const categoryInstructors = instructors.filter(i => i.status === 'active' && allOfferings.some(o => o.instructorId === i.id));
 
   const offerings = allOfferings
-    .filter(o => !dayFilter || o.days.includes(dayFilter))
+    .filter(o => dayFilters.length === 0 || o.days.some(d => dayFilters.includes(d)))
     .filter(o => !instructorFilter || o.instructorId === instructorFilter);
 
   // 원하는 강사를 골랐는데 그 요일엔 자리가 없을 때 — 같은 강사의 다른 요일 반을 대안으로 보여줌
   const instructorOtherDayOfferings = instructorFilter
-    ? allOfferings.filter(o => o.instructorId === instructorFilter && (!dayFilter || !o.days.includes(dayFilter)))
+    ? allOfferings.filter(o => o.instructorId === instructorFilter && (dayFilters.length === 0 || !o.days.some(d => dayFilters.includes(d))))
     : [];
   const noRoomWithThisInstructorAtAll = instructorFilter && instructorOtherDayOfferings.length === 0 && offerings.length === 0;
 
@@ -53,9 +53,9 @@ export default function RegistrationApplicationForm() {
     const instructorName = instructors.find(i => i.id === instructorFilter)?.name ?? '';
     addWaitlistEntry({
       studentName: applicantName.trim(), parentPhone: phone.trim(), category,
-      lessonClassId: '', desiredDays: dayFilter ? [dayFilter] : [], desiredTime: '',
+      lessonClassId: '', desiredDays: dayFilters, desiredTime: '',
       desiredInstructorId: instructorFilter || undefined,
-      note: `${instructorName} 강사 희망 대기${dayFilter ? ` · ${dayFilter}요일 희망` : ''}${note.trim() ? ` · ${note.trim()}` : ''}`,
+      note: `${instructorName} 강사 희망 대기${dayFilters.length > 0 ? ` · ${dayFilters.join('·')}요일 희망` : ''}${note.trim() ? ` · ${note.trim()}` : ''}`,
     });
     setWaitlisted(true);
   };
@@ -79,7 +79,7 @@ export default function RegistrationApplicationForm() {
           <p className="text-slate-500 text-sm mt-2">
             {instructors.find(i => i.id === instructorFilter)?.name} 강사님 반에 자리가 나면 순서대로 안내드릴게요.
           </p>
-          <button onClick={() => { setWaitlisted(false); setApplicantName(''); setPhone(''); setRegion(''); setNote(''); setSelectedKey(null); setDayFilter(null); setInstructorFilter(''); }}
+          <button onClick={() => { setWaitlisted(false); setApplicantName(''); setPhone(''); setRegion(''); setNote(''); setSelectedKey(null); setDayFilters([]); setInstructorFilter(''); }}
             className="mt-6 px-4 py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-600 text-sm font-medium transition-colors">
             새로 작성하기
           </button>
@@ -152,11 +152,11 @@ export default function RegistrationApplicationForm() {
               <p className="text-slate-700 text-sm font-semibold mb-2">희망 반 선택 (실시간 여유 자리만 표시)</p>
 
               <div className="mb-2">
-                <p className="text-slate-400 text-[11px] mb-1">요일 선택 (선택)</p>
+                <p className="text-slate-400 text-[11px] mb-1">요일 선택 (여러 개 선택 가능)</p>
                 <div className="flex flex-wrap gap-1.5">
                   {DAYS.map(d => (
-                    <button key={d} onClick={() => { setDayFilter(dayFilter === d ? null : d); setSelectedKey(null); }}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${dayFilter === d ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
+                    <button key={d} onClick={() => { setDayFilters(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]); setSelectedKey(null); }}
+                      className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${dayFilters.includes(d) ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
                       {d}
                     </button>
                   ))}
