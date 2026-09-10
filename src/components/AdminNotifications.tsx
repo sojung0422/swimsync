@@ -102,8 +102,14 @@ const TYPE_META = {
 
 type NotifType = keyof typeof TYPE_META;
 
+const STAFF_FILTER_META = {
+  all: (i: { jobType: string; role: string }) => true,
+  instructor: (i: { jobType: string; role: string }) => i.jobType === '강사',
+  vehicle: (i: { jobType: string; role: string }) => i.role === '차량',
+} as const;
+
 export default function AdminNotifications() {
-  const { students, notifications, addNotification, sendNotification, deleteNotification, notificationGroups } = useStore();
+  const { students, instructors, notifications, addNotification, sendNotification, deleteNotification, notificationGroups } = useStore();
 
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -112,11 +118,16 @@ export default function AdminNotifications() {
   const [showIndividual, setShowIndividual] = useState(false);
   const [showGroupManager, setShowGroupManager] = useState(false);
   const [recipientCategory, setRecipientCategory] = useState<'child' | 'adult'>('child');
+  const [recipientMode, setRecipientMode] = useState<'student' | 'staff'>('student');
+  const [staffFilter, setStaffFilter] = useState<'all' | 'instructor' | 'vehicle'>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterSent, setFilterSent] = useState<'all' | 'sent' | 'draft'>('all');
 
   const activeStudents = students.filter(s => s.status === 'active' && getPrimaryContactPhone(s));
   const categoryGroups = notificationGroups.filter(g => g.category === recipientCategory);
+  const activeStaff = instructors.filter(i => i.status === 'active' && STAFF_FILTER_META[staffFilter](i));
+
+  const switchRecipientMode = (mode: 'student' | 'staff') => { setRecipientMode(mode); setSelectedIds([]); };
 
   const isGroupFullySelected = (g: NotificationGroup) => g.studentIds.length > 0 && g.studentIds.every(id => selectedIds.includes(id));
   const toggleGroup = (g: NotificationGroup) => {
@@ -128,7 +139,7 @@ export default function AdminNotifications() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  const selectAll = () => setSelectedIds(activeStudents.map(s => s.id));
+  const selectAll = () => setSelectedIds(recipientMode === 'student' ? activeStudents.map(s => s.id) : activeStaff.map(i => i.id));
   const deselectAll = () => setSelectedIds([]);
 
   const applyTemplate = (t: NotifType) => {
@@ -139,7 +150,7 @@ export default function AdminNotifications() {
 
   const handleCreate = () => {
     if (!title.trim() || !content.trim() || selectedIds.length === 0) return;
-    addNotification({ type, title: title.trim(), content: content.trim(), recipientIds: selectedIds });
+    addNotification({ type, title: title.trim(), content: content.trim(), recipientIds: selectedIds, recipientType: recipientMode });
     setTitle(''); setContent(''); setSelectedIds([]);
   };
 
@@ -218,62 +229,107 @@ export default function AdminNotifications() {
                     </span>
                     <button onClick={selectAll} className="text-xs text-cyan-600 hover:text-cyan-700 transition-colors">전체 선택</button>
                     <button onClick={deselectAll} className="text-xs text-slate-400 hover:text-slate-600 transition-colors">해제</button>
-                    <button onClick={() => setShowGroupManager(true)} className="text-xs text-slate-500 hover:text-cyan-600 transition-colors flex items-center gap-1">
-                      <Settings2 className="w-3 h-3" /> 그룹 관리
-                    </button>
+                    {recipientMode === 'student' && (
+                      <button onClick={() => setShowGroupManager(true)} className="text-xs text-slate-500 hover:text-cyan-600 transition-colors flex items-center gap-1">
+                        <Settings2 className="w-3 h-3" /> 그룹 관리
+                      </button>
+                    )}
                   </div>
                 </div>
 
                 <div className="flex gap-2 mb-2">
-                  {(['child', 'adult'] as const).map(c => (
-                    <button key={c} onClick={() => setRecipientCategory(c)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${recipientCategory === c ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500'}`}>
-                      {c === 'child' ? '아동' : '성인'}
+                  {(['student', 'staff'] as const).map(m => (
+                    <button key={m} onClick={() => switchRecipientMode(m)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-colors ${recipientMode === m ? 'bg-slate-800 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-500'}`}>
+                      {m === 'student' ? '원생 (학부모 앱 알림)' : '직원 (강사·차량 — 내부 전용)'}
                     </button>
                   ))}
                 </div>
 
-                <div className="border border-slate-200 rounded-xl p-3 flex flex-wrap gap-2 bg-slate-50">
-                  {categoryGroups.map(g => {
-                    const selected = isGroupFullySelected(g);
-                    return (
-                      <button key={g.id} onClick={() => toggleGroup(g)}
-                        className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${selected ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
-                        {g.name} <span className={selected ? 'text-cyan-100' : 'text-slate-400'}>({g.studentIds.length}명)</span>
-                      </button>
-                    );
-                  })}
-                  {categoryGroups.length === 0 && (
-                    <p className="text-slate-400 text-xs py-1">
-                      {recipientCategory === 'child' ? '아동' : '성인'} 그룹이 아직 없어요. "그룹 관리"에서 정규반·유치반처럼 원하는 묶음을 만들어보세요.
-                    </p>
-                  )}
-                </div>
+                {recipientMode === 'student' ? (
+                  <>
+                    <div className="flex gap-2 mb-2">
+                      {(['child', 'adult'] as const).map(c => (
+                        <button key={c} onClick={() => setRecipientCategory(c)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${recipientCategory === c ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500'}`}>
+                          {c === 'child' ? '아동' : '성인'}
+                        </button>
+                      ))}
+                    </div>
 
-                <button
-                  onClick={() => setShowIndividual(p => !p)}
-                  className="w-full flex items-center justify-between px-4 py-2.5 mt-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors text-xs text-slate-500">
-                  <span>개별 선택으로 세부 조정하기</span>
-                  {showIndividual ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                </button>
+                    <div className="border border-slate-200 rounded-xl p-3 flex flex-wrap gap-2 bg-slate-50">
+                      {categoryGroups.map(g => {
+                        const selected = isGroupFullySelected(g);
+                        return (
+                          <button key={g.id} onClick={() => toggleGroup(g)}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium border transition-colors ${selected ? 'bg-cyan-600 border-cyan-600 text-white' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-100'}`}>
+                            {g.name} <span className={selected ? 'text-cyan-100' : 'text-slate-400'}>({g.studentIds.length}명)</span>
+                          </button>
+                        );
+                      })}
+                      {categoryGroups.length === 0 && (
+                        <p className="text-slate-400 text-xs py-1">
+                          {recipientCategory === 'child' ? '아동' : '성인'} 그룹이 아직 없어요. "그룹 관리"에서 정규반·유치반처럼 원하는 묶음을 만들어보세요.
+                        </p>
+                      )}
+                    </div>
 
-                {showIndividual && (
-                  <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
-                    {activeStudents.map(s => (
-                      <label key={s.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
-                        <input type="checkbox" checked={selectedIds.includes(s.id)} onChange={() => toggleStudent(s.id)}
-                          className="w-4 h-4 accent-cyan-600" />
-                        <div className="flex-1">
-                          <span className="text-slate-700 text-sm font-medium">{s.studentName}</span>
-                          <span className="text-slate-400 text-xs ml-2">{s.category === 'child' ? '아동' : '성인'}</span>
-                        </div>
-                        <span className="text-slate-400 text-xs">{getPrimaryContactPhone(s)}</span>
-                      </label>
-                    ))}
-                    {activeStudents.length === 0 && (
-                      <p className="px-4 py-4 text-slate-400 text-sm text-center">전화번호가 등록된 수강 중인 회원이 없습니다.</p>
+                    <button
+                      onClick={() => setShowIndividual(p => !p)}
+                      className="w-full flex items-center justify-between px-4 py-2.5 mt-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 transition-colors text-xs text-slate-500">
+                      <span>개별 선택으로 세부 조정하기</span>
+                      {showIndividual ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    </button>
+
+                    {showIndividual && (
+                      <div className="mt-2 border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                        {activeStudents.map(s => (
+                          <label key={s.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
+                            <input type="checkbox" checked={selectedIds.includes(s.id)} onChange={() => toggleStudent(s.id)}
+                              className="w-4 h-4 accent-cyan-600" />
+                            <div className="flex-1">
+                              <span className="text-slate-700 text-sm font-medium">{s.studentName}</span>
+                              <span className="text-slate-400 text-xs ml-2">{s.category === 'child' ? '아동' : '성인'}</span>
+                            </div>
+                            <span className="text-slate-400 text-xs">{getPrimaryContactPhone(s)}</span>
+                          </label>
+                        ))}
+                        {activeStudents.length === 0 && (
+                          <p className="px-4 py-4 text-slate-400 text-sm text-center">전화번호가 등록된 수강 중인 회원이 없습니다.</p>
+                        )}
+                      </div>
                     )}
-                  </div>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-amber-600 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 text-xs mb-2">
+                      학부모 앱에는 노출되지 않고, 강사 앱(연락망 탭)의 "학원 공지"로만 전달돼요.
+                    </p>
+                    <div className="flex gap-2 mb-2">
+                      {(['all', 'instructor', 'vehicle'] as const).map(f => (
+                        <button key={f} onClick={() => setStaffFilter(f)}
+                          className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-colors ${staffFilter === f ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500'}`}>
+                          {f === 'all' ? '전체 직원' : f === 'instructor' ? '강사' : '차량 직원'}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="border border-slate-200 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
+                      {activeStaff.map(i => (
+                        <label key={i.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 cursor-pointer border-b border-slate-50 last:border-0 transition-colors">
+                          <input type="checkbox" checked={selectedIds.includes(i.id)} onChange={() => toggleStudent(i.id)}
+                            className="w-4 h-4 accent-cyan-600" />
+                          <div className="flex-1">
+                            <span className="text-slate-700 text-sm font-medium">{i.name}</span>
+                            <span className="text-slate-400 text-xs ml-2">{i.role}{i.jobType === '강사' ? ' · 강사' : ''}</span>
+                          </div>
+                          <span className="text-slate-400 text-xs">{i.phone}</span>
+                        </label>
+                      ))}
+                      {activeStaff.length === 0 && (
+                        <p className="px-4 py-4 text-slate-400 text-sm text-center">해당하는 직원이 없습니다.</p>
+                      )}
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -287,7 +343,7 @@ export default function AdminNotifications() {
                 <button
                   onClick={() => {
                     if (!title.trim() || !content.trim() || selectedIds.length === 0) return;
-                    const newId = addNotification({ type, title: title.trim(), content: content.trim(), recipientIds: selectedIds });
+                    const newId = addNotification({ type, title: title.trim(), content: content.trim(), recipientIds: selectedIds, recipientType: recipientMode });
                     sendNotification(newId);
                     setTitle(''); setContent(''); setSelectedIds([]);
                   }}
@@ -327,7 +383,9 @@ export default function AdminNotifications() {
                   const meta = TYPE_META[n.type];
                   const Icon = meta.icon;
                   const isExpanded = expandedId === n.id;
-                  const recipientNames = n.recipientIds.map(id => students.find(s => s.id === id)?.studentName).filter(Boolean);
+                  const recipientNames = n.recipientType === 'staff'
+                    ? n.recipientIds.map(id => instructors.find(i => i.id === id)?.name).filter(Boolean)
+                    : n.recipientIds.map(id => students.find(s => s.id === id)?.studentName).filter(Boolean);
                   const recipientCount = n.recipientPhones?.length ? n.recipientPhones.length : n.recipientIds.length;
 
                   return (
@@ -339,6 +397,9 @@ export default function AdminNotifications() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${meta.color}`}>{meta.label}</span>
+                            {n.recipientType === 'staff' && (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold border bg-slate-100 text-slate-600 border-slate-300">직원 전용</span>
+                            )}
                             <span className="text-slate-800 text-sm font-medium truncate">{n.title}</span>
                             {n.sentAt ? (
                               <span className="flex items-center gap-1 text-[10px] text-emerald-600 font-medium">

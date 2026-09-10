@@ -318,7 +318,7 @@ export default function ParentApp() {
   };
 
   const myNotifications = notifications
-    .filter(n => n.sentAt !== null && n.recipientIds.includes(studentId))
+    .filter(n => n.sentAt !== null && n.recipientType !== 'staff' && n.recipientIds.includes(studentId))
     .sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
   const unreadNotificationCount = myNotifications.filter(n => !readNotificationIds.has(n.id)).length;
 

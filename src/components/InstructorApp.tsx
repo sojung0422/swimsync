@@ -311,7 +311,7 @@ export default function InstructorApp() {
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
     leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings, instructorNotices,
-    substituteMakeupDays,
+    substituteMakeupDays, notifications,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages' | 'contacts'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
@@ -453,6 +453,27 @@ export default function InstructorApp() {
                 </div>
               )}
             </div>
+
+            {(() => {
+              const myStaffNotices = notifications
+                .filter(n => n.recipientType === 'staff' && n.sentAt !== null && n.recipientIds.includes(instructorId))
+                .slice().sort((a, b) => (b.sentAt ?? '').localeCompare(a.sentAt ?? ''));
+              if (myStaffNotices.length === 0) return null;
+              return (
+                <div className="mt-5">
+                  <h2 className="text-[15px] font-bold text-slate-800 px-1 mb-3">학원 공지</h2>
+                  <div className="bg-white rounded-2xl p-4 border border-slate-100 divide-y divide-slate-50">
+                    {myStaffNotices.map(n => (
+                      <div key={n.id} className="py-2.5 first:pt-0 last:pb-0">
+                        <p className="text-slate-800 text-sm font-semibold">{n.title}</p>
+                        <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">{n.content}</p>
+                        <p className="text-slate-300 text-[10.5px] mt-1">{n.sentAt}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {(() => {
               const myGuideKey = instructor ? getRoleGuideKeyForInstructor(instructor) : null;

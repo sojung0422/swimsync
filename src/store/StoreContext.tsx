@@ -449,6 +449,7 @@ export type NotificationRecord = {
   title: string; content: string;
   recipientIds: string[]; sentAt: string | null;
   recipientPhones?: string[]; // 아직 등록하지 않은 상담일지 리드 등, 학생 ID가 없는 대상에게 보낼 때 사용
+  recipientType?: 'student' | 'staff'; // 'staff'면 recipientIds가 학생이 아니라 직원(instructor) ID — 학부모 앱에는 노출되지 않는 내부 전용 공지
 };
 
 // 공지 발송 시 반별로 묶어 한 번에 선택하기 위한 그룹 — 대분류(성인/아동) 아래 관리자가 직접 만드는 중분류
