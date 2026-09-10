@@ -2109,8 +2109,24 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setMandatoryMakeupRequirements(prev => [...prev, ...newMandatory]);
     return { suggestedCount: newSubDays.length, mandatoryCount: newMandatory.length };
   };
+  // 대체수업 진행일이 확정되면 그 요일에 정규로 돌아가는 반들을 실제 ClassSession으로 생성해 —
+  // 주간 스케줄표에도 잡히고, 프리랜서 강사 급여(computeFreelancerPay는 classes를 기준으로 계산)에도 반영되게 함
+  const generateMakeupClassesForDate = (dateStr: string, weekday: string) => {
+    setClasses(prev => {
+      let result = prev;
+      students.forEach(s => {
+        if (s.status !== 'active') return;
+        const relevantEnrollments = getAllEnrollments(s).filter(e => e.status === 'active' && e.regularDays.includes(weekday));
+        if (relevantEnrollments.length === 0) return;
+        result = buildClassesForStudent(s.id, relevantEnrollments, parseISO(dateStr), 1, result);
+      });
+      return result;
+    });
+  };
   const confirmSubstituteMakeupDay = (id: string) => {
+    const day = substituteMakeupDays.find(d => d.id === id);
     setSubstituteMakeupDays(prev => prev.map(d => d.id === id ? { ...d, status: 'confirmed' } : d));
+    if (day) generateMakeupClassesForDate(day.date, day.weekday);
   };
   const assignMandatoryMakeup = (id: string, date: string) => {
     setMandatoryMakeupRequirements(prev => prev.map(r => r.id === id ? { ...r, assignedDate: date, status: 'scheduled' } : r));
@@ -2122,6 +2138,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
     setSubstituteMakeupDays(prev => [...prev, {
       id: `smd_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, year, weekday, date, coversMonth: '', status: 'confirmed', source: 'manual',
     }]);
+    generateMakeupClassesForDate(date, weekday);
   };
   const removeSubstituteMakeupDay = (id: string) => setSubstituteMakeupDays(prev => prev.filter(d => d.id !== id));
   const addMandatoryMakeupDay = (date: string, note: string = '') => {
