@@ -1562,10 +1562,16 @@ function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s
             <p className="text-slate-400 text-[11px] truncate">#{student.studentNumber} · {student.regularDays.join('·')} {student.regularTime}{instructor && ` · ${instructor.name}`}</p>
           </div>
         </div>
+        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-2 text-[10.5px] text-slate-500">
+          <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 text-slate-300 shrink-0" />{getPrimaryContactPhone(student) || '-'}</span>
+          <span className="flex items-center gap-1 truncate"><Wallet className="w-3 h-3 text-slate-300 shrink-0" />{student.paymentAmount.toLocaleString()}원</span>
+        </div>
         <div className="flex items-center gap-1.5 flex-wrap mt-2">
           <span className={`px-2 py-0.5 rounded-full text-[10.5px] border ${levelColor[student.level] ?? levelColor['초급']}`}>{student.level}</span>
           <span className={`px-2 py-0.5 rounded-full text-[10.5px] border ${status.color}`}>{status.text}</span>
-          {!student.paymentCompleted && <span className="px-2 py-0.5 rounded-full text-[10.5px] border bg-amber-50 text-amber-700 border-amber-200">미결제</span>}
+          {student.paymentCompleted
+            ? <span className="px-2 py-0.5 rounded-full text-[10.5px] border bg-emerald-50 text-emerald-700 border-emerald-200">결제완료</span>
+            : <span className="px-2 py-0.5 rounded-full text-[10.5px] border bg-amber-50 text-amber-700 border-amber-200">미결제</span>}
         </div>
       </div>
     );

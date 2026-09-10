@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { LeadRecord } from '../store/StoreContext';
-import { NotebookPen, Plus, Trash2, X, Send, CheckCircle2, Settings2, ArrowRightCircle } from 'lucide-react';
+import { NotebookPen, Plus, Trash2, X, Send, CheckCircle2, Settings2, ArrowRightCircle, Image as ImageIcon, Star, Bookmark } from 'lucide-react';
 import { format } from 'date-fns';
 
 const STATUS_META: Record<LeadRecord['status'], { label: string; color: string }> = {
@@ -96,29 +96,138 @@ function CategoryManagerModal({ categories, onClose, onAdd, onRemove }: {
   );
 }
 
+function BulkSmsModal({ recipients, onClose }: { recipients: LeadRecord[]; onClose: () => void }) {
+  const { messageTemplates, addMessageTemplate, deleteMessageTemplate, addNotification, sendNotification } = useStore();
+  const [content, setContent] = useState('');
+  const [images, setImages] = useState<string[]>([]);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateLabel, setTemplateLabel] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => setImages(prev => [...prev, ev.target?.result as string]);
+      reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+  };
+
+  const applyTemplate = (t: { content: string }) => setContent(t.content);
+
+  const confirmSaveTemplate = () => {
+    if (!content.trim()) return;
+    addMessageTemplate(templateLabel.trim() || content.trim().slice(0, 14), content.trim());
+    setTemplateLabel('');
+    setSavingTemplate(false);
+  };
+
+  const handleSend = () => {
+    if (!content.trim()) return;
+    const phones = recipients.map(r => r.phone).filter(Boolean);
+    if (phones.length === 0) return;
+    const id = addNotification({ type: 'event', title: '이벤트 안내 (상담일지 대상 발송)', content: content.trim(), recipientIds: [], recipientPhones: phones, images });
+    sendNotification(id);
+    setSent(true);
+    setTimeout(onClose, 1200);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
+          <div>
+            <h2 className="text-[15px] font-semibold text-slate-800">단체 문자 발송</h2>
+            <p className="text-slate-400 text-xs mt-0.5">{recipients.length}명에게 보내요 — {recipients.slice(0, 3).map(r => r.name).join(', ')}{recipients.length > 3 ? ` 외 ${recipients.length - 3}명` : ''}</p>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-700"><X className="w-5 h-5" /></button>
+        </div>
+
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {messageTemplates.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1"><Star className="w-3.5 h-3.5 text-amber-400" /> 자주 사용하는 내용</p>
+              <div className="flex flex-wrap gap-1.5">
+                {messageTemplates.map(t => (
+                  <div key={t.id} className="group relative">
+                    <button onClick={() => applyTemplate(t)} title={t.content}
+                      className="px-2.5 py-1.5 pr-6 rounded-lg text-xs font-medium border bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 transition-colors">
+                      {t.label}
+                    </button>
+                    <button onClick={() => deleteMessageTemplate(t.id)} title="삭제"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 text-amber-400 hover:text-red-500 text-[10px]">✕</button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1">발송할 메시지 내용</label>
+            <textarea className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm resize-none focus:outline-none focus:border-cyan-500 transition-colors"
+              rows={4} value={content} onChange={e => setContent(e.target.value)} placeholder="메시지 내용을 입력하세요 (템플릿을 불러온 뒤 수정해도 돼요)" />
+            {!savingTemplate ? (
+              <button onClick={() => setSavingTemplate(true)} disabled={!content.trim()}
+                className="mt-1.5 flex items-center gap-1 text-cyan-600 hover:text-cyan-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium">
+                <Bookmark className="w-3.5 h-3.5" /> 자주 쓰는 내용으로 저장
+              </button>
+            ) : (
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <input className="flex-1 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs" placeholder="템플릿 이름 (선택, 비우면 내용 앞부분 사용)"
+                  value={templateLabel} onChange={e => setTemplateLabel(e.target.value)} autoFocus />
+                <button onClick={confirmSaveTemplate} className="px-2.5 py-1.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg text-xs font-medium transition-colors shrink-0">저장</button>
+                <button onClick={() => setSavingTemplate(false)} className="px-2 py-1.5 text-slate-400 hover:text-slate-600 text-xs shrink-0">취소</button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-500 mb-1.5 flex items-center gap-1"><ImageIcon className="w-3.5 h-3.5" /> 이미지 첨부 (여러 장 가능)</label>
+            <div className="flex flex-wrap gap-2">
+              {images.map((src, i) => (
+                <div key={i} className="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 shrink-0">
+                  <img src={src} className="w-full h-full object-cover" alt="첨부 이미지" />
+                  <button onClick={() => setImages(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute top-0.5 right-0.5 w-4 h-4 bg-black/60 rounded-full text-white text-[9px] flex items-center justify-center">✕</button>
+                </div>
+              ))}
+              <label className="w-16 h-16 rounded-lg border-2 border-dashed border-slate-200 flex items-center justify-center cursor-pointer hover:bg-slate-50 transition-colors shrink-0">
+                <ImageIcon className="w-4 h-4 text-slate-400" />
+                <input type="file" accept="image/*" multiple className="hidden" onChange={handleImageUpload} />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6 pt-0 shrink-0">
+          {sent ? (
+            <p className="text-emerald-600 text-sm font-semibold flex items-center justify-center gap-1.5 py-2.5"><CheckCircle2 className="w-4 h-4" /> 발송했어요.</p>
+          ) : (
+            <button onClick={handleSend} disabled={!content.trim()}
+              className="w-full flex items-center justify-center gap-1.5 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors">
+              <Send className="w-4 h-4" /> {recipients.length}명에게 발송
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminCounselingLog() {
-  const { leads, settings, addLead, updateLead, deleteLead, convertLeadToEnrolled, updateSettings, addNotification, sendNotification } = useStore();
+  const { leads, settings, addLead, updateLead, deleteLead, convertLeadToEnrolled, updateSettings } = useStore();
   const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
   const [modal, setModal] = useState<{ mode: 'add' | 'edit'; lead?: LeadRecord } | null>(null);
   const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [selectedForSms, setSelectedForSms] = useState<string[]>([]);
-  const [smsContent, setSmsContent] = useState('');
-  const [smsSentFlash, setSmsSentFlash] = useState(false);
+  const [showBulkSms, setShowBulkSms] = useState(false);
 
   const filtered = leads.filter(l => categoryFilter === 'all' || l.category === categoryFilter).slice().reverse();
-  const unconvertedLeads = leads.filter(l => l.status === 'open' && l.category !== '정규수강');
+  const isSmsEligible = (l: LeadRecord) => l.status === 'open' && l.category !== '정규수강' && !!l.phone;
 
   const toggleSmsTarget = (id: string) => setSelectedForSms(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-
-  const sendBulkSms = () => {
-    const phones = leads.filter(l => selectedForSms.includes(l.id)).map(l => l.phone).filter(Boolean);
-    if (phones.length === 0 || !smsContent.trim()) return;
-    const id = addNotification({ type: 'event', title: '이벤트 안내 (상담일지 대상 발송)', content: smsContent.trim(), recipientIds: [], recipientPhones: phones });
-    sendNotification(id);
-    setSmsContent(''); setSelectedForSms([]);
-    setSmsSentFlash(true);
-    setTimeout(() => setSmsSentFlash(false), 2000);
-  };
+  const smsRecipients = leads.filter(l => selectedForSms.includes(l.id));
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -140,52 +249,32 @@ export default function AdminCounselingLog() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto p-6 space-y-5">
+        <div className="max-w-6xl mx-auto p-6 space-y-5">
 
-          {/* 대량 SMS */}
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
-              <Send className="w-4 h-4 text-cyan-600" />
-              <h2 className="text-[14px] font-semibold text-slate-700">미등록 리드 대량 SMS 발송</h2>
+          {/* 필터 + 대량 SMS 액션 */}
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button onClick={() => setCategoryFilter('all')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${categoryFilter === 'all' ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                전체 {leads.length}
+              </button>
+              {settings.leadCategories.map(c => {
+                const count = leads.filter(l => l.category === c).length;
+                if (count === 0) return null;
+                return (
+                  <button key={c} onClick={() => setCategoryFilter(c)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${categoryFilter === c ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
+                    {c} {count}
+                  </button>
+                );
+              })}
             </div>
-            <div className="p-6 space-y-3">
-              <p className="text-slate-400 text-xs">실제 등록하지 않은 문의자에게 이벤트·프로모션을 한 번에 안내할 수 있어요.</p>
-              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto border border-slate-100 rounded-xl p-2">
-                {unconvertedLeads.length === 0 && <span className="text-slate-300 text-xs py-1">대상 리드가 없습니다.</span>}
-                {unconvertedLeads.map(l => (
-                  <label key={l.id} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border cursor-pointer transition-colors ${selectedForSms.includes(l.id) ? 'bg-cyan-50 border-cyan-300 text-cyan-700' : 'bg-white border-slate-200 text-slate-500'}`}>
-                    <input type="checkbox" className="w-3.5 h-3.5 accent-cyan-600" checked={selectedForSms.includes(l.id)} onChange={() => toggleSmsTarget(l.id)} />
-                    {l.name} ({l.phone})
-                  </label>
-                ))}
-              </div>
-              <div className="flex items-center gap-2">
-                <input className="flex-1 border border-slate-200 rounded-xl px-3 py-2.5 text-sm" placeholder="발송할 메시지 내용" value={smsContent} onChange={e => setSmsContent(e.target.value)} />
-                <button onClick={sendBulkSms} disabled={selectedForSms.length === 0 || !smsContent.trim()}
-                  className="flex items-center gap-1.5 px-4 py-2.5 bg-cyan-600 hover:bg-cyan-700 disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors shrink-0">
-                  <Send className="w-4 h-4" /> {selectedForSms.length > 0 ? `${selectedForSms.length}명에게 발송` : '발송'}
-                </button>
-              </div>
-              {smsSentFlash && <p className="text-emerald-600 text-xs font-semibold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> 발송했어요.</p>}
-            </div>
-          </div>
-
-          {/* 필터 */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => setCategoryFilter('all')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${categoryFilter === 'all' ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-              전체 {leads.length}
-            </button>
-            {settings.leadCategories.map(c => {
-              const count = leads.filter(l => l.category === c).length;
-              if (count === 0) return null;
-              return (
-                <button key={c} onClick={() => setCategoryFilter(c)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${categoryFilter === c ? 'bg-cyan-50 border-cyan-200 text-cyan-700' : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-50'}`}>
-                  {c} {count}
-                </button>
-              );
-            })}
+            {selectedForSms.length > 0 && (
+              <button onClick={() => setShowBulkSms(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-semibold transition-colors animate-fade-up">
+                <Send className="w-3.5 h-3.5" /> 단체 문자 ({selectedForSms.length}명 선택)
+              </button>
+            )}
           </div>
 
           {/* 상담 기록 목록 */}
@@ -194,6 +283,7 @@ export default function AdminCounselingLog() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-slate-100 bg-slate-50">
+                    <th className="px-4 py-3 w-8"></th>
                     {['구분', '날짜', '상담자', '전화번호', '내용', '상태', '작업'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-500">{h}</th>
                     ))}
@@ -201,10 +291,16 @@ export default function AdminCounselingLog() {
                 </thead>
                 <tbody>
                   {filtered.length === 0 && (
-                    <tr><td colSpan={7} className="px-4 py-8 text-center text-slate-400 text-sm">해당하는 상담 기록이 없습니다.</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">해당하는 상담 기록이 없습니다.</td></tr>
                   )}
                   {filtered.map(l => (
                     <tr key={l.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+                      <td className="px-4 py-3">
+                        {isSmsEligible(l) && (
+                          <input type="checkbox" className="w-4 h-4 accent-cyan-600 cursor-pointer" title="단체 문자 대상으로 선택"
+                            checked={selectedForSms.includes(l.id)} onChange={() => toggleSmsTarget(l.id)} />
+                        )}
+                      </td>
                       <td className="px-4 py-3">
                         <span className="px-2 py-0.5 rounded-full text-xs font-medium border bg-violet-50 text-violet-700 border-violet-200">{l.category}</span>
                       </td>
@@ -255,6 +351,9 @@ export default function AdminCounselingLog() {
           onAdd={c => updateSettings({ leadCategories: [...settings.leadCategories, c] })}
           onRemove={c => updateSettings({ leadCategories: settings.leadCategories.filter(x => x !== c) })}
         />
+      )}
+      {showBulkSms && (
+        <BulkSmsModal recipients={smsRecipients} onClose={() => { setShowBulkSms(false); setSelectedForSms([]); }} />
       )}
     </div>
   );

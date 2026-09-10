@@ -744,11 +744,14 @@ function paymentStatusCategory(s: import('../store/StoreContext').Student): Paym
 }
 
 function PaymentStatusView() {
-  const { students, instructors, paymentPlans, updateStudent } = useStore();
+  const { students, instructors, lessonClasses, paymentPlans, updateStudent } = useStore();
   const [instructorFilter, setInstructorFilter] = useState<'all' | string>('all');
+  const [classFilter, setClassFilter] = useState<'all' | string>('all');
   const [categoryFilter, setCategoryFilter] = useState<'all' | PaymentStatusCategory>('all');
 
-  const scoped = students.filter(s => s.status !== 'inactive' && (instructorFilter === 'all' || s.instructorId === instructorFilter));
+  const scoped = students.filter(s => s.status !== 'inactive'
+    && (instructorFilter === 'all' || s.instructorId === instructorFilter)
+    && (classFilter === 'all' || s.lessonClassId === classFilter));
   const categorized = scoped.map(s => ({ student: s, category: paymentStatusCategory(s) }));
   const filtered = categorized.filter(c => categoryFilter === 'all' || c.category === categoryFilter);
 
@@ -764,6 +767,12 @@ function PaymentStatusView() {
           className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:outline-none focus:border-cyan-500">
           <option value="all">전체 강사</option>
           {instructors.filter(i => i.status === 'active').map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+        </select>
+        <span className="text-slate-400 text-xs shrink-0">반</span>
+        <select value={classFilter} onChange={e => setClassFilter(e.target.value)}
+          className="border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-600 focus:outline-none focus:border-cyan-500">
+          <option value="all">전체 반</option>
+          {lessonClasses.map(lc => <option key={lc.id} value={lc.id}>{lc.name}</option>)}
         </select>
       </div>
 
@@ -785,18 +794,19 @@ function PaymentStatusView() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-slate-100 bg-slate-50">
-                {['이름', '담당 강사', '구분', '수강 플랜', '월 수강료', '결제일', '갱신일', '분류'].map(h => (
+                {['이름', '담당 강사', '반', '구분', '수강 플랜', '월 수강료', '결제일', '갱신일', '분류'].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-500">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="px-4 py-8 text-center text-slate-400 text-sm">해당하는 강습생이 없습니다.</td></tr>
+                <tr><td colSpan={9} className="px-4 py-8 text-center text-slate-400 text-sm">해당하는 강습생이 없습니다.</td></tr>
               )}
               {filtered.map(({ student: s, category }) => {
                 const plan = paymentPlans.find(p => p.id === s.paymentPlanId);
                 const instructor = instructors.find(i => i.id === s.instructorId);
+                const lc = lessonClasses.find(l => l.id === s.lessonClassId);
                 return (
                   <tr key={s.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3">
@@ -808,6 +818,7 @@ function PaymentStatusView() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-slate-500 text-xs">{instructor?.name ?? '-'}</td>
+                    <td className="px-4 py-3 text-slate-500 text-xs">{lc?.name ?? '미배정'}</td>
                     <td className="px-4 py-3">
                       <span className={`px-2 py-0.5 rounded-full text-xs border ${s.category === 'child' ? 'bg-sky-50 text-sky-700 border-sky-200' : 'bg-indigo-50 text-indigo-700 border-indigo-200'}`}>
                         {s.category === 'child' ? '아동' : '성인'}

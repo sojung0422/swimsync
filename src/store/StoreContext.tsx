@@ -479,7 +479,11 @@ export type NotificationRecord = {
   recipientIds: string[]; sentAt: string | null;
   recipientPhones?: string[]; // 아직 등록하지 않은 상담일지 리드 등, 학생 ID가 없는 대상에게 보낼 때 사용
   recipientType?: 'student' | 'staff'; // 'staff'면 recipientIds가 학생이 아니라 직원(instructor) ID — 학부모 앱에는 노출되지 않는 내부 전용 공지
+  images?: string[]; // 문자에 첨부한 이미지(데이터 URL) — 여러 장 첨부 가능
 };
+
+// 자주 쓰는 문자 내용을 저장해뒀다가 클릭 한 번으로 불러와 재사용(불러온 뒤에도 자유롭게 수정 가능)
+export type MessageTemplate = { id: string; label: string; content: string };
 
 // 공지 발송 시 반별로 묶어 한 번에 선택하기 위한 그룹 — 대분류(성인/아동) 아래 관리자가 직접 만드는 중분류
 export type NotificationGroup = {
@@ -1201,6 +1205,83 @@ const INITIAL_STUDENTS: Student[] = [
     category: 'child', paymentPlanId: 'pp2', division: '정규반',
     additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '',
   },
+  // 아래 5명은 실제 재원생이 아니라, 증감·퇴원 통계 차트에 과거 추이를 보여주기 위한 퇴원 이력 전용 데이터(status: 'inactive').
+  // wr_h1~wr_h5(과거 승인된 퇴원 요청)이 이 학생들을 가리킴 — 현재 재원 중인 학생을 절대 재사용하지 않음(재원 중인데 퇴원 이력도 있는 모순 방지).
+  {
+    id: 's_wd1', studentNumber: '2024-101', nickname: '',
+    parentName: '조어머니', studentName: '조민준',
+    age: 9, birthDate: '2016-09-10', registrationDate: '2024-09-01', gender: '남',
+    lessonClassId: 'lc2', level: '초급', region: '서울시 송파구',
+    phone: '', motherPhone: '010-1234-5001', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i2', regularDays: ['화', '목'], regularTime: '15:00',
+    notes: '', progress: '', status: 'inactive',
+    paymentAmount: 285000, paymentDate: '', paymentRenewalDate: '',
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 송파구', vehicleId: '',
+    category: 'child', paymentPlanId: 'pp2', division: '유치부',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '전학',
+  },
+  {
+    id: 's_wd2', studentNumber: '2024-102', nickname: '',
+    parentName: '배어머니', studentName: '배서준',
+    age: 8, birthDate: '2017-04-22', registrationDate: '2024-10-01', gender: '남',
+    lessonClassId: 'lc1', level: '초급', region: '서울시 강남구',
+    phone: '', motherPhone: '010-1234-5002', fatherPhone: '', smsRecipients: ['mother'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i4', regularDays: ['화', '목'], regularTime: '16:00',
+    notes: '', progress: '', status: 'inactive',
+    paymentAmount: 275000, paymentDate: '', paymentRenewalDate: '',
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 강남구', vehicleId: '',
+    category: 'child', paymentPlanId: 'pp3', division: '정규반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '거리가 멀어서',
+  },
+  {
+    id: 's_wd3', studentNumber: '2024-103', nickname: '',
+    parentName: '', studentName: '우하은',
+    age: 9, birthDate: '2016-06-15', registrationDate: '2024-11-01', gender: '여',
+    lessonClassId: 'lc1', level: '초급', region: '서울시 강남구',
+    phone: '', motherPhone: '', fatherPhone: '010-1234-5003', smsRecipients: ['father'],
+    passType: '주 2회', totalClasses: 8, rescheduleLimit: 2, usedReschedules: 0,
+    instructorId: 'i1', regularDays: ['월', '수'], regularTime: '15:00',
+    notes: '', progress: '', status: 'inactive',
+    paymentAmount: 285000, paymentDate: '', paymentRenewalDate: '',
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 강남구', vehicleId: '',
+    category: 'child', paymentPlanId: 'pp2', division: '정규반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '흥미 저하',
+  },
+  {
+    id: 's_wd4', studentNumber: '2024-104', nickname: '',
+    parentName: '', studentName: '신유진',
+    age: 27, birthDate: '1999-02-18', registrationDate: '2024-12-01', gender: '여',
+    lessonClassId: 'lc5', level: '중급', region: '서울시 강남구',
+    phone: '010-1234-5004', motherPhone: '', fatherPhone: '', smsRecipients: ['self'],
+    passType: '주 3회', totalClasses: 12, rescheduleLimit: 3, usedReschedules: 0,
+    instructorId: 'i3', regularDays: ['월', '수', '금'], regularTime: '19:00',
+    notes: '', progress: '', status: 'inactive',
+    paymentAmount: 130000, paymentDate: '', paymentRenewalDate: '',
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 강남구', vehicleId: '',
+    category: 'adult', paymentPlanId: 'pp4', division: '성인반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '개인 사정',
+  },
+  {
+    id: 's_wd5', studentNumber: '2024-105', nickname: '',
+    parentName: '', studentName: '장현우',
+    age: 33, birthDate: '1993-03-30', registrationDate: '2025-01-01', gender: '남',
+    lessonClassId: 'lc5', level: '고급', region: '서울시 서초구',
+    phone: '010-1234-5005', motherPhone: '', fatherPhone: '', smsRecipients: ['self'],
+    passType: '주 5회', totalClasses: 20, rescheduleLimit: 4, usedReschedules: 0,
+    instructorId: 'i3', regularDays: ['월', '화', '수', '목', '금'], regularTime: '18:00',
+    notes: '', progress: '', status: 'inactive',
+    paymentAmount: 180000, paymentDate: '', paymentRenewalDate: '',
+    paymentCompleted: false, studentPhoto: '',
+    address: '서울시 서초구', vehicleId: '',
+    category: 'adult', paymentPlanId: 'pp5', division: '성인반',
+    additionalEnrollments: [], pauseReason: '', expectedReturnDate: '', withdrawalReason: '이사',
+  },
 ];
 
 // 학생의 모든 등록반(primary + 추가)에 대해 지정한 날짜 범위만큼 ClassSession을 생성/병합한다.
@@ -1287,16 +1368,17 @@ const INITIAL_INSTRUCTOR_NOTICES: InstructorNotice[] = [
 const INITIAL_WITHDRAWAL_REQUESTS: WithdrawalRequest[] = [
   { id: 'wr1', studentId: 's8', enrollmentId: 'primary', reason: '해외 이주 예정', requestedBy: 'parent',
     status: 'pending', requestedAt: format(addDays(new Date(), -2), 'yyyy-MM-dd HH:mm'), resolvedAt: '' },
-  // 통계용 과거 승인 이력(실제 학생 상태와 무관하게 차트 표시를 위한 이력 데이터)
-  { id: 'wr_h1', studentId: 's3', enrollmentId: 'primary', reason: '전학', requestedBy: 'parent', status: 'approved',
+  // 통계용 과거 승인 이력 — 실제 재원 중인 학생을 재사용하면 "재원 중인데 퇴원 이력도 있다"는 모순이 생기므로,
+  // 전용 퇴원 이력 학생(s_wd1~s_wd5, status: 'inactive')만 가리킴
+  { id: 'wr_h1', studentId: 's_wd1', enrollmentId: 'primary', reason: '전학', requestedBy: 'parent', status: 'approved',
     requestedAt: format(addMonths(new Date(), -5), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -5), 'yyyy-MM-dd HH:mm'), refundAmount: 71300 },
-  { id: 'wr_h2', studentId: 's4', enrollmentId: 'primary', reason: '거리가 멀어서', requestedBy: 'parent', status: 'approved',
+  { id: 'wr_h2', studentId: 's_wd2', enrollmentId: 'primary', reason: '거리가 멀어서', requestedBy: 'parent', status: 'approved',
     requestedAt: format(addMonths(new Date(), -4), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -4), 'yyyy-MM-dd HH:mm'), refundAmount: 45000 },
-  { id: 'wr_h3', studentId: 's5', enrollmentId: 'primary', reason: '흥미 저하', requestedBy: 'parent', status: 'approved',
+  { id: 'wr_h3', studentId: 's_wd3', enrollmentId: 'primary', reason: '흥미 저하', requestedBy: 'parent', status: 'approved',
     requestedAt: format(addMonths(new Date(), -3), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -3), 'yyyy-MM-dd HH:mm'), refundAmount: 62000 },
-  { id: 'wr_h4', studentId: 's6', enrollmentId: 'primary', reason: '개인 사정', requestedBy: 'parent', status: 'approved',
+  { id: 'wr_h4', studentId: 's_wd4', enrollmentId: 'primary', reason: '개인 사정', requestedBy: 'parent', status: 'approved',
     requestedAt: format(addMonths(new Date(), -2), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -2), 'yyyy-MM-dd HH:mm'), refundAmount: 38500 },
-  { id: 'wr_h5', studentId: 's7', enrollmentId: 'primary', reason: '이사', requestedBy: 'parent', status: 'approved',
+  { id: 'wr_h5', studentId: 's_wd5', enrollmentId: 'primary', reason: '이사', requestedBy: 'parent', status: 'approved',
     requestedAt: format(addMonths(new Date(), -1), 'yyyy-MM-dd HH:mm'), resolvedAt: format(addMonths(new Date(), -1), 'yyyy-MM-dd HH:mm'), refundAmount: 54200 },
 ];
 
@@ -1476,6 +1558,10 @@ type StoreContextType = {
   addFeedbackNote: (n: Omit<FeedbackNote, 'id' | 'createdAt' | 'status'>) => void;
   markFeedbackReviewed: (id: string) => void;
   deleteFeedbackNote: (id: string) => void;
+  // 자주 쓰는 문자 내용
+  messageTemplates: MessageTemplate[];
+  addMessageTemplate: (label: string, content: string) => void;
+  deleteMessageTemplate: (id: string) => void;
   // 입회원서
   enrollmentApplications: EnrollmentApplication[];
   saveEnrollmentApplication: (studentId: string, data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => void;
@@ -1548,6 +1634,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [mandatoryMakeupDays, setMandatoryMakeupDays] = useState<MandatoryMakeupDay[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [feedbackNotes, setFeedbackNotes] = useState<FeedbackNote[]>([]);
+  const [messageTemplates, setMessageTemplates] = useState<MessageTemplate[]>([]);
   const [enrollmentApplications, setEnrollmentApplications] = useState<EnrollmentApplication[]>([]);
   const [careChecklist, setCareChecklist] = useState<Record<string, boolean>>({});
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
@@ -2160,6 +2247,12 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const markFeedbackReviewed = (id: string) => setFeedbackNotes(prev => prev.map(n => n.id === id ? { ...n, status: 'reviewed' } : n));
   const deleteFeedbackNote = (id: string) => setFeedbackNotes(prev => prev.filter(n => n.id !== id));
 
+  // ── 자주 쓰는 문자 내용 ────────────────────────────────────────
+  const addMessageTemplate = (label: string, content: string) => {
+    setMessageTemplates(prev => [...prev, { id: `tpl_${Date.now()}`, label, content }]);
+  };
+  const deleteMessageTemplate = (id: string) => setMessageTemplates(prev => prev.filter(t => t.id !== id));
+
   // ── 입회원서 ──────────────────────────────────────────────────
   const saveEnrollmentApplication = (studentId: string, data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => {
     setEnrollmentApplications(prev => {
@@ -2328,6 +2421,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addManualSubstituteMakeupDay, removeSubstituteMakeupDay, mandatoryMakeupDays, addMandatoryMakeupDay, removeMandatoryMakeupDay,
       vendors, addVendor, updateVendor, deleteVendor,
       feedbackNotes, addFeedbackNote, markFeedbackReviewed, deleteFeedbackNote,
+      messageTemplates, addMessageTemplate, deleteMessageTemplate,
       enrollmentApplications, saveEnrollmentApplication,
       careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, updateInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
       payrollRecords, issuePayroll,
