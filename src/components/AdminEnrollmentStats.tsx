@@ -1,7 +1,11 @@
 import { useStore } from '../store/StoreContext';
 import { UserPlus2, UserMinus, TrendingUp, Users, Wallet } from 'lucide-react';
 import { format, subMonths } from 'date-fns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell } from 'recharts';
+
+const VISIT_ROUTE_COLORS: Record<string, string> = {
+  '인터넷검색': '#0891b2', '홍보물': '#8b5cf6', '지인추천': '#f59e0b', '직접': '#10b981', '기타': '#94a3b8',
+};
 
 const SERIES = [
   { key: 'new', label: '신규', color: '#0891b2' },
@@ -41,7 +45,7 @@ function RefundTooltip({ active, payload, label }: any) {
 }
 
 export default function AdminEnrollmentStats() {
-  const { students, withdrawalRequests } = useStore();
+  const { students, withdrawalRequests, enrollmentApplications } = useStore();
 
   const months = Array.from({ length: 12 }, (_, i) => format(subMonths(new Date(), 11 - i), 'yyyy-MM'));
 
@@ -70,6 +74,10 @@ export default function AdminEnrollmentStats() {
       퇴원율: base > 0 ? Math.round((d.withdrawn / base) * 1000) / 10 : 0,
     };
   });
+
+  const visitRouteData = Object.entries(
+    enrollmentApplications.reduce((acc, a) => { acc[a.visitRoute] = (acc[a.visitRoute] ?? 0) + 1; return acc; }, {} as Record<string, number>)
+  ).map(([route, count]) => ({ route, count })).sort((a, b) => b.count - a.count);
 
   const thisMonth = months[months.length - 1];
   const thisMonthNew = chartData[chartData.length - 1].new;
@@ -215,6 +223,30 @@ export default function AdminEnrollmentStats() {
                   <Line type="monotone" dataKey="퇴원율" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center gap-2">
+              <Users className="w-4 h-4 text-cyan-600" />
+              <h2 className="text-[14px] font-semibold text-slate-700">방문경로 (입회 신청서 기준, 누적 {enrollmentApplications.length}건)</h2>
+            </div>
+            <div className="p-6">
+              {visitRouteData.length === 0 ? (
+                <p className="text-slate-400 text-sm text-center py-8">아직 작성된 입회 신청서가 없습니다.</p>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={visitRouteData} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+                    <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+                    <YAxis type="category" dataKey="route" tick={{ fontSize: 12, fill: '#475569' }} width={70} />
+                    <Tooltip formatter={(v: number) => `${v}명`} />
+                    <Bar dataKey="count" name="인원" radius={[0, 6, 6, 0]}>
+                      {visitRouteData.map(d => <Cell key={d.route} fill={VISIT_ROUTE_COLORS[d.route] ?? '#0891b2'} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </div>
         </div>

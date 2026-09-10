@@ -414,6 +414,21 @@ export type RegistrationApplication = {
   submittedAt: string;
 };
 
+// 입회원서 — 종이 신청서(방문경로/수업 관련 기본정보/특이사항/기타사항)를 학생 레코드에 디지털로 보관
+export type VisitRoute = '인터넷검색' | '홍보물' | '지인추천' | '직접' | '기타';
+export type SwimLevelSelfReport = '매우잘함' | '잘함' | '보통' | '부족함' | '매우부족함';
+
+export type EnrollmentApplication = {
+  id: string; studentId: string;
+  visitRoute: VisitRoute; visitRouteNote: string;
+  hasFearOfWater: boolean;
+  priorAcademy: string; priorStrokes: string[]; priorMonths: number;
+  swimLevelSelfReport: SwimLevelSelfReport;
+  healthNote: string; hasAllergy: boolean; allergyNote: string; habitNote: string; teacherNote: string;
+  desiredTeacherNote: string; cashReceiptNumber: string;
+  guardianName: string; submittedAt: string;
+};
+
 // 학부모·강사·데스크가 앱에서 남기는 건의/의견 — 전부 반영되는 건 아니고, 관리자가 검토 후 필요하면 참고하는 용도
 export type FeedbackNote = {
   id: string; sourceApp: 'parent' | 'instructor'; authorName: string; content: string; createdAt: string; status: 'new' | 'reviewed';
@@ -1461,6 +1476,9 @@ type StoreContextType = {
   addFeedbackNote: (n: Omit<FeedbackNote, 'id' | 'createdAt' | 'status'>) => void;
   markFeedbackReviewed: (id: string) => void;
   deleteFeedbackNote: (id: string) => void;
+  // 입회원서
+  enrollmentApplications: EnrollmentApplication[];
+  saveEnrollmentApplication: (studentId: string, data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => void;
   // 케어팀 체크리스트 / 비품 관리
   careChecklist: Record<string, boolean>;
   toggleCareChecklistItem: (key: string) => void;
@@ -1529,6 +1547,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [mandatoryMakeupDays, setMandatoryMakeupDays] = useState<MandatoryMakeupDay[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [feedbackNotes, setFeedbackNotes] = useState<FeedbackNote[]>([]);
+  const [enrollmentApplications, setEnrollmentApplications] = useState<EnrollmentApplication[]>([]);
   const [careChecklist, setCareChecklist] = useState<Record<string, boolean>>({});
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
     { id: 'inv1', name: '가방(빨강)' }, { id: 'inv2', name: '가방(파랑)' }, { id: 'inv3', name: '수건' }, { id: 'inv4', name: '흰색 수모' },
@@ -2118,6 +2137,15 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const markFeedbackReviewed = (id: string) => setFeedbackNotes(prev => prev.map(n => n.id === id ? { ...n, status: 'reviewed' } : n));
   const deleteFeedbackNote = (id: string) => setFeedbackNotes(prev => prev.filter(n => n.id !== id));
 
+  // ── 입회원서 ──────────────────────────────────────────────────
+  const saveEnrollmentApplication = (studentId: string, data: Omit<EnrollmentApplication, 'id' | 'studentId'>) => {
+    setEnrollmentApplications(prev => {
+      const existing = prev.find(a => a.studentId === studentId);
+      if (existing) return prev.map(a => a.studentId === studentId ? { ...a, ...data } : a);
+      return [...prev, { ...data, id: `ea_${Date.now()}`, studentId }];
+    });
+  };
+
   // ── 케어팀 체크리스트 / 비품 관리 ────────────────────────────────
   const toggleCareChecklistItem = (key: string) => {
     setCareChecklist(prev => ({ ...prev, [key]: !prev[key] }));
@@ -2276,6 +2304,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       addManualSubstituteMakeupDay, removeSubstituteMakeupDay, mandatoryMakeupDays, addMandatoryMakeupDay, removeMandatoryMakeupDay,
       vendors, addVendor, updateVendor, deleteVendor,
       feedbackNotes, addFeedbackNote, markFeedbackReviewed, deleteFeedbackNote,
+      enrollmentApplications, saveEnrollmentApplication,
       careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,

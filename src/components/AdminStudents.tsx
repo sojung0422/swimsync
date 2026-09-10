@@ -6,10 +6,11 @@ import {
   Camera, Edit2, Trash2, CreditCard, Phone, BookOpen,
   User, Calendar, Clock, CheckCircle, XCircle,
   AlertCircle, ArrowUpDown, GraduationCap, LayoutGrid, MapPin, Car, FileSpreadsheet,
-  Repeat, PauseCircle, StopCircle, Wallet, Banknote, Hourglass, UserPlus, Bell, Percent
+  Repeat, PauseCircle, StopCircle, Wallet, Banknote, Hourglass, UserPlus, Bell, Percent, FileText
 } from 'lucide-react';
 import { EmptyStateGuide } from './GuideSystem';
 import BulkImportModal from './BulkImportModal';
+import { EnrollmentApplicationSection, EnrollmentApplicationQuickModal } from './EnrollmentApplicationCard';
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   active:   { text: '수강 중', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -1505,6 +1506,7 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
         <EnrollmentSection student={student} />
         <LevelTestSection student={student} />
         <PaymentLedgerSection student={student} />
+        <EnrollmentApplicationSection studentId={student.id} />
 
         {student.notes && (
           <div className="bg-white border border-slate-200 rounded-2xl p-5">
@@ -1537,6 +1539,7 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
 
 function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s: Student) => void }) {
   const { lessonClasses, instructors } = useStore();
+  const [quickViewStudent, setQuickViewStudent] = useState<Student | null>(null);
   const grouped = lessonClasses.map(lc => ({ lc, students: students.filter(s => s.lessonClassId === lc.id) }));
   const unclassed = students.filter(s => !lessonClasses.some(lc => lc.id === s.lessonClassId));
 
@@ -1551,6 +1554,10 @@ function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s
           <div className="flex items-center gap-2">
             <span className="text-slate-800 text-sm font-medium group-hover:text-cyan-700 transition-colors truncate">{student.studentName}</span>
             <span className="text-slate-400 text-xs">#{student.studentNumber}</span>
+            <button onClick={e => { e.stopPropagation(); setQuickViewStudent(student); }} title="입회 신청서 보기"
+              className="text-slate-300 hover:text-cyan-600 transition-colors shrink-0">
+              <FileText className="w-3.5 h-3.5" />
+            </button>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-slate-400 text-xs">{student.regularDays.join('·')} {student.regularTime}</span>
@@ -1593,6 +1600,9 @@ function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s
           <div className="p-2 space-y-0.5">{unclassed.map(renderStudent)}</div>
         </div>
       )}
+      {quickViewStudent && (
+        <EnrollmentApplicationQuickModal studentId={quickViewStudent.id} studentName={quickViewStudent.studentName} onClose={() => setQuickViewStudent(null)} />
+      )}
     </div>
   );
 }
@@ -1606,6 +1616,7 @@ function AllStudentsView({ students, onSelect }: { students: Student[]; onSelect
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortAsc, setSortAsc] = useState(true);
   const [filterClass, setFilterClass] = useState('all');
+  const [quickViewStudent, setQuickViewStudent] = useState<Student | null>(null);
 
   const sorted = [...students]
     .filter(s => filterClass === 'all' || s.lessonClassId === filterClass)
@@ -1668,9 +1679,14 @@ function AllStudentsView({ students, onSelect }: { students: Student[]; onSelect
                   <tr key={student.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-3 text-slate-400 text-xs">{student.studentNumber}</td>
                     <td className="px-4 py-3">
-                      <div className="flex items-center gap-2 cursor-pointer" onClick={() => onSelect(student)}>
-                        <Avatar student={student} size="sm" />
-                        <span className="text-slate-700 text-sm font-medium hover:text-cyan-700 transition-colors">{student.studentName}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => onSelect(student)}>
+                          <Avatar student={student} size="sm" />
+                          <span className="text-slate-700 text-sm font-medium hover:text-cyan-700 transition-colors">{student.studentName}</span>
+                        </div>
+                        <button onClick={() => setQuickViewStudent(student)} title="입회 신청서 보기" className="text-slate-300 hover:text-cyan-600 transition-colors shrink-0">
+                          <FileText className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </td>
                     <td className="px-4 py-3">
@@ -1697,6 +1713,9 @@ function AllStudentsView({ students, onSelect }: { students: Student[]; onSelect
         </div>
       </div>
       <p className="text-slate-400 text-xs text-right">총 {sorted.length}명</p>
+      {quickViewStudent && (
+        <EnrollmentApplicationQuickModal studentId={quickViewStudent.id} studentName={quickViewStudent.studentName} onClose={() => setQuickViewStudent(null)} />
+      )}
     </div>
   );
 }
