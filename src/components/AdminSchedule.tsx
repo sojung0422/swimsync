@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { format, addDays, startOfWeek, isSameDay, startOfMonth, endOfMonth } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useStore, ClassSession, computeOpenMakeupSlots, computeMakeupCapacity, isRecentlyEnrolled, isRecentlyScheduleChanged, getClassOfferings } from '../store/StoreContext';
+import AnnualCalendarPicker from './AnnualCalendarPicker';
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users, Plus, X, Settings2, Building2, LogIn, LogOut, GraduationCap, Search, CalendarOff, Repeat } from 'lucide-react';
 
 // ── Shared styles ─────────────────────────────────────────────
@@ -931,11 +932,17 @@ export default function AdminSchedule() {
                         </div>
                       )}
                       {mandatoryMakeupRequirements.filter(r => r.shortfallMonth.startsWith(String(fiveWeekYear))).length > 0 && (
-                        <div className="space-y-1.5">
+                        <div className="space-y-1.5 mb-4">
                           <p className="text-xs font-semibold text-slate-600">개별 의무보강 대상 (매칭되는 잉여 달 없음)</p>
                           <p className="text-slate-400 text-xs">{mandatoryMakeupRequirements.filter(r => r.shortfallMonth.startsWith(String(fiveWeekYear))).length}명 — 학부모 앱에 예약 안내가 표시돼요.</p>
                         </div>
                       )}
+
+                      <div className="border-t border-slate-100 pt-4">
+                        <p className="text-sm font-bold text-slate-700 mb-1.5">연간 계획 달력 (직접 지정)</p>
+                        <p className="text-slate-400 text-xs mb-3">자동 제안과 별개로, 휴관일·대체수업 진행일·의무보강일을 달력에서 직접 클릭해 지정할 수 있어요. 강사 앱·학부모 앱에 바로 반영돼요.</p>
+                        <AnnualCalendarPicker year={fiveWeekYear} />
+                      </div>
                     </div>
                   )}
                 </div>

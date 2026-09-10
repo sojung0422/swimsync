@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useStore } from '../store/StoreContext';
 import type { IncentiveFormulaRule } from '../store/StoreContext';
 import { BookOpen, Wallet, Users, ClipboardCheck, Waves, CalendarClock, Repeat, ArrowRight, Plus, X } from 'lucide-react';
+import AnnualCalendarPicker from './AnnualCalendarPicker';
 
 const inputCls = 'w-full border border-slate-200 rounded-xl px-3 py-2.5 text-slate-800 placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-400 transition-colors bg-white';
 
@@ -28,6 +29,7 @@ export default function AdminWorkGuide({ onNavigate }: { onNavigate?: (tab: stri
     overtimeHourlyRate: settings.payrollSettings.overtimeHourlyRate,
   });
   const [newTaskText, setNewTaskText] = useState<Record<string, string>>({});
+  const [calendarYear, setCalendarYear] = useState(new Date().getFullYear());
 
   const teachingCount = instructors.filter(i => i.status === 'active' && i.jobType === '강사').length;
 
@@ -94,6 +96,17 @@ export default function AdminWorkGuide({ onNavigate }: { onNavigate?: (tab: stri
                   onChange={e => updateSettings({ annualLeaveEnabled: e.target.checked })} />
                 강사에게 연차 지급 (끄면 직원 관리에서 연차 관련 화면이 숨겨져요)
               </label>
+
+              {settings.operatingMode === 'fiveWeek' && (
+                <div className="border-t border-slate-100 pt-4">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <p className="text-sm font-bold text-slate-700">연간 계획 달력</p>
+                    <input type="number" className={`${inputCls} w-24`} value={calendarYear} onChange={e => setCalendarYear(parseInt(e.target.value) || new Date().getFullYear())} />
+                  </div>
+                  <p className="text-slate-400 text-xs mb-3">휴관일·대체수업 진행일·의무보강일을 달력에서 직접 클릭해 지정해요. 자동 제안 생성은 스케줄 관리 &gt; 시간표 및 강사 색상 설정에서 할 수 있어요.</p>
+                  <AnnualCalendarPicker year={calendarYear} />
+                </div>
+              )}
             </div>
           </SectionCard>
 

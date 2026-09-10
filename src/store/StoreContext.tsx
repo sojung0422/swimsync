@@ -733,12 +733,16 @@ export const computeFiveWeekSuggestions = (year: number, closedDates: string[]):
 
 export type SubstituteMakeupDay = {
   id: string; year: number; weekday: string; date: string; coversMonth: string; status: 'suggested' | 'confirmed';
+  source?: 'auto' | 'manual'; // auto: computeFiveWeekSuggestions가 제안, manual: 관리자가 연간 달력에서 직접 지정
 };
 
 export type MandatoryMakeupRequirement = {
   id: string; studentId: string; weekday: string; shortfallMonth: string;
   assignedDate?: string; status: 'unassigned' | 'awaiting_parent' | 'scheduled' | 'completed';
 };
+
+// 관리자가 연초에 연간 달력에서 직접 지정하는 의무보강일 — 학원은 쉬지만 보강 수업은 이 날 진행 가능하다는 날짜 단위 지정(학생 단위 MandatoryMakeupRequirement와는 별개)
+export type MandatoryMakeupDay = { id: string; year: number; date: string; note: string };
 
 // 강사별 재등록률/퇴원률/반이동률을 특정 시점(referenceDate) 기준으로 계산 — 강사 실적 대시보드와 인센티브 자동 계산이 공유하는 헬퍼
 export const computeInstructorMetrics = (
@@ -1428,6 +1432,11 @@ type StoreContextType = {
   generateFiveWeekPlan: (year: number) => { suggestedCount: number; mandatoryCount: number };
   confirmSubstituteMakeupDay: (id: string) => void;
   assignMandatoryMakeup: (id: string, date: string) => void;
+  addManualSubstituteMakeupDay: (date: string) => void;
+  removeSubstituteMakeupDay: (id: string) => void;
+  mandatoryMakeupDays: MandatoryMakeupDay[];
+  addMandatoryMakeupDay: (date: string, note?: string) => void;
+  removeMandatoryMakeupDay: (id: string) => void;
   // 케어팀 체크리스트 / 비품 관리
   careChecklist: Record<string, boolean>;
   toggleCareChecklistItem: (key: string) => void;
@@ -1493,6 +1502,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const [sentReminderMonths, setSentReminderMonths] = useState<string[]>([]);
   const [substituteMakeupDays, setSubstituteMakeupDays] = useState<SubstituteMakeupDay[]>([]);
   const [mandatoryMakeupRequirements, setMandatoryMakeupRequirements] = useState<MandatoryMakeupRequirement[]>([]);
+  const [mandatoryMakeupDays, setMandatoryMakeupDays] = useState<MandatoryMakeupDay[]>([]);
   const [careChecklist, setCareChecklist] = useState<Record<string, boolean>>({});
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([
     { id: 'inv1', name: '가방(빨강)' }, { id: 'inv2', name: '가방(파랑)' }, { id: 'inv3', name: '수건' }, { id: 'inv4', name: '흰색 수모' },
@@ -2055,6 +2065,20 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
   const assignMandatoryMakeup = (id: string, date: string) => {
     setMandatoryMakeupRequirements(prev => prev.map(r => r.id === id ? { ...r, assignedDate: date, status: 'scheduled' } : r));
   };
+  // 관리자가 연간 달력에서 날짜를 직접 클릭해 대체수업 진행일로 지정 (자동 제안과 별개)
+  const addManualSubstituteMakeupDay = (date: string) => {
+    const year = parseInt(date.slice(0, 4), 10);
+    const weekday = Object.entries(DAY_MAP).find(([, v]) => v === getDay(parseISO(date)))?.[0] ?? '';
+    setSubstituteMakeupDays(prev => [...prev, {
+      id: `smd_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, year, weekday, date, coversMonth: '', status: 'confirmed', source: 'manual',
+    }]);
+  };
+  const removeSubstituteMakeupDay = (id: string) => setSubstituteMakeupDays(prev => prev.filter(d => d.id !== id));
+  const addMandatoryMakeupDay = (date: string, note: string = '') => {
+    const year = parseInt(date.slice(0, 4), 10);
+    setMandatoryMakeupDays(prev => [...prev, { id: `mmd_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`, year, date, note }]);
+  };
+  const removeMandatoryMakeupDay = (id: string) => setMandatoryMakeupDays(prev => prev.filter(d => d.id !== id));
 
   // ── 케어팀 체크리스트 / 비품 관리 ────────────────────────────────
   const toggleCareChecklistItem = (key: string) => {
@@ -2211,6 +2235,7 @@ export const StoreProvider = ({ children }: { children: ReactNode }) => {
       discounts, addDiscount, updateDiscount, deleteDiscount,
       eventParticipations, submitEventParticipation, approveEventParticipation, rejectEventParticipation,
       substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay, assignMandatoryMakeup,
+      addManualSubstituteMakeupDay, removeSubstituteMakeupDay, mandatoryMakeupDays, addMandatoryMakeupDay, removeMandatoryMakeupDay,
       careChecklist, toggleCareChecklistItem, inventoryItems, addInventoryItem, deleteInventoryItem, inventoryTransactions, recordInventoryTransaction,
       payrollRecords, issuePayroll,
       levelTestRecords, recordLevelTest,

@@ -311,7 +311,7 @@ export default function InstructorApp() {
     withdrawalRequests, approveWithdrawalRequest, rejectWithdrawalRequest,
     returnRequests, approveReturnRequest, rejectReturnRequest,
     leaveRequests, submitLeaveRequest, subRequests, submitSubRequest, acceptSubRequest, freeSwimBookings, instructorNotices,
-    substituteMakeupDays, notifications,
+    substituteMakeupDays, mandatoryMakeupDays, notifications,
   } = useStore();
   const [activeTab, setActiveTab] = useState<'schedule' | 'students' | 'requests' | 'messages' | 'contacts'>('schedule');
   const [requestsSubTab, setRequestsSubTab] = useState<'makeup' | 'leave' | 'sub'>('makeup');
@@ -494,7 +494,7 @@ export default function InstructorApp() {
               );
             })()}
 
-            {(settings.closedDates.length > 0 || substituteMakeupDays.some(d => d.status === 'confirmed')) && (
+            {(settings.closedDates.length > 0 || substituteMakeupDays.some(d => d.status === 'confirmed') || mandatoryMakeupDays.length > 0) && (
               <div className="mt-5">
                 <h2 className="text-[15px] font-bold text-slate-800 px-1 mb-3">연간 휴관일·대체보강일</h2>
                 <div className="bg-white rounded-2xl p-4 border border-slate-100 space-y-2">
@@ -507,7 +507,13 @@ export default function InstructorApp() {
                   {substituteMakeupDays.filter(d => d.status === 'confirmed').slice().sort((a, b) => a.date.localeCompare(b.date)).map(d => (
                     <div key={d.id} className="flex items-center justify-between text-xs">
                       <span className="text-slate-500">{d.date} ({d.weekday}요일)</span>
-                      <span className="text-cyan-600 font-medium">{d.coversMonth} 대체보강일</span>
+                      <span className="text-cyan-600 font-medium">{d.coversMonth ? `${d.coversMonth} ` : ''}대체보강일</span>
+                    </div>
+                  ))}
+                  {mandatoryMakeupDays.slice().sort((a, b) => a.date.localeCompare(b.date)).map(d => (
+                    <div key={d.id} className="flex items-center justify-between text-xs">
+                      <span className="text-slate-500">{d.date}{d.note ? ` (${d.note})` : ''}</span>
+                      <span className="text-red-500 font-medium">의무보강일</span>
                     </div>
                   ))}
                 </div>
