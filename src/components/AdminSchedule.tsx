@@ -27,7 +27,7 @@ export default function AdminSchedule() {
     classes, instructors, students, events, settings, vehicles, absenceRecords, scheduleChangeRequests, lessonClasses,
     addEvent, updateInstructorColor, updateSettings, cancelScheduledMakeup,
     substituteMakeupDays, mandatoryMakeupRequirements, generateFiveWeekPlan, confirmSubstituteMakeupDay,
-    subRequests, leaveRequests,
+    subRequests, leaveRequests, mandatoryMakeupDays,
   } = useStore();
   const [view, setView] = useState<'month' | 'week' | 'day'>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -138,6 +138,10 @@ export default function AdminSchedule() {
     const d = format(date, 'yyyy-MM-dd');
     return leaveRequests.filter(r => r.status === 'approved' && r.date === d);
   };
+  // 5주차 운영 방침 > 연간 계획 달력에서 지정한 휴관일/대체수업 진행일/의무보강일 — 항상 표시(분류 필터와 무관)
+  const isClosedDate = (date: Date) => settings.closedDates.includes(format(date, 'yyyy-MM-dd'));
+  const getSubstituteDayForDate = (date: Date) => substituteMakeupDays.find(d => d.status === 'confirmed' && d.date === format(date, 'yyyy-MM-dd'));
+  const getMandatoryDayForDate = (date: Date) => mandatoryMakeupDays.find(d => d.date === format(date, 'yyyy-MM-dd'));
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd   = endOfMonth(monthStart);
@@ -279,6 +283,9 @@ export default function AdminSchedule() {
                 const dayClasses = getClassesForDate(day);
                 const daySubs    = getSubsForDate(day);
                 const dayLeaves  = getLeavesForDate(day);
+                const dayClosed  = isClosedDate(day);
+                const daySubstitute = getSubstituteDayForDate(day);
+                const dayMandatory  = getMandatoryDayForDate(day);
                 const inMonth = day >= monthStart && day <= monthEnd;
                 const isToday = isSameDay(day, new Date());
                 const isSun = i % 7 === 0, isSat = i % 7 === 6;
@@ -300,6 +307,15 @@ export default function AdminSchedule() {
                       )}
                       {dayLeaves.length > 0 && (
                         <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 truncate font-semibold">연차 {dayLeaves.length}건</div>
+                      )}
+                      {dayClosed && (
+                        <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-violet-100 text-violet-700 truncate font-semibold">휴관일</div>
+                      )}
+                      {daySubstitute && (
+                        <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-700 truncate font-semibold">대체수업일</div>
+                      )}
+                      {dayMandatory && (
+                        <div className="text-[10px] px-1.5 py-0.5 rounded-md bg-red-100 text-red-700 truncate font-semibold">의무보강일</div>
                       )}
                     </div>
                   </div>
@@ -742,7 +758,26 @@ export default function AdminSchedule() {
                   </div>
                 );
               })}
-              {getEventsForDate(selectedMonthDay).length === 0 && getSubsForDate(selectedMonthDay).length === 0 && getLeavesForDate(selectedMonthDay).length === 0 && (
+              {isClosedDate(selectedMonthDay) && (
+                <div className="p-3 rounded-xl text-sm border bg-violet-50 border-violet-100 text-violet-800">
+                  <div className="text-[10px] font-bold mb-1 opacity-60">휴관일</div>
+                  <div className="font-medium">학원 휴관일이에요. 다음 달 청구 계산에서 제외돼요.</div>
+                </div>
+              )}
+              {getSubstituteDayForDate(selectedMonthDay) && (
+                <div className="p-3 rounded-xl text-sm border bg-blue-50 border-blue-100 text-blue-800">
+                  <div className="text-[10px] font-bold mb-1 opacity-60">대체수업 진행일</div>
+                  <div className="font-medium">{getSubstituteDayForDate(selectedMonthDay)!.weekday}요일 부족분을 채우는 대체수업일이에요{getSubstituteDayForDate(selectedMonthDay)!.coversMonth ? ` (${getSubstituteDayForDate(selectedMonthDay)!.coversMonth} 보강)` : ''}.</div>
+                </div>
+              )}
+              {getMandatoryDayForDate(selectedMonthDay) && (
+                <div className="p-3 rounded-xl text-sm border bg-red-50 border-red-100 text-red-800">
+                  <div className="text-[10px] font-bold mb-1 opacity-60">의무보강일</div>
+                  <div className="font-medium">{getMandatoryDayForDate(selectedMonthDay)!.note || '지정된 의무보강일이에요.'}</div>
+                </div>
+              )}
+              {getEventsForDate(selectedMonthDay).length === 0 && getSubsForDate(selectedMonthDay).length === 0 && getLeavesForDate(selectedMonthDay).length === 0
+                && !isClosedDate(selectedMonthDay) && !getSubstituteDayForDate(selectedMonthDay) && !getMandatoryDayForDate(selectedMonthDay) && (
                 <div className="text-slate-400 text-sm text-center py-8 bg-slate-50 rounded-xl border border-slate-100">등록된 일정이 없습니다.</div>
               )}
             </div>
