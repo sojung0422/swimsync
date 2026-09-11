@@ -6,11 +6,12 @@ import {
   Camera, Edit2, Trash2, CreditCard, Phone, BookOpen,
   User, Calendar, Clock, CheckCircle, XCircle,
   AlertCircle, ArrowUpDown, GraduationCap, LayoutGrid, MapPin, Car, FileSpreadsheet,
-  Repeat, PauseCircle, StopCircle, Wallet, Banknote, Hourglass, UserPlus, Bell, Percent, FileText
+  Repeat, PauseCircle, StopCircle, Wallet, Banknote, Hourglass, UserPlus, Bell, Percent, FileText, Send, Users
 } from 'lucide-react';
 import { EmptyStateGuide } from './GuideSystem';
 import BulkImportModal from './BulkImportModal';
 import { EnrollmentApplicationSection, EnrollmentApplicationQuickModal } from './EnrollmentApplicationCard';
+import BulkMessageModal from './BulkMessageModal';
 
 const statusLabel: Record<string, { text: string; color: string }> = {
   active:   { text: '수강 중', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -1538,74 +1539,152 @@ function StudentDetailView({ student, onBack, onEdit, onDelete, onExtend, onDefe
 // ─── 강습반별 보기 ────────────────────────────────────────────────────────────
 
 function ByClassView({ students, onSelect }: { students: Student[]; onSelect: (s: Student) => void }) {
-  const { lessonClasses, instructors } = useStore();
+  const { lessonClasses, instructors, addNotification, sendNotification } = useStore();
   const [quickViewStudent, setQuickViewStudent] = useState<Student | null>(null);
-  const grouped = lessonClasses.map(lc => ({ lc, students: students.filter(s => s.lessonClassId === lc.id) }));
-  const unclassed = students.filter(s => !lessonClasses.some(lc => lc.id === s.lessonClassId));
+  const [groupMode, setGroupMode] = useState<'class' | 'instructor'>('class');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showBulkMsg, setShowBulkMsg] = useState(false);
+  const [notifiedGroupKey, setNotifiedGroupKey] = useState<string | null>(null);
 
-  const renderStudent = (student: Student) => {
+  const groups = groupMode === 'class'
+    ? [
+        ...lessonClasses.map(lc => ({ key: lc.id, title: lc.name, subtitle: lc.description, students: students.filter(s => s.lessonClassId === lc.id) })),
+        { key: 'unclassed', title: '미배정', subtitle: '', students: students.filter(s => !lessonClasses.some(lc => lc.id === s.lessonClassId)) },
+      ]
+    : [
+        ...instructors.filter(i => i.jobType === '강사').map(i => ({ key: i.id, title: i.name, subtitle: i.role, students: students.filter(s => s.instructorId === i.id) })),
+        { key: 'unassigned', title: '담당 강사 없음', subtitle: '', students: students.filter(s => !instructors.some(i => i.id === s.instructorId)) },
+      ];
+
+  const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const selectedStudents = students.filter(s => selectedIds.includes(s.id));
+
+  const notifyUnpaid = (groupStudents: Student[], groupKey: string, groupTitle: string) => {
+    const unpaidIds = groupStudents.filter(s => !s.paymentCompleted).map(s => s.id);
+    if (unpaidIds.length === 0) return;
+    const id = addNotification({ type: 'payment', title: '결제 안내', content: `${groupTitle} 수강료 결제가 아직 확인되지 않았어요. 빠른 시일 내에 결제 부탁드립니다.`, recipientIds: unpaidIds });
+    sendNotification(id);
+    setNotifiedGroupKey(groupKey);
+    setTimeout(() => setNotifiedGroupKey(null), 2000);
+  };
+
+  const renderRow = (student: Student) => {
     const instructor = instructors.find(i => i.id === student.instructorId);
+    const lc = lessonClasses.find(l => l.id === student.lessonClassId);
     const status = statusLabel[student.status] ?? statusLabel.active;
     return (
-      <div key={student.id} onClick={() => onSelect(student)}
-        className="p-3 border border-slate-100 hover:border-cyan-200 hover:bg-slate-50 rounded-xl cursor-pointer transition-colors group">
-        <div className="flex items-center gap-2.5">
-          <Avatar student={student} size="sm" />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-800 text-sm font-medium group-hover:text-cyan-700 transition-colors truncate">{student.studentName}</span>
-              <button onClick={e => { e.stopPropagation(); setQuickViewStudent(student); }} title="입회 신청서 보기"
-                className="text-slate-300 hover:text-cyan-600 transition-colors shrink-0">
-                <FileText className="w-3.5 h-3.5" />
-              </button>
+      <tr key={student.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 transition-colors">
+        <td className="px-3 py-2.5 w-8">
+          <input type="checkbox" className="w-4 h-4 accent-cyan-600 cursor-pointer" checked={selectedIds.includes(student.id)} onChange={() => toggleSelect(student.id)} />
+        </td>
+        <td className="px-3 py-2.5 cursor-pointer" onClick={() => onSelect(student)}>
+          <div className="flex items-center gap-2">
+            <Avatar student={student} size="sm" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-1 text-slate-800 text-sm font-medium truncate">
+                {student.studentName}
+                <span className={`px-1.5 py-0 rounded text-[9px] border shrink-0 ${levelColor[student.level] ?? levelColor['초급']}`}>{student.level}</span>
+                <button onClick={e => { e.stopPropagation(); setQuickViewStudent(student); }} title="입회 신청서 보기"
+                  className="text-slate-300 hover:text-cyan-600 transition-colors shrink-0">
+                  <FileText className="w-3 h-3" />
+                </button>
+              </div>
+              <p className="text-slate-400 text-[10.5px]">#{student.studentNumber}</p>
             </div>
-            <p className="text-slate-400 text-[11px] truncate">#{student.studentNumber} · {student.regularDays.join('·')} {student.regularTime}{instructor && ` · ${instructor.name}`}</p>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 mt-2 text-[10.5px] text-slate-500">
-          <span className="flex items-center gap-1 truncate"><Phone className="w-3 h-3 text-slate-300 shrink-0" />{getPrimaryContactPhone(student) || '-'}</span>
-          <span className="flex items-center gap-1 truncate"><Wallet className="w-3 h-3 text-slate-300 shrink-0" />{student.paymentAmount.toLocaleString()}원</span>
-        </div>
-        <div className="flex items-center gap-1.5 flex-wrap mt-2">
-          <span className={`px-2 py-0.5 rounded-full text-[10.5px] border ${levelColor[student.level] ?? levelColor['초급']}`}>{student.level}</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10.5px] border ${status.color}`}>{status.text}</span>
+        </td>
+        <td className="px-3 py-2.5 text-slate-600 text-xs cursor-pointer whitespace-nowrap" onClick={() => onSelect(student)}>{student.regularDays.join('·') || '-'}</td>
+        <td className="px-3 py-2.5 text-slate-600 text-xs cursor-pointer whitespace-nowrap" onClick={() => onSelect(student)}>{student.regularTime || '-'}</td>
+        <td className="px-3 py-2.5 text-slate-600 text-xs cursor-pointer whitespace-nowrap" onClick={() => onSelect(student)}>
+          {groupMode === 'class' ? (instructor?.name ?? '-') : (lc?.name ?? '미배정')}
+        </td>
+        <td className="px-3 py-2.5 text-slate-600 text-xs cursor-pointer whitespace-nowrap" onClick={() => onSelect(student)}>{getPrimaryContactPhone(student) || '-'}</td>
+        <td className="px-3 py-2.5 text-slate-700 text-xs font-medium cursor-pointer whitespace-nowrap" onClick={() => onSelect(student)}>{student.paymentAmount.toLocaleString()}원</td>
+        <td className="px-3 py-2.5 cursor-pointer" onClick={() => onSelect(student)}>
           {student.paymentCompleted
             ? <span className="px-2 py-0.5 rounded-full text-[10.5px] border bg-emerald-50 text-emerald-700 border-emerald-200">결제완료</span>
             : <span className="px-2 py-0.5 rounded-full text-[10.5px] border bg-amber-50 text-amber-700 border-amber-200">미결제</span>}
-        </div>
-      </div>
+        </td>
+        <td className="px-3 py-2.5 cursor-pointer" onClick={() => onSelect(student)}>
+          <span className={`px-2 py-0.5 rounded-full text-[10.5px] border whitespace-nowrap ${status.color}`}>{status.text}</span>
+        </td>
+      </tr>
     );
   };
 
   return (
     <div className="p-6 space-y-5">
-      {grouped.map(({ lc, students: lcStudents }) => (
-        <div key={lc.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50">
-            <div>
-              <h3 className="text-slate-700 font-semibold text-sm">{lc.name}</h3>
-              {lc.description && <p className="text-slate-400 text-xs mt-0.5">{lc.description}</p>}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+          <button onClick={() => setGroupMode('class')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${groupMode === 'class' ? 'bg-white shadow-sm text-cyan-700' : 'text-slate-500 hover:text-slate-700'}`}>
+            <LayoutGrid className="w-3.5 h-3.5" /> 반별 보기
+          </button>
+          <button onClick={() => setGroupMode('instructor')}
+            className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${groupMode === 'instructor' ? 'bg-white shadow-sm text-cyan-700' : 'text-slate-500 hover:text-slate-700'}`}>
+            <Users className="w-3.5 h-3.5" /> 강사별 보기
+          </button>
+        </div>
+        {selectedIds.length > 0 && (
+          <button onClick={() => setShowBulkMsg(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-semibold transition-colors animate-fade-up">
+            <Send className="w-3.5 h-3.5" /> 단체 문자 ({selectedIds.length}명 선택)
+          </button>
+        )}
+      </div>
+
+      {groups.map(g => {
+        const unpaidCount = g.students.filter(s => !s.paymentCompleted).length;
+        return (
+          <div key={g.key} className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50">
+              <div>
+                <h3 className="text-slate-700 font-semibold text-sm">{g.title}</h3>
+                {g.subtitle && <p className="text-slate-400 text-xs mt-0.5">{g.subtitle}</p>}
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {notifiedGroupKey === g.key && <span className="text-emerald-600 text-[11px] font-semibold">알림을 보냈어요</span>}
+                {unpaidCount > 0 && (
+                  <button onClick={() => notifyUnpaid(g.students, g.key, g.title)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 rounded-lg text-[11px] font-medium transition-colors">
+                    <Bell className="w-3 h-3" /> 미결제 {unpaidCount}명에게 알림
+                  </button>
+                )}
+                <span className="text-slate-400 text-sm">{g.students.length}명</span>
+              </div>
             </div>
-            <span className="text-slate-400 text-sm">{lcStudents.length}명</span>
+            {g.students.length === 0 ? (
+              <p className="text-slate-400 text-sm px-5 py-4">등록된 강습생이 없습니다.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/50">
+                      <th className="px-3 py-2 w-8"></th>
+                      {['이름', '요일', '시간', groupMode === 'class' ? '담당쌤' : '반', '전화번호', '결제금액', '결제', '상태'].map(h => (
+                        <th key={h} className="px-3 py-2 text-left text-[10.5px] font-medium text-slate-400 whitespace-nowrap">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>{g.students.map(renderRow)}</tbody>
+                </table>
+              </div>
+            )}
           </div>
-          {lcStudents.length === 0 ? (
-            <p className="text-slate-400 text-sm px-5 py-4">등록된 강습생이 없습니다.</p>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 p-3">{lcStudents.map(renderStudent)}</div>
-          )}
-        </div>
-      ))}
-      {unclassed.length > 0 && (
-        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-            <h3 className="text-slate-400 font-semibold text-sm">미배정</h3>
-            <span className="text-slate-400 text-sm">{unclassed.length}명</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 p-3">{unclassed.map(renderStudent)}</div>
-        </div>
-      )}
+        );
+      })}
       {quickViewStudent && (
         <EnrollmentApplicationQuickModal studentId={quickViewStudent.id} studentName={quickViewStudent.studentName} onClose={() => setQuickViewStudent(null)} />
+      )}
+      {showBulkMsg && (
+        <BulkMessageModal
+          recipientNames={selectedStudents.map(s => s.studentName)}
+          onClose={() => { setShowBulkMsg(false); setSelectedIds([]); }}
+          onSend={(content, images) => {
+            const id = addNotification({ type: 'custom', title: '단체 안내', content, recipientIds: selectedStudents.map(s => s.id), images });
+            sendNotification(id);
+          }}
+        />
       )}
     </div>
   );
