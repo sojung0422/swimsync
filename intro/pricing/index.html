@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="description" content="SwimSync 이용 요금 안내 - 재원생 수 기준 Starter / Growth / Enterprise 3단계 플랜">
+<meta name="description" content="SwimSync 이용 요금 안내 - 재원생 수 기준 Starter / Growth / Pro / Enterprise 4단계 플랜">
 <meta property="og:title" content="SwimSync 이용 요금">
-<meta property="og:description" content="SwimSync 이용 요금 안내 - 재원생 수 기준 Starter / Growth / Enterprise 3단계 플랜">
+<meta property="og:description" content="SwimSync 이용 요금 안내 - 재원생 수 기준 Starter / Growth / Pro / Enterprise 4단계 플랜">
 <meta property="og:type" content="website">
 <title>SwimSync 이용 요금</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;600;700;800;900&family=IBM+Plex+Mono:wght@500;600;700&display=swap">
@@ -162,18 +162,19 @@ section{ padding:64px 0; }
 @media (max-width:720px){ .process{ grid-template-columns:repeat(2,1fr); } }
 
 /* ── Pricing ──────────────────────────────────────── */
-.plans-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:20px; align-items:stretch; }
-.plan-card{ background:var(--paper); border:1px solid var(--line); border-radius:24px; padding:32px 28px; box-shadow:var(--shadow); display:flex; flex-direction:column; position:relative; }
+.plans-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; align-items:stretch; }
+.plan-card{ background:var(--paper); border:1px solid var(--line); border-radius:24px; padding:28px 22px; box-shadow:var(--shadow); display:flex; flex-direction:column; position:relative; }
 .plan-card.feat{ border-color:var(--brand); box-shadow:0 26px 70px -22px color-mix(in oklab, var(--brand) 45%, transparent); }
 .plan-badge{ position:absolute; top:-13px; left:28px; background:var(--brand); color:#fff; font-size:12px; font-weight:800; padding:5px 14px; border-radius:999px; }
 .plan-name{ font-size:14px; font-weight:800; color:var(--ink-mute); }
 .plan-target{ font-size:13px; color:var(--ink-mute); margin-top:2px; }
-.plan-price{ margin-top:18px; font-size:36px; font-weight:900; color:var(--ink); }
-.plan-price span{ font-size:15px; font-weight:700; color:var(--ink-mute); }
+.plan-price{ margin-top:18px; font-size:clamp(22px,2.4vw,30px); font-weight:900; color:var(--ink); white-space:nowrap; }
+.plan-price span{ font-size:13px; font-weight:700; color:var(--ink-mute); }
 .plan-feats{ list-style:none; margin:24px 0 28px; padding:0; display:flex; flex-direction:column; gap:11px; flex:1; }
 .plan-feats li{ font-size:14px; color:var(--ink-soft); padding-left:22px; position:relative; }
 .plan-feats li::before{ content:"✓"; position:absolute; left:0; color:var(--brand); font-weight:800; }
-@media (max-width:900px){ .plans-grid{ grid-template-columns:1fr; } }
+@media (max-width:1100px){ .plans-grid{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:600px){ .plans-grid{ grid-template-columns:1fr; } }
 
 .note-box{ background:var(--bg-alt); border-radius:18px; padding:24px 26px; font-size:13.5px; color:var(--ink-mute); }
 .note-box b{ color:var(--ink); }
@@ -231,7 +232,7 @@ section{ padding:64px 0; }
 
 <div class="page-head">
   <div class="kicker">이용 요금</div>
-  <h1>운영 규모에 맞춘 3단계 플랜</h1>
+  <h1>운영 규모에 맞춘 4단계 플랜</h1>
   <p>재원생 수 기준으로 플랜을 나눴습니다. 학원 특화 서비스는 대부분 재원생 수 기준으로 과금하며, 정확한 견적은 상담을 통해 확정돼요.</p>
 </div>
 
@@ -246,19 +247,27 @@ section{ padding:64px 0; }
         <ul class="plan-feats"><li>강습생 100명 이하</li><li>관리자 콘솔 + 학부모 앱</li><li>스케줄·강습생·결제 기본 관리</li><li>이메일 지원</li></ul>
         <a class="btn btn-light" href="../#contact" style="justify-content:center">상담 신청 →</a>
       </div>
+      <div class="plan-card">
+        
+        <div class="plan-name">Growth</div>
+        <div class="plan-target">성장기 학원</div>
+        <div class="plan-price">월 50,000<span>원부터</span></div>
+        <ul class="plan-feats"><li>강습생 500명 이하</li><li>관리자 + 강사·학부모·기사 앱 전체</li><li>차량 노선 관리 포함</li><li>이메일 지원</li></ul>
+        <a class="btn btn-light" href="../#contact" style="justify-content:center">상담 신청 →</a>
+      </div>
       <div class="plan-card feat">
         <div class="plan-badge">추천</div>
-        <div class="plan-name">Growth</div>
+        <div class="plan-name">Pro</div>
         <div class="plan-target">다지점 · 표준 운영</div>
         <div class="plan-price">월 89,000<span>원부터</span></div>
-        <ul class="plan-feats"><li>강습생 300명 이하</li><li>관리자 + 강사·학부모·기사 앱 전체</li><li>차량 노선 관리 포함</li><li>급여·4대보험 자동 정산 + 인건비 분석</li><li>우선 지원</li></ul>
+        <ul class="plan-feats"><li>강습생 1,000명 이하</li><li>Growth의 모든 기능</li><li>급여·4대보험 자동 정산 + 인건비 분석</li><li>우선 지원</li></ul>
         <a class="btn btn-solid" href="../#contact" style="justify-content:center">상담 신청 →</a>
       </div>
       <div class="plan-card">
         
         <div class="plan-name">Enterprise</div>
         <div class="plan-target">프랜차이즈 · 대형</div>
-        <div class="plan-price">월 150,000~<span>원부터</span></div>
+        <div class="plan-price">월 230,000~<span>원부터</span></div>
         <ul class="plan-feats"><li>강습생 무제한</li><li>전체 기능 + 맞춤 기능 개발 협의</li><li>다지점 통합 관리</li><li>전담 지원 채널</li></ul>
         <a class="btn btn-light" href="../#contact" style="justify-content:center">상담 신청 →</a>
       </div></div>
@@ -267,7 +276,7 @@ section{ padding:64px 0; }
   <section>
     <div class="section-head"><h2>이 가격은 왜 이 정도인가요</h2></div>
     <div class="note-box" style="max-width:820px;margin:0 auto">
-      <p style="margin-bottom:14px"><b>Growth 89,000원</b>은 동종 학원관리 서비스 상위 유료 플랜과 같은 금액대로, 이미 시장에서 통용되는 가격대입니다. 여기에 SwimSync만의 차량 노선 관리, 급여·4대보험 자동 정산, 원비 자동 일할계산, 인건비 분석처럼 범용 학원관리 프로그램에는 없는 기능이 포함돼요.</p>
+      <p style="margin-bottom:14px"><b>Pro 89,000원</b>은 동종 학원관리 서비스 상위 유료 플랜과 같은 금액대로, 이미 시장에서 통용되는 가격대입니다. 여기에 SwimSync만의 차량 노선 관리, 급여·4대보험 자동 정산, 원비 자동 일할계산, 인건비 분석처럼 범용 학원관리 프로그램에는 없는 기능이 포함돼요.</p>
       <p>아래는 가격을 제안하기 전에 조사한 동종 서비스 공개 요금입니다. 최종 계약 조건은 상담을 통해 별도로 확정돼요.</p>
     </div>
     <div style="max-width:820px;margin:24px auto 0;overflow-x:auto">
