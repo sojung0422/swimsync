@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<title>SwimSync 리플렛 A4 3단</title>
+<style>
+  :root{
+    --navy:#0B1B3F; --blue:#1463F3; --blue-d:#0B47C4; --aqua:#22CBE0; --sky:#EAF3FF; --sky2:#F5F9FF;
+    --coral:#F2543D; --coral-bg:#FFF1EE; --ink:#1A2233; --sub:#5A6475; --line:#E2E8F1; --white:#FFFFFF;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#C9CFD8;font-family:'Noto Sans KR',sans-serif;color:var(--ink);padding:40px;display:flex;flex-direction:column;gap:40px;align-items:flex-start;-webkit-font-smoothing:antialiased}
+  .page{width:842px;height:595px;display:flex;background:var(--white);overflow:hidden;position:relative}
+  .panel{height:595px;position:relative;display:flex;flex-direction:column;overflow:hidden}
+  .w275{width:275px}.w283{width:283.5px}
+  b,strong{font-weight:700}
+  .eyebrow{font-size:7px;font-weight:700;letter-spacing:.12em;color:var(--blue)}
+  .logo{display:flex;align-items:center;gap:5px}
+  .logo .mark{width:20px;height:20px;border-radius:6px;background:var(--white);display:flex;align-items:center;justify-content:center}
+  .logo .word{font-size:15px;font-weight:900;letter-spacing:-.02em;color:var(--white)}
+  .logo.dark .mark{background:var(--blue)}
+  .logo.dark .word{color:var(--navy)}
+
+  /* ---------- OUTSIDE · A (inner flap) ---------- */
+  .pA{background:var(--sky2);padding:26px 22px 20px}
+  .pA h2{font-size:19px;line-height:1.32;font-weight:900;letter-spacing:-.03em;color:var(--navy);margin-top:8px}
+  .pA h2 em{font-style:normal;color:var(--coral)}
+  .pA .lead{font-size:8px;line-height:1.6;color:var(--sub);margin-top:7px}
+  .stats{display:flex;gap:6px;margin-top:14px}
+  .stat{flex:1;background:var(--white);border:1px solid var(--line);border-radius:8px;padding:8px 7px}
+  .stat .num{font-size:19px;font-weight:900;color:var(--blue);letter-spacing:-.03em;line-height:1}
+  .stat .num small{font-size:10px;font-weight:700}
+  .stat .cap{font-size:6.5px;line-height:1.45;color:var(--sub);margin-top:4px}
+  .quotes{display:flex;flex-direction:column;gap:7px;margin-top:14px}
+  .q{background:var(--white);border-radius:10px 10px 10px 2px;padding:8px 10px;border:1px solid var(--line)}
+  .q p{font-size:8px;line-height:1.55;font-weight:500;color:var(--ink)}
+  .q p mark{background:none;color:var(--coral);font-weight:700}
+  .q span{display:block;font-size:6.5px;color:var(--sub);margin-top:3px}
+  .q.r{border-radius:10px 10px 2px 10px;align-self:flex-end;width:92%}
+  .q.l{width:92%}
+  .pA .src{font-size:6px;color:#8C95A5;margin-top:auto;line-height:1.5}
+  .turn{margin-top:10px;background:var(--navy);color:var(--white);border-radius:8px;padding:9px 11px;display:flex;align-items:center;justify-content:space-between}
+  .turn p{font-size:8.5px;font-weight:700;line-height:1.45}
+  .turn p span{color:var(--aqua)}
+  .turn .arr{font-size:13px;font-weight:900;color:var(--aqua)}
+
+  /* ---------- OUTSIDE · B (back) ---------- */
+  .pB{padding:26px 22px 20px;border-left:1px dashed #D5DCE6;border-right:1px dashed #D5DCE6}
+  .pB h2{font-size:17px;line-height:1.35;font-weight:900;letter-spacing:-.03em;color:var(--navy);margin-top:8px}
+  .steps{display:flex;flex-direction:column;gap:9px;margin-top:14px}
+  .step{display:flex;gap:9px;align-items:flex-start}
+  .step .n{width:20px;height:20px;border-radius:10px;background:var(--blue);color:var(--white);font-size:8px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .step h4{font-size:9.5px;font-weight:700;color:var(--navy);line-height:1.3}
+  .step p{font-size:7.5px;color:var(--sub);line-height:1.55;margin-top:2px}
+  .roles{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:16px}
+  .role{background:var(--sky2);border-radius:8px;padding:8px 9px}
+  .role h5{font-size:8.5px;font-weight:700;color:var(--blue-d)}
+  .role p{font-size:6.8px;color:var(--sub);line-height:1.5;margin-top:2px}
+  .rolesTitle{font-size:9px;font-weight:700;color:var(--navy);margin-top:18px}
+  .fit{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+  .qrbox{margin-top:auto;border:1.5px solid var(--blue);border-radius:12px;padding:11px 12px;display:flex;gap:11px;align-items:center}
+  .qrbox .qr{width:62px;height:62px;flex-shrink:0}
+  .qrbox h4{font-size:10px;font-weight:900;color:var(--navy);line-height:1.35}
+  .qrbox p{font-size:7px;color:var(--sub);line-height:1.5;margin-top:3px}
+  .qrbox .url{font-size:6px;color:var(--blue);margin-top:4px;font-weight:500}
+  .pB .foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}
+  .pB .foot p{font-size:6.5px;color:#8C95A5}
+
+  /* ---------- OUTSIDE · C (cover) ---------- */
+  .pC{background:linear-gradient(160deg,#1A6BFF 0%,#0B47C4 62%,#0B2F8A 100%);padding:26px 24px 0;color:var(--white)}
+  .badge{display:inline-flex;align-self:flex-start;font-size:7px;font-weight:700;letter-spacing:.06em;padding:4px 9px;border-radius:20px;background:rgba(255,255,255,.16);color:var(--white);margin-top:22px}
+  .pC h1{font-size:27px;line-height:1.28;font-weight:900;letter-spacing:-.04em;margin-top:10px}
+  .pC h1 span{color:#9DF1FB}
+  .pC .sub{font-size:8.5px;line-height:1.65;color:rgba(255,255,255,.86);margin-top:10px}
+  .phoneWrap{position:relative;margin-top:18px;height:310px}
+  .phone{position:absolute;left:52px;top:0;width:158px;height:330px;border-radius:26px;background:#0A1530;padding:6px;box-shadow:0 18px 40px rgba(3,14,48,.45)}
+  .screen{width:146px;height:318px;border-radius:21px;background:#F4F7FC;overflow:hidden;display:flex;flex-direction:column}
+  .sbar{height:18px;display:flex;justify-content:space-between;align-items:center;padding:0 12px;font-size:6px;font-weight:700;color:var(--ink)}
+  .apphead{padding:4px 11px 7px;background:var(--white)}
+  .apphead .t{font-size:9.5px;font-weight:900;color:var(--navy)}
+  .apphead .s{font-size:5.8px;color:var(--sub);margin-top:1px}
+  .ab{margin:7px 9px 0;background:var(--white);border-radius:8px;padding:7px 8px;border:1px solid var(--line)}
+  .ab .k{font-size:5.5px;color:var(--sub)}
+  .ab .v{font-size:7.5px;font-weight:700;color:var(--ink);margin-top:1px}
+  .slotT{font-size:6.5px;font-weight:700;color:var(--navy);margin:8px 10px 0}
+  .slot{margin:5px 9px 0;border-radius:7px;padding:6px 8px;display:flex;justify-content:space-between;align-items:center;background:var(--white);border:1px solid var(--line)}
+  .slot.on{border:1.4px solid var(--blue);background:#F1F6FF}
+  .slot.off{background:#EEF1F5;border-color:#EEF1F5}
+  .slot .d{font-size:7px;font-weight:700;color:var(--ink)}
+  .slot.off .d{color:#A2AAB7;text-decoration:line-through}
+  .slot .m{font-size:5.5px;color:var(--sub);margin-top:1px}
+  .chip{font-size:5.5px;font-weight:700;padding:2px 5px;border-radius:8px;background:#E3EEFF;color:var(--blue)}
+  .chip.g{background:#E4E8EE;color:#8C95A5}
+  .cta{margin:9px 9px 0;background:var(--blue);color:var(--white);font-size:7.5px;font-weight:700;border-radius:8px;padding:7px 0;text-align:center}
+  .toast{position:absolute;z-index:3;left:-12px;top:262px;width:150px;background:var(--white);border-radius:10px;padding:7px 9px;display:flex;gap:7px;align-items:center;box-shadow:0 10px 24px rgba(3,14,48,.28)}
+  .toast .ic{width:18px;height:18px;border-radius:9px;background:#19B36B;color:var(--white);font-size:9px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .toast h6{font-size:7px;font-weight:700;color:var(--ink)}
+  .toast p{font-size:5.8px;color:var(--sub);margin-top:1px}
+  .toast2{position:absolute;right:-16px;top:-8px;width:120px;background:var(--navy);border-radius:10px;padding:7px 9px;box-shadow:0 10px 24px rgba(3,14,48,.35)}
+  .toast2 h6{font-size:6.8px;font-weight:700;color:var(--white)}
+  .toast2 p{font-size:5.8px;color:#A9C4FF;margin-top:1px}
+  .coverFoot{position:absolute;z-index:1;left:0;right:0;bottom:0;height:56px;background:var(--white);display:flex;align-items:center;justify-content:space-between;padding:0 24px}
+  .coverFoot p{font-size:8px;font-weight:700;color:var(--navy);line-height:1.45}
+  .coverFoot p span{color:var(--blue)}
+
+  /* ---------- INSIDE ---------- */
+  .inside{flex-direction:column}
+  .band{height:62px;background:var(--navy);display:flex;align-items:center;justify-content:space-between;padding:0 24px;flex-shrink:0}
+  .band h2{font-size:17px;font-weight:900;color:var(--white);letter-spacing:-.03em}
+  .band h2 span{color:#9DF1FB}
+  .band p{font-size:7.5px;color:#AFC0DE;margin-top:3px}
+  .cols{display:flex;flex:1}
+  .col{padding:16px 18px 16px;display:flex;flex-direction:column;border-right:1px dashed #D5DCE6}
+  .col:last-child{border-right:none}
+  .numrow{display:flex;align-items:center;gap:6px}
+  .numrow .no{font-size:18px;font-weight:900;color:var(--blue);letter-spacing:-.02em;line-height:1}
+  .numrow .tag{font-size:6.5px;font-weight:700;color:var(--blue);background:var(--sky);padding:3px 7px;border-radius:10px}
+  .col h3{font-size:15px;line-height:1.36;font-weight:900;letter-spacing:-.03em;color:var(--navy);margin-top:8px}
+  .ba{display:flex;flex-direction:column;gap:4px;margin-top:10px}
+  .before,.after{border-radius:8px;padding:7px 9px}
+  .before{background:var(--coral-bg)}
+  .after{background:var(--blue)}
+  .ba .lb{font-size:6px;font-weight:900;letter-spacing:.1em}
+  .before .lb{color:var(--coral)}
+  .after .lb{color:#9DF1FB}
+  .ba p{font-size:7.3px;line-height:1.55;margin-top:2px}
+  .before p{color:#7A3A30}
+  .after p{color:var(--white);font-weight:500}
+  .down{align-self:center;font-size:8px;color:var(--blue);font-weight:900;line-height:1}
+  .mock{margin-top:10px;background:var(--sky2);border:1px solid var(--line);border-radius:10px;padding:8px 9px}
+  .mock .mh{display:flex;justify-content:space-between;align-items:center}
+  .mock .mh b{font-size:7.5px;color:var(--navy)}
+  .mock .mh span{font-size:5.8px;color:var(--sub)}
+  .row{display:flex;justify-content:space-between;align-items:center;background:var(--white);border-radius:6px;padding:6px 8px;margin-top:5px}
+  .row .nm{font-size:7px;font-weight:700;color:var(--ink)}
+  .row .nm small{font-size:5.8px;font-weight:400;color:var(--sub);margin-left:3px}
+  .pill{font-size:5.5px;font-weight:700;padding:2px 6px;border-radius:8px}
+  .p-ok{background:#E2F7EC;color:#138A52}
+  .p-mk{background:#E3EEFF;color:var(--blue)}
+  .p-no{background:#FDE8E4;color:var(--coral)}
+  .p-car{background:#FFF4D9;color:#A06A00}
+  .feats{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+  .feat{display:flex;gap:6px;align-items:flex-start}
+  .ck{width:11px;height:11px;border-radius:6px;background:var(--sky);color:var(--blue);font-size:6.5px;font-weight:900;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+  .feat p{font-size:7.8px;line-height:1.55;color:var(--sub)}
+  .feat p b{color:var(--ink)}
+  .voice{margin-top:auto;background:var(--sky2);border-left:3px solid var(--coral);border-radius:4px 8px 8px 4px;padding:9px 11px}
+  .voice .qm{font-size:6px;font-weight:900;color:var(--coral);letter-spacing:.1em}
+  .voice p{font-size:8.5px;line-height:1.55;color:var(--navy);font-weight:700;margin-top:3px}
+  .voice span{display:block;font-size:6px;color:#8C95A5;margin-top:2px}
+  .bar{height:5px;border-radius:3px;background:#E3EAF5;overflow:hidden;margin-top:3px}
+  .bar i{display:block;height:5px;background:var(--blue);border-radius:3px}
+  .kv{display:flex;justify-content:space-between;font-size:6.3px;color:var(--sub);margin-top:5px}
+  .kv b{color:var(--ink);font-size:7px}
+</style>
+</head>
+<body>
+
+<!-- ======================= PAGE 1 · OUTSIDE ======================= -->
+<section class="page" id="outside" data-name="겉면 (A4 · 3단)">
+
+  <!-- A · 안쪽 접히는 면 (97mm) -->
+  <div class="panel w275 pA" data-name="A · 현장의 목소리">
+    <div class="eyebrow">현장 설문 · 수영 강사·운영자 31명</div>
+    <h2>가장 힘든 건<br><em>수업이 아니었습니다.</em></h2>
+    <p class="lead">“평소 가장 불편한 점이 무엇인가요?”라는 질문에<br>수업 대신 보강·연락·출석부 이야기가 돌아왔습니다.</p>
+
+    <div class="stats">
+      <div class="stat"><div class="num">55<small>%</small></div><div class="cap">전산 없이<br>엑셀·수기로 관리</div></div>
+      <div class="stat"><div class="num">29<small>%</small></div><div class="cap">불편한 점으로<br>‘보강’을 직접 언급</div></div>
+      <div class="stat"><div class="num">81<small>%</small></div><div class="cap">업무가 절반 줄면<br>“쓰겠다”</div></div>
+    </div>
+
+    <div class="quotes">
+      <div class="q l"><p>“<mark>보강과 출결의 전화 상담</mark>이 힘들어요.”</p><span>경기 시흥 · 수영 강사</span></div>
+      <div class="q r"><p>“보강 연락했는데 <mark>누락</mark>되기도 하고, 출석부 따로 차량 따로 관리하니 하나가 틀어지면 일이 커져요.”</p><span>서울 중랑구 · 수영 강사</span></div>
+      <div class="q l"><p>“보강 스케줄 실수로 <mark>정원을 초과</mark>할 만큼 학생을 한 수업에 부르는 일이 생겼어요.”</p><span>서울 중랑구 · 前 어린이수영장 관리자</span></div>
+      <div class="q r"><p>“개인 핸드폰으로 학부모와 연락하다 보니 <mark>수시로 연락</mark>을 받아야 해요.”</p><span>충북 제천 · 수영 강사</span></div>
+    </div>
+
+    <div class="turn"><p>그래서 SwimSync는<br><span>이 네 가지부터 해결했습니다.</span></p><div class="arr">→</div></div>
+    <p class="src" style="margin-top:8px">* 2026년 9월 SwimSync 현장 설문 (유효 응답 31명, 테스트 응답 제외). 응답 원문 일부를 발췌했습니다.</p>
+  </div>
+
+  <!-- B · 뒷면 (100mm) -->
+  <div class="panel w283 pB" data-name="B · 시작하기 / QR">
+    <div class="eyebrow">HOW TO START</div>
+    <h2>쓰던 엑셀 그대로,<br>내일부터 시작하세요.</h2>
+    <div class="steps">
+      <div class="step"><div class="n">1</div><div><h4>회원 명단 한 번에 올리기</h4><p>지금 쓰는 엑셀·CSV 파일을 올리면 강습생이 일괄 등록돼요.</p></div></div>
+      <div class="step"><div class="n">2</div><div><h4>반·강사·정원 정하기</h4><p>반별 정원과 강사 색상만 정하면 주간·월간 스케줄표가 완성돼요.</p></div></div>
+      <div class="step"><div class="n">3</div><div><h4>학부모에게 링크 공유</h4><p>가입신청서에는 지금 자리가 남은 반만 보이고, 제출 즉시 반에 배정돼요.</p></div></div>
+    </div>
+
+    <div class="rolesTitle">한 번 입력하면, 네 개의 화면이 함께 움직여요</div>
+    <div class="roles">
+      <div class="role"><h5>관리자 웹</h5><p>스케줄 · 수납 · 급여 정산<br>보강 승인 · 증감 통계</p></div>
+      <div class="role"><h5>강사 앱</h5><p>오늘 수업 · 출결 체크<br>진도 기록 · 연차·대타</p></div>
+      <div class="role"><h5>학부모 앱</h5><p>결석·보강 신청 · 결제<br>진도 확인 · 1:1 메시지</p></div>
+      <div class="role"><h5>기사 앱</h5><p>오늘 노선 · 탑승 명단<br>반 변경 자동 반영</p></div>
+    </div>
+
+
+    <div class="rolesTitle">이런 수영장이라면 꼭 써보세요</div>
+    <div class="fit">
+      <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p><b>어린이 수영장</b> · 셔틀 차량을 함께 운영하는 곳</p></div>
+      <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>보강·반 변경 문의가 <b>매일 전화로</b> 들어오는 곳</p></div>
+      <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>회원 명단을 아직 <b>엑셀·수기 출석부</b>로 관리하는 곳</p></div>
+    </div>
+
+    <div class="qrbox">
+      <div class="qr"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 33 33" width="62" height="62" shape-rendering="crispEdges"><path fill="#0B1B3F" d="M0 0h7v1h-7zM10 0h5v1h-5zM16 0h2v1h-2zM19 0h3v1h-3zM23 0h1v1h-1zM26 0h7v1h-7zM0 1h1v1h-1zM6 1h1v1h-1zM9 1h3v1h-3zM13 1h5v1h-5zM20 1h1v1h-1zM24 1h1v1h-1zM26 1h1v1h-1zM32 1h1v1h-1zM0 2h1v1h-1zM2 2h3v1h-3zM6 2h1v1h-1zM8 2h4v1h-4zM13 2h1v1h-1zM16 2h3v1h-3zM21 2h3v1h-3zM26 2h1v1h-1zM28 2h3v1h-3zM32 2h1v1h-1zM0 3h1v1h-1zM2 3h3v1h-3zM6 3h1v1h-1zM8 3h1v1h-1zM11 3h1v1h-1zM14 3h1v1h-1zM16 3h1v1h-1zM19 3h1v1h-1zM22 3h2v1h-2zM26 3h1v1h-1zM28 3h3v1h-3zM32 3h1v1h-1zM0 4h1v1h-1zM2 4h3v1h-3zM6 4h1v1h-1zM8 4h5v1h-5zM15 4h1v1h-1zM18 4h1v1h-1zM21 4h3v1h-3zM26 4h1v1h-1zM28 4h3v1h-3zM32 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h2v1h-2zM13 5h1v1h-1zM15 5h2v1h-2zM20 5h1v1h-1zM22 5h1v1h-1zM26 5h1v1h-1zM32 5h1v1h-1zM0 6h7v1h-7zM8 6h1v1h-1zM10 6h1v1h-1zM12 6h1v1h-1zM14 6h1v1h-1zM16 6h1v1h-1zM18 6h1v1h-1zM20 6h1v1h-1zM22 6h1v1h-1zM24 6h1v1h-1zM26 6h7v1h-7zM8 7h5v1h-5zM14 7h2v1h-2zM18 7h6v1h-6zM0 8h1v1h-1zM2 8h5v1h-5zM10 8h1v1h-1zM12 8h4v1h-4zM17 8h1v1h-1zM19 8h1v1h-1zM23 8h2v1h-2zM26 8h5v1h-5zM0 9h1v1h-1zM2 9h3v1h-3zM9 9h1v1h-1zM11 9h2v1h-2zM14 9h1v1h-1zM18 9h6v1h-6zM26 9h2v1h-2zM29 9h4v1h-4zM1 10h1v1h-1zM3 10h1v1h-1zM5 10h3v1h-3zM15 10h2v1h-2zM18 10h1v1h-1zM20 10h3v1h-3zM26 10h1v1h-1zM28 10h1v1h-1zM30 10h2v1h-2zM0 11h1v1h-1zM4 11h1v1h-1zM7 11h1v1h-1zM9 11h4v1h-4zM14 11h1v1h-1zM16 11h1v1h-1zM19 11h4v1h-4zM25 11h1v1h-1zM28 11h4v1h-4zM0 12h1v1h-1zM2 12h2v1h-2zM6 12h5v1h-5zM12 12h1v1h-1zM18 12h1v1h-1zM22 12h1v1h-1zM24 12h2v1h-2zM27 12h3v1h-3zM31 12h2v1h-2zM1 13h1v1h-1zM5 13h1v1h-1zM8 13h4v1h-4zM14 13h4v1h-4zM19 13h1v1h-1zM21 13h4v1h-4zM26 13h1v1h-1zM30 13h3v1h-3zM0 14h2v1h-2zM5 14h2v1h-2zM8 14h3v1h-3zM18 14h1v1h-1zM21 14h1v1h-1zM25 14h2v1h-2zM28 14h2v1h-2zM31 14h1v1h-1zM0 15h2v1h-2zM3 15h2v1h-2zM7 15h4v1h-4zM12 15h3v1h-3zM16 15h1v1h-1zM18 15h1v1h-1zM20 15h2v1h-2zM23 15h1v1h-1zM25 15h2v1h-2zM28 15h3v1h-3zM0 16h4v1h-4zM6 16h1v1h-1zM13 16h2v1h-2zM17 16h1v1h-1zM23 16h1v1h-1zM25 16h1v1h-1zM27 16h3v1h-3zM32 16h1v1h-1zM0 17h1v1h-1zM7 17h5v1h-5zM16 17h2v1h-2zM19 17h5v1h-5zM25 17h3v1h-3zM29 17h2v1h-2zM32 17h1v1h-1zM2 18h1v1h-1zM6 18h2v1h-2zM10 18h1v1h-1zM12 18h6v1h-6zM21 18h1v1h-1zM24 18h5v1h-5zM30 18h2v1h-2zM0 19h1v1h-1zM5 19h1v1h-1zM8 19h2v1h-2zM12 19h4v1h-4zM17 19h5v1h-5zM23 19h2v1h-2zM26 19h6v1h-6zM0 20h2v1h-2zM4 20h4v1h-4zM9 20h6v1h-6zM16 20h1v1h-1zM19 20h2v1h-2zM22 20h4v1h-4zM27 20h3v1h-3zM32 20h1v1h-1zM0 21h1v1h-1zM7 21h5v1h-5zM15 21h1v1h-1zM18 21h6v1h-6zM25 21h3v1h-3zM32 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM4 22h4v1h-4zM9 22h2v1h-2zM12 22h5v1h-5zM21 22h2v1h-2zM24 22h1v1h-1zM28 22h4v1h-4zM0 23h1v1h-1zM3 23h1v1h-1zM7 23h1v1h-1zM10 23h1v1h-1zM14 23h2v1h-2zM19 23h1v1h-1zM21 23h1v1h-1zM23 23h5v1h-5zM29 23h2v1h-2zM0 24h1v1h-1zM4 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM10 24h3v1h-3zM14 24h2v1h-2zM17 24h1v1h-1zM24 24h5v1h-5zM31 24h1v1h-1zM8 25h4v1h-4zM16 25h1v1h-1zM18 25h2v1h-2zM21 25h2v1h-2zM24 25h1v1h-1zM28 25h1v1h-1zM30 25h1v1h-1zM32 25h1v1h-1zM0 26h7v1h-7zM9 26h1v1h-1zM12 26h1v1h-1zM14 26h2v1h-2zM18 26h1v1h-1zM21 26h1v1h-1zM23 26h2v1h-2zM26 26h1v1h-1zM28 26h1v1h-1zM30 26h2v1h-2zM0 27h1v1h-1zM6 27h1v1h-1zM8 27h3v1h-3zM12 27h3v1h-3zM16 27h1v1h-1zM19 27h1v1h-1zM21 27h1v1h-1zM23 27h2v1h-2zM28 27h5v1h-5zM0 28h1v1h-1zM2 28h3v1h-3zM6 28h1v1h-1zM8 28h2v1h-2zM12 28h3v1h-3zM18 28h1v1h-1zM20 28h1v1h-1zM22 28h1v1h-1zM24 28h6v1h-6zM31 28h1v1h-1zM0 29h1v1h-1zM2 29h3v1h-3zM6 29h1v1h-1zM8 29h2v1h-2zM11 29h1v1h-1zM14 29h3v1h-3zM19 29h3v1h-3zM23 29h1v1h-1zM25 29h1v1h-1zM28 29h2v1h-2zM31 29h2v1h-2zM0 30h1v1h-1zM2 30h3v1h-3zM6 30h1v1h-1zM8 30h1v1h-1zM12 30h1v1h-1zM17 30h2v1h-2zM20 30h1v1h-1zM23 30h1v1h-1zM26 30h2v1h-2zM0 31h1v1h-1zM6 31h1v1h-1zM14 31h1v1h-1zM16 31h1v1h-1zM18 31h4v1h-4zM23 31h1v1h-1zM25 31h1v1h-1zM28 31h3v1h-3zM0 32h7v1h-7zM8 32h2v1h-2zM12 32h2v1h-2zM17 32h4v1h-4zM23 32h2v1h-2zM27 32h1v1h-1zM31 32h1v1h-1z"/></svg></div>
+      <div>
+        <h4>평소 불편했던 점,<br>QR로 들려주세요.</h4>
+        <p>도입 상담 · 무료 체험 신청도<br>같은 페이지에서 받고 있어요.</p>
+        <div class="url">sojung0422.github.io/swimsync/intro/support</div>
+      </div>
+    </div>
+    <div class="foot"><div class="logo dark"><div class="mark"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/><path d="M2 16c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" opacity=".55"/></svg></div><div class="word">SwimSync</div></div><p>수영장 통합 운영 플랫폼</p></div>
+  </div>
+
+  <!-- C · 표지 (100mm) -->
+  <div class="panel w283 pC" data-name="C · 표지">
+    <div class="logo"><div class="mark"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#1463F3" stroke-width="2.6" stroke-linecap="round"/><path d="M2 16c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#1463F3" stroke-width="2.6" stroke-linecap="round" opacity=".55"/></svg></div><div class="word">SwimSync</div></div>
+    <div class="badge">수영 강사·데스크를 위한 운영 앱</div>
+    <h1>수업보다 힘든<br>보강 연락,<br><span>이제 앱이 받습니다.</span></h1>
+    <p class="sub">결석 · 보강 · 출결 · 차량 · 급여까지.<br>강사님은 물에서 수업만 하세요.</p>
+
+    <div class="phoneWrap" data-name="폰 목업 · 학부모 보강 신청">
+      <div class="phone"><div class="screen">
+        <div class="sbar"><span>14:10</span><span>●●●</span></div>
+        <div class="apphead"><div class="t">보강 신청</div><div class="s">이번 달 남은 보강 2회</div></div>
+        <div class="ab"><div class="k">결석한 수업</div><div class="v">9월 16일 (수) 15:00 · 초급반</div></div>
+        <div class="slotT">같은 구분의 빈자리만 보여드려요</div>
+        <div class="slot on"><div><div class="d">9월 18일 (금) 16:00</div><div class="m">김수영 강사 · 초급</div></div><div class="chip">잔여 2자리</div></div>
+        <div class="slot"><div><div class="d">9월 19일 (토) 10:00</div><div class="m">박하늘 강사 · 초급</div></div><div class="chip">잔여 1자리</div></div>
+        <div class="slot off"><div><div class="d">9월 19일 (토) 11:00</div><div class="m">정원 마감</div></div><div class="chip g">마감</div></div>
+        <div class="cta">보강 신청하기</div>
+      </div></div>
+      <div class="toast2"><h6>강사 앱 알림</h6><p>금 16:00 수업에 보강생 1명 배정</p></div>
+      <div class="toast"><div class="ic"><svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><h6>보강이 확정됐어요</h6><p>스케줄표·차량 노선에 자동 반영</p></div></div>
+    </div>
+
+    <div class="coverFoot"><p>전화 대신 앱으로,<br><span>보강·연락·출석부를 한 곳에서.</span></p><div class="logo dark"><div class="mark"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round"/><path d="M2 16c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#FFFFFF" stroke-width="2.6" stroke-linecap="round" opacity=".55"/></svg></div><div class="word" style="font-size:12px">SwimSync</div></div></div>
+  </div>
+</section>
+
+<!-- ======================= PAGE 2 · INSIDE ======================= -->
+<section class="page inside" id="inside" data-name="안쪽면 (A4 · 3단)">
+  <div class="band">
+    <div><h2>강사님이 하던 일, <span>이렇게 줄어듭니다.</span></h2><p>설문에서 가장 많이 나온 불편함을, 지금 바로 쓸 수 있는 기능으로 풀었습니다.</p></div>
+    <div class="logo"><div class="mark"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M2 9c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#1463F3" stroke-width="2.6" stroke-linecap="round"/><path d="M2 16c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" stroke="#1463F3" stroke-width="2.6" stroke-linecap="round" opacity=".55"/></svg></div><div class="word">SwimSync</div></div>
+  </div>
+  <div class="cols">
+
+    <!-- 01 -->
+    <div class="col w283" data-name="01 · 보강">
+      <div class="numrow"><div class="no">01</div><div class="tag">결석 · 보강</div></div>
+      <h3>빈 시간 찾아 전화 돌리던<br>보강, 학부모가 직접 잡아요.</h3>
+      <div class="ba">
+        <div class="before"><div class="lb">BEFORE</div><p>결석 전화 받기 → 빈 시간 찾기 → 다시 전화 → 출석부·차량표 수정</p></div>
+        <div class="down">▼</div>
+        <div class="after"><div class="lb">AFTER</div><p>학부모가 앱에서 결석 신청 → 빈자리 골라 보강 신청 → 승인하면 끝</p></div>
+      </div>
+      <div class="mock">
+        <div class="mh"><b>보강 요청 · 승인 대기</b><span>오늘 3건</span></div>
+        <div class="row"><div class="nm">김민준<small>초급 · 9/16 결석</small></div><div class="pill p-mk">9/18 16:00 신청</div></div>
+        <div class="row"><div class="nm">오채원<small>유치부 · 진단서 첨부</small></div><div class="pill p-ok">서류 확인</div></div>
+        <div class="row"><div class="nm">이서윤<small>정규반 · 9/17 결석</small></div><div class="pill p-mk">9/20 10:00 신청</div></div>
+      </div>
+      <div class="feats">
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p><b>같은 구분(유치부·정규·성인)의 빈자리만</b> 보여줘서 정원 초과 배정이 생기지 않아요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p><b>보강 횟수·서류 규칙</b>을 정해두면 신청 단계에서 걸러져요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>보강이 취소되면 <b>학부모·강사 앱에 즉시 알림</b>이 가요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>보강 대신 <b>다음 달 결제에서 차감(이월)</b>하는 처리도 버튼 하나로.</p></div>
+      </div>
+      <div class="voice"><div class="qm">현장의 목소리</div><p>“결석 보강, 담당 쌤이 빈 시간을 찾아 잡아야 해요.”</p><span>청주 오송 · 수영 강사</span></div>
+    </div>
+
+    <!-- 02 -->
+    <div class="col w283" data-name="02 · 연락·출결·차량">
+      <div class="numrow"><div class="no">02</div><div class="tag">연락 · 출결 · 차량</div></div>
+      <h3>출석부 따로, 차량표 따로,<br>단톡방 따로는 이제 그만.</h3>
+      <div class="ba">
+        <div class="before"><div class="lb">BEFORE</div><p>수기 출석부 · 개인 메신저 연락 · 차량 명단 따로 관리 → 하나 바뀌면 전부 수정</p></div>
+        <div class="down">▼</div>
+        <div class="after"><div class="lb">AFTER</div><p>강사 앱에서 출결 체크 한 번 → 학부모 앱·차량 노선까지 함께 반영</p></div>
+      </div>
+      <div class="mock">
+        <div class="mh"><b>오늘 15:00 · 초급반</b><span>강사 앱</span></div>
+        <div class="row"><div class="nm">김민준<small>2호차</small></div><div class="pill p-ok">출석</div></div>
+        <div class="row"><div class="nm">오채원<small>보강생</small></div><div class="pill p-mk">보강</div></div>
+        <div class="row"><div class="nm">박지호<small>앱으로 결석 신청</small></div><div class="pill p-no">결석</div></div>
+        <div class="row"><div class="nm">최하린<small>1호차 · 하원 16:10</small></div><div class="pill p-car">차량</div></div>
+      </div>
+      <div class="feats">
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>학부모 연락은 <b>앱 1:1 메시지</b>로 모으고, 통화 후엔 <b>통화 메모</b>로 남겨요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>오늘 배운 내용을 기록하면 <b>학부모 앱 ‘나의 진도’</b>에 바로 보여요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>반이 바뀌어도 <b>요일별 차량 노선</b>과 기사 앱에 자동 반영돼요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>공지·안내는 <b>대상만 골라 한 번에 발송</b>하고 발송 내역도 남아요.</p></div>
+      </div>
+      <div class="voice"><div class="qm">현장의 목소리</div><p>“매번 반복적인 연락이 힘들어요.”</p><span>청주 · 수영 강사</span></div>
+    </div>
+
+    <!-- 03 -->
+    <div class="col w275" data-name="03 · 급여·연차·운영">
+      <div class="numrow"><div class="no">03</div><div class="tag">급여 · 연차 · 운영</div></div>
+      <h3>급여·연차·대타까지,<br>기준이 보이는 운영.</h3>
+      <div class="ba">
+        <div class="before"><div class="lb">BEFORE</div><p>계산기로 급여 정산 · 말로 하는 연차 요청 · 단톡방에서 대타 구하기</p></div>
+        <div class="down">▼</div>
+        <div class="after"><div class="lb">AFTER</div><p>근무 기준 자동 정산 · 잔여 연차 확인 후 신청 · 대타는 먼저 수락한 강사로 확정</p></div>
+      </div>
+      <div class="mock">
+        <div class="mh"><b>9월 급여 명세 · 김수영</b><span>자동 계산</span></div>
+        <div class="kv"><span>기본 (시급 × 근무시간)</span><b>1,840,000원</b></div>
+        <div class="kv"><span>개인지도료 · 생존수영 수당</span><b>+ 320,000원</b></div>
+        <div class="kv"><span>남은 연차</span><b>8.5일</b></div>
+        <div class="bar"><i style="width:71%"></i></div>
+      </div>
+      <div class="feats">
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p><b>시급×시간, 인센티브, 각종 수당</b>까지 더해 월별 명세서로 발행해요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>대타 요청은 <b>그 시간 비어 있는 모든 강사에게 동시에</b> 보여요.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>수납·미수납, <b>강사별 재등록률·퇴원률</b>을 그래프로 한눈에.</p></div>
+        <div class="feat"><div class="ck"><svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none"><path d="M4 12.5l5 5L20 6.5" stroke="#1463F3" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"/></svg></div><p>연차 신청 시 <b>남은 연차가 바로 보이고</b>, 승인하면 자동 차감돼요.</p></div>
+      </div>
+      <div class="voice"><div class="qm">현장의 목소리</div><p>“휴가 제도가 명확하게 있었으면 좋겠습니다.”</p><span>서울 마포구 · 수영 강사</span></div>
+    </div>
+
+  </div>
+</section>
+</body>
+</html>
