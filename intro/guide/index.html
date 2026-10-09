@@ -3,8 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SwimSync 이용 가이드</title>
-<meta name="description" content="SwimSync 관리자 웹, 학부모 앱, 강사 앱, 기사 앱 사용법을 단계별로 안내합니다.">
+<title>SwimSync 이용 가이드 | 수영장 관리 프로그램 사용법</title>
+<meta name="description" content="SwimSync 관리자 웹, 학부모 앱, 강사 앱, 기사 앱 사용법을 단계별로 안내합니다. 강습생 등록, 보강 신청, 원비 청구, 차량 관리, 강사 급여 정산.">
+<link rel="canonical" href="https://sojung0422.github.io/swimsync/intro/guide/">
+<script src="../lang.js"></script>
 <meta property="og:title" content="SwimSync 이용 가이드">
 <meta property="og:description" content="처음 시작하기부터 보강·출석·차량·급여까지, 화면별 사용법을 안내합니다.">
 <meta property="og:image" content="https://sojung0422.github.io/swimsync/intro/og.png">
@@ -116,12 +118,13 @@ th{font-size:13px;color:var(--mute);font-weight:600}
 <body>
 <header class="top">
   <button class="menu-btn" id="menu" aria-label="목차 열기" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-  <a class="logo" href="../"><img class="l" src="../logo.png" alt="SwimSync"><img class="d" src="../logo-white.png" alt="SwimSync"><span>이용 가이드</span></a>
+  <a class="logo notranslate" translate="no" href="../"><img class="l" src="../logo.png" alt="SwimSync"><img class="d" src="../logo-white.png" alt="SwimSync"><span>이용 가이드</span></a>
   <div class="search">
     <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
     <input id="q" type="search" placeholder="사용법 검색 (예: 보강, 연차)" autocomplete="off" aria-label="사용법 검색">
     <div class="results" id="res" hidden></div>
   </div>
+  <span data-lang-picker></span>
   <a class="toplink" href="../">홈페이지</a>
 </header>
 <div class="layout">
