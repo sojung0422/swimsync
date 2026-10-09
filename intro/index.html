@@ -186,19 +186,72 @@ section{padding-block:clamp(72px,10vw,120px)}
 .more h3{font-size:17px}
 .more p{font-size:14.5px;color:var(--soft)}
 
+/* sub head inside features */
+.subhead{display:grid;gap:12px;margin-top:clamp(88px,11vw,136px);margin-bottom:clamp(48px,6vw,72px);text-align:center;justify-items:center}
+/* invoice / payslip mock */
+.inv,.slip{width:100%;max-width:380px;background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px 22px;display:grid;gap:10px;font-size:14px}
+.inv-h{display:grid;gap:2px;padding-bottom:12px;border-bottom:1px solid var(--line);margin-bottom:2px}
+.inv-h b{font-size:16px}
+.inv-h span{font-size:12.5px;color:var(--mute)}
+.inv p,.slip p{display:flex;justify-content:space-between;gap:12px;color:var(--soft)}
+.inv p.minus .num{color:var(--good)}
+.inv p.sum,.slip p.sum{padding-top:12px;border-top:1px dashed var(--line);color:var(--ink);font-weight:700;font-size:15.5px}
+.inv p.sum .num,.slip p.sum .num{color:var(--brand)}
+.auto{margin-top:4px;font-size:12.5px;color:var(--brand);background:var(--tint);border-radius:10px;padding:8px 12px;text-align:center;font-weight:600}
+.perf{margin-top:6px;padding-top:14px;border-top:1px solid var(--line);display:grid;gap:8px}
+.perf div{display:grid;grid-template-columns:64px 1fr 48px;gap:10px;align-items:center;font-size:13px;color:var(--soft)}
+.perf i{position:relative;height:8px;border-radius:8px;background:var(--alt)}
+.perf em{position:absolute;inset:0 auto 0 0;border-radius:8px;background:var(--brand)}
+.perf u{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--mute)}
+.perf b{text-align:right;color:var(--ink);font-weight:500}
+.perf-cap{font-size:11.5px;color:var(--mute)!important;justify-content:flex-end!important}
+/* schedule change mock */
+.chg{width:100%;max-width:400px;background:var(--paper);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:20px 22px;display:grid;gap:12px;font-size:14px}
+.chg-h{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px}
+.ok-dot{width:10px;height:10px;border-radius:50%;background:var(--good);box-shadow:0 0 0 4px var(--good-bg)}
+.chg-row{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;font-size:13px}
+.chg-row .old{padding:8px 10px;border-radius:10px;background:var(--alt);color:var(--mute);text-decoration:line-through}
+.chg-row .new{padding:8px 10px;border-radius:10px;background:var(--tint);color:var(--brand);font-weight:600}
+.chg-row .to{color:var(--mute)}
+.chg-cap{font-size:12.5px;color:var(--mute)}
+.chg ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.chg li{display:grid;grid-template-columns:20px 72px 1fr;gap:8px;align-items:center;font-size:13.5px;color:var(--soft)}
+.chg li::before{content:"✓";width:20px;height:20px;border-radius:50%;background:var(--good-bg);color:var(--good);font-size:12px;font-weight:700;display:grid;place-items:center}
+.chg li b{color:var(--ink);font-weight:600}
+/* no-mistake cards */
+.nomiss{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media (max-width:860px){.nomiss{grid-template-columns:1fr}}
+.nomiss div{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:24px;display:grid;gap:8px;align-content:start}
+.nm-b{justify-self:start;font-size:12.5px;font-weight:600;color:var(--bad);background:var(--bad-bg);padding:3px 10px;border-radius:99px;text-decoration:line-through}
+.nomiss b{font-size:19px;letter-spacing:-.02em}
+.nomiss p{font-size:14.5px;color:var(--soft)}
+.calc-t{margin:clamp(48px,6vw,72px) 0 20px;text-align:center;font-weight:600;font-size:18px}
+/* per-task bars */
+.tasks{display:grid;gap:8px;padding-top:14px;border-top:1px solid var(--line)}
+.tasks-t{font-size:14px;font-weight:600;color:var(--soft)}
+.task{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;align-items:center}
+.task-l{display:grid;line-height:1.35}
+.task-l b{font-size:14px;font-weight:600}
+.task-l span{font-size:12px;color:var(--mute)}
+.task-r{display:grid;grid-template-columns:1fr 64px;gap:8px;align-items:center}
+.task-r i{height:8px;border-radius:8px;background:var(--alt);overflow:hidden}
+.task-r em{display:block;height:100%;background:var(--brand);border-radius:8px;transition:width .25s}
+.task-r .num{font-size:13px;text-align:right;color:var(--soft)}
+@media (max-width:480px){.task{grid-template-columns:1fr}}
+
 /* calculator */
 .calc{display:grid;grid-template-columns:1fr 1.1fr;border-radius:28px;overflow:hidden;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow)}
 @media (max-width:900px){.calc{grid-template-columns:1fr}}
-.in{padding:clamp(24px,4vw,40px);display:grid;gap:28px;align-content:center}
-.f{display:grid;gap:10px}
+.in{padding:clamp(20px,3vw,32px);display:grid;gap:16px;align-content:center}
+.f{display:grid;gap:4px}
 .f .row{display:flex;justify-content:space-between;align-items:baseline}
 .f label{font-weight:600}
 .f output{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:18px;color:var(--brand)}
 input[type=range]{width:100%;accent-color:var(--brand);height:24px;margin:0}
-.out{background:var(--deep);color:var(--deep-ink);padding:clamp(24px,4vw,40px);display:grid;gap:26px;align-content:center}
+.out{background:var(--deep);color:var(--deep-ink);padding:clamp(20px,3vw,32px);display:grid;gap:18px;align-content:center}
 .big{display:grid;gap:4px}
 .big span{font-size:14px;color:var(--deep-mute)}
-.big b{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:clamp(48px,7vw,72px);line-height:1;letter-spacing:-.03em;color:#fff}
+.big b{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:clamp(44px,6vw,64px);line-height:1;letter-spacing:-.03em;color:#fff}
 .big b small{font-size:.38em;margin-left:6px;color:var(--deep-mute);font-weight:500}
 .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .duo div{border:1px solid rgba(255,255,255,.12);border-radius:16px;padding:16px}
@@ -433,12 +486,13 @@ footer a:hover{color:var(--brand)}
 
     <div class="feat">
       <div class="txt">
-        <p class="label">출석·차량</p>
-        <h3>결석 한 번이면<br>모든 명단이 맞춰져요</h3>
+        <p class="label">결석·보강 차량 자동 공유</p>
+        <h3>결석 한 번이면<br>차량 명단까지 맞춰져요</h3>
         <ul class="ticks">
-          <li>강사 앱 수업 명단과 기사 앱 탑승 명단에 동시 반영</li>
+          <li>결석하면 강사 수업 명단과 기사 탑승 명단에서 동시에 빠져요</li>
+          <li>보강 수업은 차량이 다니지 않는다고 학부모에게 미리 안내해요</li>
+          <li>승하차 변경은 학원이 확인하면 기사 앱에 반영돼요</li>
           <li>이름 검색 한 번에 보호자·연락처·차량·지역 확인</li>
-          <li>기사님은 정류장 순서대로 명단을 받아요</li>
         </ul>
         <p class="from">"강습생을 검색하면 보호자 연락처, 탑승 차량을 바로 알 수 있으면" — 설문 응답</p>
       </div>
@@ -454,10 +508,98 @@ footer a:hover{color:var(--brand)}
       </div>
     </div>
 
+
+    <div class="subhead">
+      <p class="label">자동 계산</p>
+      <h2 class="h2">매달 손으로 하던 계산,<br>이제 SwimSync가 해요</h2>
+      <p class="sub">원비, 일정 변경, 급여처럼 실수하면 바로 민원이 되는 일부터 자동으로 바꿨어요.</p>
+    </div>
+
+    <div class="feat rev">
+      <div class="txt">
+        <p class="label">월 원비 자동 계산</p>
+        <h3>회원마다 다른 월 원비,<br>규칙대로 자동 계산</h3>
+        <ul class="ticks">
+          <li>요금제·주 횟수·시간대 할증으로 기본 원비를 계산해요</li>
+          <li>중간 등록은 남은 횟수만큼 일할 청구해요</li>
+          <li>휴관일 제외, 형제·이벤트 할인, 보강 이월 차감까지 반영해요</li>
+          <li>미납은 보호자에게 자동 안내, 원장은 대상만 확인해요</li>
+        </ul>
+        <p class="from">"인포에서 해야 할 역할을 담당 선생님이 있다는 이유로 금액적인 부분, 셔틀도 관여해야 해요" — 설문 응답</p>
+      </div>
+      <div class="vis">
+        <div class="inv">
+          <div class="inv-h"><b>11월 원비 청구</b><span>김서윤 · 유치부 주 2회</span></div>
+          <p><span>기본 원비 (월 8회)</span><span class="num">160,000</span></p>
+          <p class="minus"><span>휴관일 1회 제외</span><span class="num">−20,000</span></p>
+          <p class="minus"><span>형제 할인 10%</span><span class="num">−14,000</span></p>
+          <p class="minus"><span>보강 이월 1회</span><span class="num">−20,000</span></p>
+          <p class="sum"><span>청구 금액</span><span class="num">106,000원</span></p>
+          <div class="auto">자동 계산 · 학부모 앱 결제 현황에 바로 표시</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="feat">
+      <div class="txt">
+        <p class="label">일정 변경 자동 반영</p>
+        <h3>반·요일이 바뀌면<br>모든 곳이 함께 바뀌어요</h3>
+        <ul class="ticks">
+          <li>학부모가 앱으로 변경을 신청하고, 데스크는 승인만 해요</li>
+          <li>승인하면 적용일부터 스케줄표·강사 명단·차량 명단이 바뀌어요</li>
+          <li>금액이 달라지는 변경은 다음 달 원비에 자동 반영돼요</li>
+          <li>휴관일·대체수업일을 지정하면 강사·학부모 앱에 바로 보여요</li>
+        </ul>
+        <p class="from">"보강 및 스케줄 변경, 관리 등이 아날로그 식으로 진행돼서 불편했어요" — 설문 응답</p>
+      </div>
+      <div class="vis">
+        <div class="chg">
+          <div class="chg-h"><span class="ok-dot"></span>반 변경 승인 · 김서윤</div>
+          <div class="chg-row"><span class="old">화·목 16:00 박민호 코치</span><span class="to">→</span><span class="new">월·수 16:50 김하늘 코치</span></div>
+          <p class="chg-cap">11/3(월)부터 자동 반영</p>
+          <ul>
+            <li><b>스케줄표</b><span>월·수 16:50 수업에 추가</span></li>
+            <li><b>강사 명단</b><span>박민호 → 김하늘 코치</span></li>
+            <li><b>차량 명단</b><span>2호차 탑승 요일 변경</span></li>
+            <li><b>원비</b><span>금액 같음 · 변동 없음</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="feat rev">
+      <div class="txt">
+        <p class="label">급여·실적 자동 정산</p>
+        <h3>강사 급여와 실적,<br>수업 기록으로 자동 계산</h3>
+        <ul class="ticks">
+          <li>정규직은 월급·인센티브·추가근무, 프리랜서는 시간대 단가 × 실제 수업</li>
+          <li>방학특강·생존수영 수당까지 더해 명세서 발행, PDF 저장</li>
+          <li>강사별 재등록률·퇴원률·반이동률·매출을 평균과 비교해요</li>
+          <li>인센티브 기준을 정해 두면 모두에게 같은 기준으로 계산해요</li>
+        </ul>
+        <p class="from">"급여 지급 기준과 예상 급여를 확인할 수 있으면 좋겠습니다" — 설문 응답</p>
+      </div>
+      <div class="vis">
+        <div class="slip">
+          <div class="inv-h"><b>10월 급여 명세서</b><span>김하늘 코치 · 프리랜서</span></div>
+          <p><span>평일 오후 25,000원 × 42시간</span><span class="num">1,050,000</span></p>
+          <p><span>주말 30,000원 × 12시간</span><span class="num">360,000</span></p>
+          <p><span>생존수영 수당</span><span class="num">100,000</span></p>
+          <p class="sum"><span>지급 총액</span><span class="num">1,510,000원</span></p>
+          <div class="perf">
+            <div><span>재등록률</span><i><em style="width:92%"></em><u style="left:85%"></u></i><b class="num">92%</b></div>
+            <div><span>퇴원률</span><i><em style="width:24%"></em><u style="left:40%"></u></i><b class="num">3%</b></div>
+            <div><span>담당 매출</span><i><em style="width:76%"></em><u style="left:60%"></u></i><b class="num">412만</b></div>
+            <p class="perf-cap">세로선은 전체 강사 평균</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="more">
       <div><h3>휴식 시간 지키기</h3><p>'보강 안 받는 시간'을 막아 두면 그 시간엔 보강이 안 열려요.</p></div>
       <div><h3>연차·근무 신청</h3><p>남은 연차를 보고 앱으로 신청, 원장이 승인해요.</p></div>
-      <div><h3>급여 자동 계산</h3><p>월급·시간대별 단가·수당으로 명세서까지 발행해요.</p></div>
+      <div><h3>공지 한 번에 발송</h3><p>대상만 골라 앱 알림으로, 직원 전용 공지는 따로 보내요.</p></div>
       <div><h3>5주차 대체보강</h3><p>1년 치 대체보강일을 자동으로 제안해요.</p></div>
       <div><h3>레벨 테스트·승급</h3><p>급수 체계와 테스트 기록으로 반 편성을 정리해요.</p></div>
       <div><h3>엑셀 그대로 이전</h3><p>쓰던 회원명부를 올리면 자동으로 인식해요.</p></div>
@@ -469,14 +611,15 @@ footer a:hover{color:var(--brand)}
 <section class="alt" id="effect" aria-labelledby="e-h">
   <div class="wrap">
     <div class="head center">
-      <p class="label">우리 수영장 기준으로 계산</p>
-      <h2 class="h2" id="e-h">한 달에 얼마나 아낄 수 있을까요?</h2>
+      <p class="label">도입 효과</p>
+      <h2 class="h2" id="e-h">시간은 줄고, 실수는 사라져요</h2>
     </div>
     <div class="calc">
       <div class="in">
         <div class="f"><div class="row"><label for="c-s">재원생 수</label><output id="o-s" for="c-s">300명</output></div><input id="c-s" type="range" min="30" max="1500" step="10" value="300"></div>
         <div class="f"><div class="row"><label for="c-t">강사 수</label><output id="o-t" for="c-t">8명</output></div><input id="c-t" type="range" min="1" max="40" value="8"></div>
         <div class="f"><div class="row"><label for="c-w">강사·데스크 시급</label><output id="o-w" for="c-w">12,000원</output></div><input id="c-w" type="range" min="10000" max="40000" step="500" value="12000"></div>
+        <div class="tasks" id="tasks" aria-label="업무별 한 달 절약 시간"><p class="tasks-t">업무별 한 달 절약 시간</p></div>
       </div>
       <div class="out" aria-live="polite">
         <div class="big"><span>한 달에 아끼는 시간</span><b id="r-h">0<small>시간</small></b></div>
@@ -495,6 +638,11 @@ footer a:hover{color:var(--brand)}
           <li>설문을 바탕으로 한 예상치이며 결과를 보장하지 않아요.</li>
         </ul></details>
       </div>
+    </div>
+    <div class="nomiss" style="margin-top:20px">
+      <div><span class="nm-b">정원 초과 보강</span><b>신청 단계에서 자동 차단</b><p>정원과 보강 전용 자리를 넘으면 학부모 앱에서 아예 신청이 안 돼요.</p></div>
+      <div><span class="nm-b">보강·결석 연락 누락</span><b>자동 알림으로 빠짐없이</b><p>결석, 보강 확정, 취소가 학부모·강사·기사에게 동시에 전달돼요.</p></div>
+      <div><span class="nm-b">원비·급여 계산 실수</span><b>정한 규칙대로 자동 계산</b><p>일할, 할인, 이월, 시간대 단가를 사람이 다시 계산하지 않아요.</p></div>
     </div>
   </div>
 </section>
@@ -679,7 +827,20 @@ footer a:hover{color:var(--brand)}
   function calc(){
     var s=+$('c-s').value,t=+$('c-t').value,w=+$('c-w').value;
     $('o-s').textContent=s+'명';$('o-t').textContent=t+'명';$('o-w').textContent=won(w)+'원';
-    var min=s*.12*12*.85 + s*.6*4*.7 + 22*(10+t*2)*.9 + s*2*.8 + t*40*.8;
+    var rows=[
+      ['보강 처리','1건 12분 → 2분', s*.12*12*.85],
+      ['결석·보강 문의 전화','1통 4분 → 1분', s*.6*4*.7],
+      ['출석부·차량 명단 맞추기','하루 '+(10+t*2)+'분 → '+Math.round((10+t*2)*.1)+'분', 22*(10+t*2)*.9],
+      ['원비 계산·청구 안내','1명 2분 → 24초', s*2*.8],
+      ['급여·명세서','강사 1명 40분 → 8분', t*40*.8]
+    ];
+    var min=rows.reduce(function(a,r){return a+r[2]},0), top=Math.max.apply(null,rows.map(function(r){return r[2]}));
+    var box=$('tasks');box.querySelectorAll('.task').forEach(function(n){n.remove()});
+    rows.forEach(function(r){
+      var d=document.createElement('div');d.className='task';
+      d.innerHTML='<div class="task-l"><b>'+r[0]+'</b><span>'+r[1]+'</span></div><div class="task-r"><i><em style="width:'+(r[2]/top*100).toFixed(1)+'%"></em></i><span class="num">'+(r[2]/60).toFixed(1)+'시간</span></div>';
+      box.appendChild(d);
+    });
     var h=min/60, saved=h*w;
     $('r-h').innerHTML=Math.round(h)+'<small>시간</small>';
     $('r-w').textContent=won(saved/10000)+'만원';
