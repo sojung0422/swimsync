@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SwimSync 이용 가이드</title>
+<meta name="description" content="SwimSync 관리자 웹, 학부모 앱, 강사 앱, 기사 앱 사용법을 단계별로 안내합니다.">
+<meta property="og:title" content="SwimSync 이용 가이드">
+<meta property="og:description" content="처음 시작하기부터 보강·출석·차량·급여까지, 화면별 사용법을 안내합니다.">
+<meta property="og:image" content="https://sojung0422.github.io/swimsync/intro/og.png">
+<link rel="icon" type="image/png" href="https://sojung0422.github.io/swimsync/intro/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+:root{
+  --brand:#0063EC; --on-brand:#fff; --tint:#EAF2FF;
+  --bg:#FFFFFF; --side:#F7F8FB; --paper:#FFFFFF;
+  --ink:#0F1222; --soft:#454B63; --mute:#868CA2; --line:#E6E8F0;
+  --tip:#E9F7EF; --tip-ink:#0E6B3D; --warn:#FFF4E5; --warn-ink:#9A5700;
+  --logo-l:block; --logo-d:none;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --brand:#4C9BFF; --on-brand:#04122B; --tint:#0F2240;
+    --bg:#0C0D17; --side:#11121D; --paper:#171827;
+    --ink:#EDEEF6; --soft:#C2C4D6; --mute:#8D90A6; --line:#262838;
+    --tip:#10291C; --tip-ink:#6EE7A0; --warn:#2E2110; --warn-ink:#FBBF5A;
+    --logo-l:none; --logo-d:block;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --brand:#4C9BFF; --on-brand:#04122B; --tint:#0F2240;
+  --bg:#0C0D17; --side:#11121D; --paper:#171827;
+  --ink:#EDEEF6; --soft:#C2C4D6; --mute:#8D90A6; --line:#262838;
+  --tip:#10291C; --tip-ink:#6EE7A0; --warn:#2E2110; --warn-ink:#FBBF5A;
+  --logo-l:none; --logo-d:block;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:16px;line-height:1.75;word-break:keep-all;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:3px solid var(--brand);outline-offset:2px;border-radius:6px}
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;height:64px;display:flex;align-items:center;gap:16px;padding-inline:clamp(16px,3vw,28px);background:color-mix(in oklab,var(--bg) 88%,transparent);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:600;color:var(--soft);font-size:15px}
+.logo img{height:26px;width:auto}
+.logo .l{display:var(--logo-l)}.logo .d{display:var(--logo-d)}
+.logo span{padding-left:10px;border-left:1px solid var(--line)}
+.search{margin-left:auto;position:relative;width:min(320px,40vw)}
+.search input{width:100%;font:inherit;font-size:14px;padding:9px 12px 9px 36px;border-radius:10px;border:1px solid var(--line);background:var(--side);color:var(--ink)}
+.search input:focus{outline:none;border-color:var(--brand);background:var(--paper)}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;stroke:var(--mute)}
+.results{position:absolute;top:44px;left:0;right:0;background:var(--paper);border:1px solid var(--line);border-radius:12px;box-shadow:0 20px 50px -20px rgba(0,0,0,.3);max-height:60vh;overflow:auto;padding:6px}
+.results a{display:block;padding:9px 12px;border-radius:8px;font-size:14px}
+.results a:hover,.results a.sel{background:var(--tint)}
+.results small{display:block;color:var(--mute);font-size:12px}
+.results p{padding:10px 12px;color:var(--mute);font-size:14px;margin:0}
+.toplink{font-size:14px;font-weight:600;color:var(--brand);white-space:nowrap}
+.menu-btn{display:none;background:none;border:0;padding:6px;color:var(--ink);cursor:pointer}
+.layout{display:grid;grid-template-columns:272px 1fr;min-height:calc(100% - 64px)}
+aside{background:var(--side);border-right:1px solid var(--line);padding:20px 12px 60px;position:sticky;top:64px;height:calc(100vh - 64px);overflow:auto}
+.grp{margin-bottom:18px}
+.grp h2{font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--mute);margin:0 0 6px;padding-inline:12px}
+.grp a{display:block;padding:7px 12px;border-radius:8px;font-size:14.5px;color:var(--soft)}
+.grp a:hover{color:var(--ink);background:var(--line)}
+.grp a.on{color:var(--brand);background:var(--tint);font-weight:600}
+main{padding:40px clamp(16px,5vw,64px) 100px;min-width:0}
+article{max-width:760px}
+.crumb{font-size:13.5px;color:var(--mute);margin-bottom:10px}
+h1{font-size:clamp(28px,3.4vw,36px);line-height:1.3;letter-spacing:-.025em;margin:0 0 12px;text-wrap:balance}
+.lead{font-size:17px;color:var(--soft);margin:0 0 28px}
+h3{font-size:20px;letter-spacing:-.02em;margin:36px 0 12px}
+ol.steps{list-style:none;counter-reset:s;padding:0;margin:0;display:grid;gap:12px}
+ol.steps li{counter-increment:s;display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start}
+ol.steps li::before{content:counter(s);width:28px;height:28px;border-radius:50%;background:var(--tint);color:var(--brand);font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:14px;display:grid;place-items:center;margin-top:1px}
+ul.dots{padding-left:20px;margin:0;display:grid;gap:6px;color:var(--soft)}
+.path{display:inline-block;font-size:13.5px;font-weight:600;background:var(--side);border:1px solid var(--line);border-radius:8px;padding:2px 8px;color:var(--soft)}
+b.ui{font-weight:600;color:var(--ink);background:var(--tint);padding:0 6px;border-radius:5px}
+.box{border-radius:12px;padding:14px 16px;margin-top:22px;font-size:15px;display:grid;grid-template-columns:22px 1fr;gap:10px}
+.box::before{font-weight:700}
+.box.tip{background:var(--tip);color:var(--tip-ink)}
+.box.tip::before{content:"💡"}
+.box.warn{background:var(--warn);color:var(--warn-ink)}
+.box.warn::before{content:"⚠️"}
+table{width:100%;border-collapse:collapse;font-size:14.5px;margin-top:8px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;color:var(--mute);font-weight:600}
+.tbl{overflow-x:auto}
+.cards{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:8px}
+@media (max-width:640px){.cards{grid-template-columns:1fr}}
+.cards a{border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;gap:4px;transition:border-color .15s}
+.cards a:hover{border-color:var(--brand)}
+.cards b{font-size:16px}
+.cards span{font-size:14px;color:var(--mute)}
+.pn{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:56px;padding-top:24px;border-top:1px solid var(--line)}
+.pn a{border:1px solid var(--line);border-radius:12px;padding:12px 16px;display:grid;font-size:15px;font-weight:600}
+.pn a:hover{border-color:var(--brand)}
+.pn small{font-size:12.5px;color:var(--mute);font-weight:500}
+.pn .next{text-align:right;grid-column:2}
+.help{margin-top:32px;font-size:14px;color:var(--mute)}
+.help a{color:var(--brand);font-weight:600}
+@media (max-width:860px){
+  .layout{grid-template-columns:1fr}
+  aside{position:fixed;top:64px;left:0;bottom:0;width:min(300px,86vw);z-index:25;transform:translateX(-100%);transition:transform .2s;height:auto;box-shadow:0 0 40px rgba(0,0,0,.2)}
+  aside.open{transform:none}
+  .menu-btn{display:block}
+  .logo span,.toplink{display:none}
+  .search{width:auto;flex:1}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <button class="menu-btn" id="menu" aria-label="목차 열기" aria-expanded="false"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <a class="logo" href="../"><img class="l" src="../logo.png" alt="SwimSync"><img class="d" src="../logo-white.png" alt="SwimSync"><span>이용 가이드</span></a>
+  <div class="search">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+    <input id="q" type="search" placeholder="사용법 검색 (예: 보강, 연차)" autocomplete="off" aria-label="사용법 검색">
+    <div class="results" id="res" hidden></div>
+  </div>
+  <a class="toplink" href="../">홈페이지</a>
+  <a class="toplink" href="../../" target="_blank" rel="noopener">체험하기</a>
+</header>
+<div class="layout">
+  <aside id="side" aria-label="가이드 목차"></aside>
+  <main><article id="doc" aria-live="polite"></article></main>
+</div>
+
+<script>
+// 문서 내용 — 각 항목: 그룹, id, 제목, 요약, 본문(HTML)
+var G=[
+{g:'시작하기',items:[
+ ['intro','SwimSync를 소개해요','수영장 운영에 필요한 일을 웹과 앱 하나로 묶었어요.',
+  '<h3>누가 무엇을 쓰나요</h3><div class="tbl"><table><tr><th>사용자</th><th>쓰는 곳</th><th>주로 하는 일</th></tr><tr><td>원장·데스크</td><td>관리자 웹 (PC)</td><td>스케줄, 강습생, 원비, 보강 승인, 공지, 차량, 직원·급여</td></tr><tr><td>강사</td><td>강사 앱</td><td>오늘 수업 명단, 출석, 진도 기록, 보강 확인, 연차 신청</td></tr><tr><td>학부모·성인 회원</td><td>학부모 앱</td><td>결석·보강 신청, 진도 확인, 청구 확인, 공지</td></tr><tr><td>차량 기사</td><td>기사 앱</td><td>오늘 노선, 탑승 명단, 운행 기록, 고장 신고</td></tr></table></div><h3>처음이라면 이 순서로 시작하세요</h3><div class="cards"><a href="#signup"><b>1. 가입하고 학원 만들기</b><span>원장 계정 만들기</span></a><a href="#settings"><b>2. 학원 기본 설정</b><span>학원 정보, 시간대, 운영 방침</span></a><a href="#staff-add"><b>3. 강사 등록</b><span>강사 정보와 초대코드</span></a><a href="#class-plan"><b>4. 강습반·요금제 만들기</b><span>반, 정원, 원비표</span></a><a href="#student-add"><b>5. 강습생 등록</b><span>한 명씩 또는 엑셀로 한 번에</span></a><a href="#invite"><b>6. 앱 초대하기</b><span>학부모·강사·기사 가입코드</span></a></div>'],
+ ['signup','가입하고 학원 만들기','원장 계정을 만들고 우리 학원을 등록해요.',
+  '<ol class="steps"><li>관리자 웹에 접속해 이메일로 가입해요.</li><li>로그인하면 <b class="ui">소속된 학원이 없어요</b> 화면이 나와요.</li><li><b class="ui">새 학원을 만들려면</b>에 학원 이름, 지점 이름(선택), 원장님 이름을 넣고 <b class="ui">학원 만들기</b>를 눌러요.</li><li>만든 학원의 원장으로 바로 들어가요.</li></ol><div class="box tip"><span>이미 다른 학원에 소속된 직원이라면 원장에게 받은 6자리 초대코드를 <b class="ui">합류하기</b>에 넣으면 돼요.</span></div><h3>비밀번호를 잊었을 때</h3><p>로그인 화면의 <b class="ui">비밀번호를 잊으셨나요?</b>를 눌러 새 비밀번호를 정해요. 비밀번호는 4자 이상이어야 해요.</p>'],
+ ['settings','학원 기본 설정','학원 정보, 강습 시간대, 운영 방침을 정해요.',
+  '<p><span class="path">스케줄 관리 → 오른쪽 위 톱니바퀴</span></p><ol class="steps"><li><b class="ui">학원 정보</b>에 학원명, 지점명, 학원 대표번호를 넣어요. 학부모 앱 홈에 그대로 보여요.</li><li><b class="ui">강습 시간대 설정</b>에서 수업 시작 시각을 추가해요. 칩을 누르면 삭제돼요.</li><li><b class="ui">레벨(급수) 체계 설정</b>에 초급, 중급, 상급처럼 순서대로 레벨을 추가해요.</li><li><b class="ui">학원 휴무일 설정</b>에 쉬는 날을 넣어요. 다음 달 청구 계산에서 빠져요.</li><li><b class="ui">운영 방침</b>에서 청구·보강 방식(기존 방식 또는 5주차 대체보강 방식), 재등록·신규 결제 기간, 강사 연차 지급 여부를 정해요.</li><li><b class="ui">저장하기</b>를 눌러요.</li></ol><div class="box tip"><span>5주차 방식은 <a href="#fifth">5주차 대체보강</a>에서 자세히 설명해요.</span></div>'],
+ ['staff-add','강사·직원 등록','강사 정보를 넣고 앱 초대코드를 보내요.',
+  '<p><span class="path">직원 관리 → 직원 정보</span></p><ol class="steps"><li><b class="ui">신규 직원 입력</b>을 눌러요.</li><li>성명, 휴대폰, 입사일자, 직책, 근무 요일·시간을 넣어요.</li><li>업무구분을 <b class="ui">강사</b>로 고르면 스케줄 색상, 1타임 정원, 보강 전용 추가 자리 칸이 나타나요.</li><li>권한(역할)을 정해요. 연차 승인은 원장·팀장만 할 수 있어요.</li><li>급여 기준(월급 또는 시급, 요일·시간대별 단가)을 넣고 <b class="ui">저장</b>해요.</li><li>앱 초대코드를 발급해 강사에게 보내요.</li></ol><div class="box tip"><span><b>보강 전용 추가 자리</b>는 정원이 찬 수업에 보강생만 더 받을 수 있는 자리 수예요. 0이면 정원까지만 받아요.</span></div><div class="box warn"><span>월급·시급은 원장 계정만 보고 고칠 수 있어요.</span></div>'],
+ ['class-plan','강습반·요금제 만들기','반과 정원, 원비표를 등록해요.',
+  '<h3>강습반 만들기</h3><p><span class="path">강습생 관리 → 강습생 정보 → 강습반 관리</span></p><ol class="steps"><li><b class="ui">강습반 추가</b>를 눌러요.</li><li>반명(예: 유치반), 기본 시간, 정원, 수강 가능 조건(예: 만 3~7세), 스케줄표 색상을 정해요.</li><li>같은 반명을 여러 강사에게 배정할 수 있어요. 정원과 조건은 그대로 적용되고 시간만 바꿀 수 있어요.</li></ol><h3>수강 플랜(원비표) 만들기</h3><p><span class="path">결제 관리 → 결제 현황 → 수강 플랜</span></p><ol class="steps"><li><b class="ui">플랜 추가</b>를 눌러 플랜명, 아동/성인, 주 강습 횟수, 월 금액, 자유수영 포함 여부를 넣어요.</li><li>중간 등록을 위해 <b class="ui">횟수별 청구 요금</b>(1~14회)을 넣어 두면 등록일 기준으로 남은 횟수만큼 일할 청구해요.</li><li>야간 할증처럼 시간대마다 금액이 다르면 <b class="ui">시간대별 추가 요금</b>을 등록해요.</li></ol>'],
+ ['student-add','강습생 등록','한 명씩 등록하거나 엑셀로 한 번에 옮겨요.',
+  '<p><span class="path">강습생 관리 → 강습생 정보</span></p><h3>한 명씩 등록하기</h3><ol class="steps"><li><b class="ui">강습생 등록</b>을 눌러요.</li><li>기본 정보: 이름, 생년월일, 성별, 사진, 원생·모·부 연락처, 문자(SMS) 수신 대상을 넣어요.</li><li>강습 정보: 강습반, 담당 강사, 요일, 시간, 구분(유치부·정규반·성인반)을 골라요.</li><li>결제 정보: 결제 플랜을 고르면 월 수강료가 자동으로 계산돼요.</li><li>등록하면 학생번호가 붙고 스케줄에 수업이 생겨요.</li></ol><div class="box warn"><span>정원이 찬 반에는 배정할 수 없어요. <b>대기자 등록</b>을 해 두고 자리가 나면 <b>안내함</b>으로 표시해요.</span></div><h3>엑셀로 한 번에 등록하기</h3><ol class="steps"><li><b class="ui">일괄 등록</b>을 눌러요.</li><li>쓰던 회원명부 파일(.xlsx, .xls, .csv)을 올려요. 성명, 원생HP, 부모HP, 생일, 성별, 주소, 등록시작일을 자동으로 인식해요.</li><li>등록할 학생을 확인하고 <b class="ui">확인</b>을 눌러요.</li><li>강습반, 담당 강사, 요일·시간은 학생 상세에서 이어서 넣어요.</li></ol>'],
+ ['invite','앱 초대하기','학부모·강사·기사가 앱에 가입하도록 코드를 보내요.',
+  '<div class="tbl"><table><tr><th>누구</th><th>코드 발급하는 곳</th></tr><tr><td>학부모</td><td>강습생 정보 → 학생 상세 → 앱 가입코드</td></tr><tr><td>강사·직원</td><td>직원 관리 → 직원 정보 → 초대코드</td></tr><tr><td>차량 기사</td><td>차량 관리 → 기사 관리 → 초대코드</td></tr></table></div><ol class="steps"><li>코드를 발급하고 <b class="ui">복사</b>를 눌러 문자나 카톡으로 보내요.</li><li>받는 사람은 앱에서 구글·카카오·이메일로 로그인하고 처음 한 번만 6자리 코드와 휴대폰 번호를 넣어요.</li><li>다음부터는 로그인 버튼만 누르면 돼요.</li></ol><div class="box tip"><span>한 사람이 두 학원에 소속돼도 앱에서 <b>학원 바꾸기</b>로 오갈 수 있어요.</span></div>']
+]},
+{g:'관리자 웹',items:[
+ ['schedule','스케줄 관리','전체 수업과 학생 명단을 한 화면에서 봐요.',
+  '<ul class="dots"><li>위쪽에서 월간·주간·일간 보기를 바꾸고 <b class="ui">오늘</b>, <b class="ui">이번 주</b>로 돌아와요.</li><li><b class="ui">강사 필터</b>로 한 강사의 수업만 보거나, <b class="ui">분류별 보기</b>로 정규·보강·결석·신규·반변경만 골라 봐요.</li><li>검색칸에 학생 이름을 넣으면 그 학생의 수업을 찾아요.</li><li>수업 칸을 누르면 명단, 정원(N/N명), 출결 상태, 직접 등원·하원 여부가 나와요.</li></ul><h3>보강 취소하기</h3><p>신규·체험 문의로 자리가 필요할 때, 수업 칸의 보강 학생 줄에서 <b class="ui">보강 취소</b>를 눌러요. 학부모 앱과 강사 앱에 알림이 가고 학부모는 보강을 다시 신청해요.</p><h3>일정·메모 추가</h3><p><b class="ui">일정 추가</b>에서 공지, 이벤트, 메모를 등록해요. 공지·이벤트는 학부모 앱에도 보이고, 메모는 학원 내부에서만 보여요.</p>'],
+ ['students','강습생 정보','학생 목록, 상세 정보, 상태 변경을 다뤄요.',
+  '<ul class="dots"><li>강습반별, 반별, 강사별, 전체 목록으로 바꿔 볼 수 있어요.</li><li>ㄱㄴㄷ순, 신청일순, 생년월일순으로 정렬해요.</li><li>이름, 학생번호, 전화번호로 검색해요. 결과가 한 명이면 상세로 바로 이동해요.</li></ul><h3>학생 상세에서 하는 일</h3><div class="tbl"><table><tr><th>버튼</th><th>하는 일</th></tr><tr><td>수정(반 이동 포함)</td><td>담당 강사, 반, 요일, 시간을 바꿔요.</td></tr><tr><td>신규 반 등록</td><td>한 학생을 여러 반에 등록해요.</td></tr><tr><td>휴강 처리</td><td>2주 이상 장기 결석. 자동 재개되지 않고 복귀 신청이 필요해요.</td></tr><tr><td>복귀 신청</td><td>복귀 희망일을 골라 신청하고 승인되면 다시 수강해요.</td></tr><tr><td>퇴원 처리</td><td>사유를 남기고 예정 수업을 취소해요.</td></tr><tr><td>테스트 기록 추가</td><td>레벨 테스트 결과와 합격 여부를 남겨요.</td></tr><tr><td>입회 신청서</td><td>건강상태, 알레르기, 물 공포심, 방문경로를 기록해요.</td></tr></table></div>'],
+ ['makeup-admin','보강 요청 관리','서류가 필요한 보강·이월 요청을 검토해요.',
+  '<p><span class="path">강습생 관리 → 보강 요청 관리</span></p><ol class="steps"><li><b class="ui">승인 대기</b> 탭에서 요청을 확인해요.</li><li>요청 카드의 서류 사진을 눌러 원본을 확인해요.</li><li>처리 방법을 골라요.<ul class="dots" style="margin-top:6px"><li><b class="ui">보강 배정</b>: 같은 구분의 빈자리 중에서 골라 확정</li><li><b class="ui">이월 처리</b>: 다음 달 원비에서 해당 회차만큼 차감</li><li><b class="ui">거절</b>: 반려</li></ul></li><li>처리한 요청은 <b class="ui">처리 완료</b> 탭으로 옮겨져요.</li></ol><div class="box tip"><span>서류 없이 바로 보강을 잡게 할지, 서류를 받을지는 <a href="#billing">결제 관리 → 보강 가능 횟수 정책</a>에서 아동·성인 따로 정해요.</span></div>'],
+ ['changes','일정 변경 요청','학부모가 신청한 요일·시간 변경을 승인해요.',
+  '<ol class="steps"><li>카드에서 변경 전·후 요일, 시간, 수강권과 금액 변동 여부를 비교해요.</li><li><b class="ui">승인</b>을 누르면 학생의 반 정보가 바뀌어요.</li><li><b class="ui">거절</b>하면 반영되지 않아요.</li></ol><div class="box warn"><span>금액이 같으면 이번 달 학부모가 고른 날짜부터, 금액이 달라지면 다음 달 고른 날짜부터 적용돼요. 주 횟수를 바꾸는 신청은 재등록 기간에만 들어와요.</span></div>'],
+ ['counsel','회원 상담·데스크 상담일지','재원생 정기 상담과 등록 전 문의를 기록해요.',
+  '<h3>회원 상담 관리</h3><ul class="dots"><li>정기 상담 주기(1·2·3개월)를 정하면 다음 상담 예정일이 계산돼요.</li><li><b class="ui">상담 필요만 보기</b>로 주기가 지난 학생만 골라 봐요.</li><li>학생을 펼쳐 <b class="ui">상담 기록 추가</b>를 해요. 강사 앱에서 쓴 기록도 여기에 같이 보여요.</li></ul><h3>데스크 상담일지</h3><ul class="dots"><li>등록 전 문의를 상담자명, 전화번호, 구분 태그와 함께 기록해요.</li><li>실제로 등록하면 <b class="ui">정규수강 전환</b>을 눌러요.</li><li>여러 건을 골라 이벤트 안내 단체 문자를 보낼 수 있어요.</li></ul>'],
+ ['billing','결제 관리','원비 청구, 수납, 할인, 보강 정책을 관리해요.',
+  '<h3>매달 청구와 수납</h3><ol class="steps"><li><span class="path">강습생 정보 → 학생 상세 → 수납 내역</span>에서 <b class="ui">이번 달 청구 생성</b>을 눌러요.</li><li>입금이 확인되면 <b class="ui">수납 처리</b>를 눌러 카드·현금·계좌이체 중 고르고 금액을 넣어요.</li><li><span class="path">결제 관리 → 결제 현황</span>에서 강사·반별로 완료와 미결제를 확인해요.</li></ol><h3>할인·이벤트</h3><p><b class="ui">할인·이벤트 추가</b>에서 할인율과 기간, 조건(형제 몇 명 이상)을 정해요. 같은 부모 연락처로 등록된 형제를 자동으로 세어 적용해요.</p><h3>보강 가능 횟수 정책</h3><p>주 몇 회 수강에 보강을 몇 회까지 허용할지, 아동·성인 보강에 서류(진단서 등)가 필요한지 정해요.</p><h3>미납 안내</h3><p>그 달 7일까지 등록비가 확인되지 않으면 보호자에게 매일 안내가 가요. 원장이 로그인하면 미납 재원생 목록이 뜨고 퇴원시킬 학생을 직접 골라요.</p>'],
+ ['freeswim','자유수영 관리','성인 자유수영 시간대와 예약을 관리해요.',
+  '<ol class="steps"><li>요일(여러 개), 시간, 담당 강사를 골라 시간대를 <b class="ui">추가</b>해요.</li><li>자유수영 포함 플랜으로 등록된 회원만 학부모 앱에서 예약할 수 있어요.</li><li><b class="ui">예약 현황</b>에서 누가 언제 예약했는지 확인해요.</li></ol>'],
+ ['notice','공지 발송','학부모와 직원에게 공지를 보내요.',
+  '<ol class="steps"><li><b class="ui">새 공지 작성</b>에서 유형(일반 공지, 휴무 안내, 결제 안내, 이벤트)을 고르면 문구가 채워져요.</li><li>제목과 내용을 고쳐요.</li><li>수신 대상을 고르거나 <b class="ui">전체 선택</b>해요. 자주 보내는 대상은 <b class="ui">발송 그룹 관리</b>로 묶어 둬요.</li><li><b class="ui">발송</b>을 누르면 앱 알림으로 가요. 나중에 보내려면 <b class="ui">임시 저장</b>해요.</li></ol><div class="box tip"><span><b>직원 전용</b>으로 보내면 학부모 앱에는 보이지 않고 강사 앱 연락망 탭의 학원 공지로만 가요.</span></div>'],
+ ['vehicle','차량 관리','기사, 차량 노선, 탑승 학생, 정류장을 관리해요.',
+  '<div class="tbl"><table><tr><th>탭</th><th>하는 일</th></tr><tr><td>기사 관리</td><td>기사 추가·수정, 초대코드 발급</td></tr><tr><td>차량 노선 관리</td><td>차량 번호, 노선, 정원, 운행 지역, 출발 시간, 담당 기사를 등록하고 학생을 배정</td></tr><tr><td>일별 노선 관리</td><td>요일별 실제 탑승 명단을 노선별·시간별로 보기, 엑셀 다운로드</td></tr><tr><td>정류장</td><td>요일별 정류장과 순서 정하기</td></tr><tr><td>운행·비용·정비</td><td>운행 배정·결행·대차, 기름값, 고장·정비 기록</td></tr></table></div><div class="box warn"><span>정원이 찼거나 학생 주소가 운행 지역과 맞지 않으면 배정이 막혀요. 운행 지역 키워드(예: 강남, 서초)를 꼭 넣어 주세요.</span></div>'],
+ ['leave-pay','연차·급여','연차를 승인하고 급여 명세서를 발행해요.',
+  '<h3>연차 승인</h3><p><span class="path">직원 관리 → 연차 승인</span></p><ul class="dots"><li>강사가 앱에서 신청한 연차·반차·반반차·근무불가를 승인하거나 반려해요.</li><li>연차 1일, 반차 0.5일, 반반차 0.25일이 차감돼요. 근무불가는 차감되지 않아요.</li><li>원장·팀장이 아니면 <b class="ui">승인 권한 없음</b>으로 보여요.</li></ul><h3>급여 정산</h3><p><span class="path">직원 관리 → 직원 정보 → 급여 정산 탭</span></p><ol class="steps"><li>달을 골라요. 정규직은 기본급과 인센티브, 추가근무로, 파트·프리랜서는 시간대별 단가와 실제 수업으로 자동 계산돼요.</li><li>방학특강·생존수영 수당, 개인 수업 지도료를 더하거나 금액을 조정해요.</li><li>명세서를 발행하고 <b class="ui">명세서 인쇄 / PDF 저장</b>을 눌러요.</li></ol>'],
+ ['ops','운영·통계','업무 안내, 케어팀, 거래처, 의견함, 통계 화면이에요.',
+  '<div class="tbl"><table><tr><th>메뉴</th><th>하는 일</th></tr><tr><td>업무 안내</td><td>급여·인센티브 기준, 역할별 업무 내용. 등록한 업무는 강사·기사 앱의 내 업무에 보여요.</td></tr><tr><td>케어팀·비품 관리</td><td>청소 체크리스트, 비품 입고·출고와 잔여 수량</td></tr><tr><td>거래처 관리</td><td>업체 정보, 담당자 단체 문자</td></tr><tr><td>의견함</td><td>앱에서 남긴 건의사항 확인</td></tr><tr><td>증감 현황</td><td>월별 신규·퇴원·순증감, 재원율</td></tr><tr><td>강사 실적/역량</td><td>강사별 재등록률, 퇴원률, 반이동률, 월 매출</td></tr><tr><td>가입신청 이력</td><td>셀프 가입신청서로 들어온 신청과 자동 등록 결과</td></tr></table></div>'],
+ ['fifth','5주차 대체보강','요일이 다섯 번 도는 달의 수업을 대체보강일로 써요.',
+  '<p><span class="path">스케줄 관리 → 톱니바퀴 → 운영 방침</span></p><ol class="steps"><li>청구·보강 운영 방식을 <b class="ui">5주차 대체보강 방식</b>으로 바꿔요.</li><li><b class="ui">연간 대체보강일 계획</b>에서 요일이 세 번만 도는 달과 다섯 번 도는 달을 찾아 대체보강일을 제안해요.</li><li>제안을 확인하고 <b class="ui">확정하기</b>를 눌러요. 맞는 달이 없는 요일은 그 요일 수강생에게 개별 의무보강이 배정돼요.</li><li><b class="ui">연간 계획 달력</b>에서 휴관일, 대체수업 진행일, 의무보강일을 직접 지정할 수도 있어요.</li></ol><div class="box tip"><span>5번째 요일을 쉬는 학원은 <b>매월 5번째로 돌아오는 요일은 휴무 처리</b>를 켜요.</span></div>']
+]},
+{g:'학부모 앱',items:[
+ ['p-start','가입과 홈 화면','앱에 가입하고 홈에서 아이 정보를 봐요.',
+  '<ol class="steps"><li>학원에서 받은 안내대로 앱을 설치해요.</li><li>구글·카카오로 계속하기를 누르거나 이메일로 로그인해요.</li><li>처음 한 번만 학원에서 받은 6자리 가입코드와 휴대폰 번호를 넣어요.</li></ol><h3>홈 화면</h3><ul class="dots"><li>다음 강습 일정, 이번 달 출석 현황, 보강 잔여 횟수</li><li>나의 진도: 코치가 학부모에게 공개한 진도와 특이사항</li><li>자녀가 여러 명이면 위쪽 이름 버튼으로 바꿔 봐요.</li></ul>'],
+ ['p-absent','결석 신청','수업에 못 가는 날을 미리 알려요.',
+  '<ol class="steps"><li><b class="ui">결석</b>을 눌러요.</li><li>달력에서 수업이 있는 날(파란 표시)을 골라요. 여러 날짜를 한 번에 고를 수 있어요.</li><li>신청하면 코치 명단과 차량 탑승 명단에 자동으로 반영돼요.</li></ol><div class="box tip"><span>잘못 신청했으면 <b>결석 처리된 수업</b>에서 <b>결석 취소</b>를 눌러요.</span></div>'],
+ ['p-makeup','보강 신청','결석한 수업을 다른 날로 보강해요.',
+  '<ol class="steps"><li><b class="ui">보강 신청</b>을 눌러요.</li><li>① 보강받을 결석 날짜를 골라요. 이미 결석한 수업이나 앞으로 결석할 수업을 고를 수 있어요.</li><li>② 보강 날짜를 골라요. 같은 구분(유치부·정규반·성인반) 반의 빈자리만 보여요. 추천 자리가 마음에 안 들면 달력에서 직접 골라요.</li><li>시간을 고르고 신청하면 보강 잔여 횟수가 줄어요.</li></ol><div class="box warn"><span>보강 수업에는 차량이 운행되지 않아요. 보호자가 직접 등하원해 주세요.</span></div><h3>서류가 필요한 경우</h3><p>학원이 서류를 받도록 정했다면 원하는 처리 방식(보강 또는 이월)과 사유를 적어 신청해요. 학원이 확인한 뒤 결과가 앱에 표시돼요.</p><h3>보강이 취소됐을 때</h3><p>학원 사정으로 보강이 취소되면 홈 위에 알림이 떠요. <b class="ui">보강 다시 신청하기</b>를 눌러 바로 다시 잡아요.</p>'],
+ ['p-change','반 변경·승하차 변경','요일·시간이나 차량 승차 정보를 바꿔요.',
+  '<h3>반 변경 신청</h3><ol class="steps"><li><b class="ui">내 수업 정보</b>에서 <b class="ui">변경 신청</b>을 눌러요.</li><li>원하는 요일·시간과 적용 날짜를 골라요.</li><li>학원이 승인하면 반영돼요. 그 전까지는 <b class="ui">승인 대기중</b>으로 보여요.</li></ol><div class="box warn"><span>주 1회 → 주 2회처럼 횟수를 바꾸는 신청은 학원이 정한 재등록 기간에만 할 수 있어요.</span></div><h3>승하차 변경</h3><p><b class="ui">승하차 변경</b>에 바꿀 승차 시간과 장소를 적어요. 학원과 기사님이 확인한 뒤 반영돼요.</p>'],
+ ['p-pay','결제와 자유수영','이번 달 청구를 확인하고 자유수영을 예약해요.',
+  '<h3>결제 현황</h3><ol class="steps"><li><b class="ui">결제 현황</b>에서 미결제 항목과 금액을 확인해요.</li><li><b class="ui">결제하기</b>를 눌러 결제 수단을 고르면 학원에 결제 요청이 가요.</li><li>학원이 수납을 확인하면 결제 완료로 바뀌어요.</li></ol><h3>자유수영 예약</h3><p>자유수영 포함 플랜 회원은 <b class="ui">자유수영</b>에서 날짜를 골라 예약하고, 필요하면 <b class="ui">예약 취소</b>를 눌러요.</p>'],
+ ['p-etc','메시지·공지·기타 신청','코치와 대화하고, 퇴원·복귀를 신청해요.',
+  '<ul class="dots"><li><b>메시지</b>: 담당 코치와 1:1로 대화해요. 오후 9시~오전 9시에 보낸 메시지는 오전 9시에 전달돼요.</li><li><b>공지·알림</b>: 학원 공지와 보강·결석 알림을 모아 봐요.</li><li><b>퇴원 신청</b>: 사유를 적어 신청하면 학원이 확인 후 처리해요.</li><li><b>복귀 신청</b>: 휴강 중인 자녀의 복귀 희망일을 골라요.</li><li><b>이벤트 참여 인증</b>: 이벤트 스크린샷을 올려 할인을 받아요.</li><li><b>의견 남기기</b>: 학원에 건의사항을 보내요.</li></ul>']
+]},
+{g:'강사 앱',items:[
+ ['t-schedule','오늘 수업과 출석','오늘 맡은 수업 명단을 보고 출석을 정리해요.',
+  '<ol class="steps"><li><b class="ui">스케줄</b> 탭의 날짜 줄에서 날짜를 골라요.</li><li>수업마다 정규, 보강, 결석 학생이 나눠 보여요. 보강 학생을 누르면 학생 정보가 나와요.</li><li>출석이 다르면 <b class="ui">출석 정정</b>을 눌러 고쳐요.</li></ol><div class="box tip"><span>새 보강 학생이 배정되거나 학원이 보강을 취소하면 위쪽에 알림이 떠요. <b>확인했어요</b>를 누르면 사라져요.</span></div>'],
+ ['t-progress','진도·상담 기록','수업 진도와 학생 상담 내용을 남겨요.',
+  '<h3>진도 및 특이사항</h3><ol class="steps"><li>스케줄에서 <b class="ui">진도 및 특이사항 기록하기</b>를 눌러요.</li><li>학생별로 진도 항목을 여러 개 고르고 특이사항을 적어요.</li><li>공개 범위를 골라요. <b class="ui">학부모에게 공개</b>는 학부모 앱 홈에 보이고, <b class="ui">학원 안에서만</b>은 내부에서만 보여요.</li></ol><h3>상담 기록</h3><p><b class="ui">내 강습생</b>에서 학생을 눌러 <b class="ui">새 상담 기록 작성</b>을 해요. 관리자 웹 회원 상담 관리에 같이 보여요.</p>'],
+ ['t-leave','보강·연차·휴식 시간','보강 현황을 보고 연차와 쉬는 시간을 정해요.',
+  '<p><span class="path">보강·이월 탭</span></p><ul class="dots"><li>내 학생의 보강·이월 요청과 결과를 확인해요. 실제로 진행한 보강은 체크해요.</li><li><b>연차·근무 신청</b>: 연차, 반차, 반반차, 근무불가 중 고르고 날짜와 사유를 적어요. 급하면 <b>긴급</b>을 켜요.</li><li>대기 중인 신청은 <b class="ui">승인 재촉</b>하거나 <b class="ui">신청 취소</b>할 수 있어요.</li><li><b>보강 안 받는 시간</b>: 요일과 시간을 정해 두면 그 시간에는 학부모 앱에 보강 자리가 열리지 않아요. 식사·휴식 시간을 지키는 데 써요.</li></ul><div class="box warn"><span>프리랜서·비정규직은 연차 차감 없이 근무불가일로만 등록돼요.</span></div>'],
+ ['t-msg','메시지와 연락망','학부모와 대화하고 학원 정보를 확인해요.',
+  '<ul class="dots"><li><b>메시지</b>: 학생(학부모)별 대화 목록이에요. 개인 번호 없이 앱으로 대화해요.</li><li><b>연락망</b>: 비상 연락망, 직원 전용 학원 공지, 연간 휴관일·대체보강일·의무보강일을 확인해요.</li><li><b>의견 남기기</b>: 학원에 건의사항을 보내요.</li><li>두 학원에서 일하면 위쪽 <b>학원 바꾸기</b>로 전환해요.</li></ul>']
+]},
+{g:'기사 앱',items:[
+ ['d-route','오늘 노선과 운행','탑승 명단을 확인하고 운행을 기록해요.',
+  '<ol class="steps"><li><b class="ui">오늘 노선</b>에서 정류장 순서대로 탑승 학생을 확인해요. 결석한 학생은 빨간색으로 표시되고 태우지 않아요.</li><li>학생을 누르면 보호자에게 전화를 걸어요.</li><li><b class="ui">운행 시작</b>을 누르면 위치 기록이 시작돼요. 운행 중에는 앱을 켜 두세요.</li><li>정류장마다 <b class="ui">태웠어요</b> 또는 <b class="ui">안 태웠어요</b>를 누르고 <b class="ui">다음 정류장으로</b> 넘어가요.</li><li>모든 정류장을 돌면 <b class="ui">운행 종료</b>를 눌러요.</li></ol>'],
+ ['d-issue','명단 외 아이·고장 신고','예외 상황을 학원에 바로 알려요.',
+  '<h3>명단에 없는 아이</h3><p>명단에 없는 아이는 바로 태우지 말고 보호자에게 먼저 전화해 확인해요. <b class="ui">명단에 없는 아이</b>에 이름과 통화 내용, 태웠는지 여부를 기록하면 학원에 알림이 가요.</p><h3>차량 고장 신고</h3><p><b class="ui">차량 고장 신고</b>에 고장 부위와 증상을 적고 신고하면 데스크와 원장에게 바로 알림이 가요.</p><h3>노선 고치기</h3><p>정류장을 추가하거나 순서를 바꾸고 <b class="ui">오늘만</b> 또는 <b class="ui">앞으로 계속(이 요일)</b>을 골라요. 학생이 있는 정류장은 학생을 옮긴 뒤에 뺄 수 있어요.</p>']
+]},
+{g:'도움말',items:[
+ ['roles','권한별 기능','역할마다 볼 수 있는 화면이 달라요.',
+  '<div class="tbl"><table><tr><th>역할</th><th>쓸 수 있는 것</th></tr><tr><td>원장</td><td>관리자 웹 전체, 급여 금액 보기·수정, 연차 승인, 미납 퇴원 처리</td></tr><tr><td>팀장</td><td>관리자 웹, 연차 승인</td></tr><tr><td>데스크·직원</td><td>관리자 웹(급여 금액 수정 제외)</td></tr><tr><td>강사</td><td>강사 앱. 관리자 웹에도 로그인할 수 있어요.</td></tr><tr><td>학부모·회원</td><td>학부모 앱. 자기 자녀 정보만 보여요.</td></tr><tr><td>기사</td><td>기사 앱. 배정된 차량 명단만 보여요.</td></tr></table></div><div class="box tip"><span>학원마다 정보가 분리되어 있어서 다른 학원의 데이터는 보이지 않아요.</span></div>'],
+ ['faq','자주 묻는 질문','도입하고 쓰면서 많이 묻는 질문이에요.',
+  '<h3>새로고침하면 입력한 내용이 사라지나요?</h3><p>아니요. 저장한 내용은 서버에 남아요.</p><h3>학부모가 앱을 안 깔면 어떻게 하나요?</h3><p>결석·보강 셀프 신청, 진도 확인, 알림은 학부모 앱에서 해요. 학원에서 받은 6자리 코드만 넣으면 바로 시작할 수 있어서, 첫 등록 때 함께 안내해 주시는 게 좋아요.</p><h3>한 학생을 두 반에 등록할 수 있나요?</h3><p>네. 학생 상세에서 <b class="ui">신규 반 등록</b>으로 추가해요. 차량 명단도 요일별 반 기준으로 맞춰져요.</p><h3>대타는 어떻게 하나요?</h3><p>지금은 대타 기능을 쓰지 않아요. 연차가 승인되면 해당 수업은 휴강으로 처리돼요.</p>'],
+ ['contact','문의하기','가이드로 해결되지 않으면 연락 주세요.',
+  '<p>도입 상담과 사용 문의는 홈페이지의 상담 신청으로 남겨 주세요.</p><div class="cards"><a href="../#start"><b>도입 상담 신청</b><span>홈페이지에서 신청</span></a><a href="../../" target="_blank" rel="noopener"><b>체험하기</b><span>로그인 없이 관리자 화면 써 보기</span></a></div>']
+]}
+];
+
+var flat=[];G.forEach(function(g){g.items.forEach(function(it){flat.push({id:it[0],g:g.g,t:it[1],s:it[2],h:it[3]})})});
+var byId={};flat.forEach(function(p,i){p.i=i;byId[p.id]=p});
+var side=document.getElementById('side'),doc=document.getElementById('doc');
+side.innerHTML=G.map(function(g){return '<div class="grp"><h2>'+g.g+'</h2>'+g.items.map(function(it){return '<a href="#'+it[0]+'" data-id="'+it[0]+'">'+it[1]+'</a>'}).join('')+'</div>'}).join('');
+
+function render(){
+  var id=(location.hash||'#intro').slice(1), p=byId[id]||byId.intro;
+  var prev=flat[p.i-1],next=flat[p.i+1];
+  doc.innerHTML='<p class="crumb">'+p.g+'</p><h1>'+p.t+'</h1><p class="lead">'+p.s+'</p>'+p.h+
+    '<nav class="pn" aria-label="이전 다음">'+(prev?'<a href="#'+prev.id+'"><small>이전</small>'+prev.t+'</a>':'<span></span>')+(next?'<a class="next" href="#'+next.id+'"><small>다음</small>'+next.t+'</a>':'')+'</nav>'+
+    '<p class="help">찾는 내용이 없나요? <a href="../#start">도입 상담 신청</a>으로 물어봐 주세요.</p>';
+  side.querySelectorAll('a').forEach(function(a){a.classList.toggle('on',a.dataset.id===p.id)});
+  document.title=p.t+' · SwimSync 이용 가이드';
+  side.classList.remove('open');menu.setAttribute('aria-expanded','false');
+  window.scrollTo(0,0);
+}
+var menu=document.getElementById('menu');
+menu.addEventListener('click',function(){var o=side.classList.toggle('open');menu.setAttribute('aria-expanded',o)});
+addEventListener('hashchange',render);render();
+
+// search
+var q=document.getElementById('q'),res=document.getElementById('res');
+var strip=function(h){return h.replace(/<[^>]+>/g,' ')};
+q.addEventListener('input',function(){
+  var v=q.value.trim();if(!v){res.hidden=true;return}
+  var hit=flat.filter(function(p){return (p.t+' '+p.s+' '+strip(p.h)).indexOf(v)>-1}).slice(0,8);
+  res.innerHTML=hit.length?hit.map(function(p){return '<a href="#'+p.id+'">'+p.t+'<small>'+p.g+' · '+p.s+'</small></a>'}).join(''):'<p>"'+v.replace(/</g,'&lt;')+'"에 맞는 사용법이 없어요. 다른 단어로 찾아보세요.</p>';
+  res.hidden=false;
+});
+res.addEventListener('click',function(){res.hidden=true;q.value=''});
+document.addEventListener('click',function(e){if(!e.target.closest('.search'))res.hidden=true});
+q.addEventListener('keydown',function(e){if(e.key==='Enter'){var a=res.querySelector('a');if(a){location.hash=a.getAttribute('href');res.hidden=true;q.value=''}}if(e.key==='Escape'){res.hidden=true}});
+</script>
+</body>
+</html>
