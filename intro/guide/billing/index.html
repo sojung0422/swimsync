@@ -110,7 +110,12 @@ th{font-size:13px;color:var(--mute);font-weight:600}
   aside.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.2)}
   .menu-btn{display:block}
   .logo span,.toplink{display:none}
-  .search{width:auto;flex:1}
+  .search{width:auto;flex:1;min-width:0}
+  .search input{box-sizing:border-box;min-width:0}
+  .top{gap:10px}
+}
+@media (max-width:480px){
+  .top .ss-lang .ss-cur{display:none}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>

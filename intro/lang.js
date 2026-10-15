@@ -70,7 +70,9 @@
     '.goog-text-highlight{background:none!important;box-shadow:none!important}' +
     '.ss-lang{position:relative;display:inline-flex;align-items:center;gap:6px;height:38px;padding:0 10px;border:1px solid var(--line,#E6E8F0);border-radius:10px;color:var(--soft,#4A4F66);font-size:14px;font-weight:500;background:transparent}' +
     '.ss-lang svg{width:16px;height:16px;flex:none}' +
-    '.ss-lang select{all:unset;cursor:pointer;padding-right:2px;font:inherit;color:inherit}' +
+    '.ss-lang{cursor:pointer;flex:none;max-width:100%;white-space:nowrap}' +
+    '.ss-lang .ss-cur{overflow:hidden;text-overflow:ellipsis}' +
+    '.ss-lang select{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;font:inherit;border:0;margin:0;-webkit-appearance:none;appearance:none}' +
     '.ss-lang select option{color:#0F1222;background:#fff}' +
     '.ss-lang:focus-within{outline:3px solid var(--brand,#0063EC);outline-offset:2px}';
   document.head.appendChild(css);
@@ -84,7 +86,12 @@
       var sel = document.createElement('select');
       sel.setAttribute('aria-label', 'Language / 언어');
       LANGS.forEach(function (l) { var o = document.createElement('option'); o.value = l[0]; o.textContent = l[1]; if (l[0] === current) o.selected = true; sel.appendChild(o); });
-      sel.addEventListener('change', function () { setLang(sel.value); });
+      // 상자 폭은 지금 고른 언어 이름만큼만: 실제 select는 투명하게 위에 덮어서 눌리게 해요
+      var cur = document.createElement('span'); cur.className = 'ss-cur';
+      var showCur = function () { cur.textContent = sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : ''; };
+      sel.addEventListener('change', function () { showCur(); setLang(sel.value); });
+      showCur();
+      wrap.appendChild(cur);
       wrap.appendChild(sel);
       slot.replaceWith(wrap);
     });
