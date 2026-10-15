@@ -358,6 +358,8 @@ form input,form select{font:inherit;font-size:15px;padding:12px 14px;border-radi
 form input:focus,form select:focus{outline:none;border-color:var(--brand);background:var(--paper)}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 form label em{font-style:normal;color:var(--bad)}
+form input.bad,form input.bad:focus{border-color:var(--bad)}
+form .f-hint{font-size:12.5px;font-weight:500;color:var(--bad)}
 .done.fail{background:var(--bad-bg);color:var(--bad)}
 .calc-sum{font-size:13.5px;background:var(--tint);color:var(--brand);border-radius:12px;padding:10px 14px}
 form .agree{display:flex;flex-direction:row;align-items:center;gap:10px;font-weight:500;font-size:14px;cursor:pointer}
@@ -793,13 +795,13 @@ footer a:hover{color:var(--brand)}
         <div class="hp" aria-hidden="true"><label for="f-web">웹사이트<input id="f-web" name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
         <div class="two">
           <label for="f-n">성함 <em>*</em><input id="f-n" type="text" autocomplete="name" placeholder="홍길동"></label>
-          <label for="f-p">연락처 <em>*</em><input id="f-p" type="tel" autocomplete="tel" placeholder="010-0000-0000"></label>
+          <label for="f-p">연락처 <em>*</em><input id="f-p" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="010-0000-0000" aria-describedby="f-p-h"><span class="f-hint" id="f-p-h" hidden>연락처는 010-0000-0000 형식으로 입력해 주세요.</span></label>
         </div>
         <div class="two">
           <label for="f-o">수영장 이름 <em>*</em><input id="f-o" type="text" placeholder="예: 한강 어린이 수영장"></label>
           <label for="f-reg">지역<input id="f-reg" type="text" placeholder="예: 서울 송파구"></label>
         </div>
-        <label for="f-mail">이메일 (선택 · 체험 안내를 받을 주소)<input id="f-mail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label for="f-mail">이메일 (선택 · 체험 안내를 받을 주소)<input id="f-mail" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="f-mail-h"><span class="f-hint" id="f-mail-h" hidden>이메일 형식이 올바르지 않아요. 예: you@example.com</span></label>
         <div class="two">
           <label for="f-r">역할<select id="f-r"><option>원장·운영자</option><option>데스크·관리자</option><option>수영 강사</option></select></label>
           <label for="f-size">재원생 수<select id="f-size"><option>100명 미만</option><option selected>100~300명</option><option>300~700명</option><option>700명 이상</option></select></label>
@@ -915,6 +917,19 @@ footer a:hover{color:var(--brand)}
   });
 
   // 신청 접수: 구글 시트(Apps Script 웹 앱)로 보내요. 주소가 비어 있으면 접수하지 않아요.
+  // 연락처: 숫자만 받아 010-0000-0000 모양으로 자동 하이픈
+  var PHONE_RE=/^010-\d{4}-\d{4}$/,MAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  function mark(el,bad){el.classList.toggle('bad',bad);el.setAttribute('aria-invalid',bad?'true':'false');$(el.id+'-h').hidden=!bad}
+  $('f-p').addEventListener('input',function(){
+    var d=this.value.replace(/\D/g,'').slice(0,11);
+    this.value=d.length>7?d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7):d.length>3?d.slice(0,3)+'-'+d.slice(3):d;
+    if(this.classList.contains('bad')&&PHONE_RE.test(this.value))mark(this,false);
+  });
+  $('f-p').addEventListener('blur',function(){if(this.value)mark(this,!PHONE_RE.test(this.value))});
+  // 이메일: 형식이 틀리면 칸 아래 경고 + 빨간 테두리
+  $('f-mail').addEventListener('blur',function(){var v=this.value.trim();mark(this,!!v&&!MAIL_RE.test(v))});
+  $('f-mail').addEventListener('input',function(){var v=this.value.trim();if(this.classList.contains('bad')&&(!v||MAIL_RE.test(v)))mark(this,false)});
+
   var SIGNUP_ENDPOINT='https://script.google.com/macros/s/AKfycbwNB7963kyOKLUSf8yxo2evXSjQ89kLgtRBodi-xcHTUN1QZtF69WnYUyulwZghqi2M6w/exec';
   $('form').addEventListener('submit',function(e){
     e.preventDefault();
@@ -922,9 +937,9 @@ footer a:hover{color:var(--brand)}
     d.hidden=true;d.classList.remove('fail');
     if(!n){err.textContent='성함을 입력해 주세요.';$('f-n').focus();return}
     if(!p){err.textContent='연락처를 입력해 주세요. 체험 안내를 전화로 드려요.';$('f-p').focus();return}
-    if(!/^[0-9\-\s]{9,14}$/.test(p)){err.textContent='연락처는 숫자와 - 로 입력해 주세요. 예: 010-1234-5678';$('f-p').focus();return}
+    if(!PHONE_RE.test(p)){mark($('f-p'),true);err.textContent='연락처는 010-0000-0000 형식으로 입력해 주세요.';$('f-p').focus();return}
     if(!o){err.textContent='수영장 이름을 입력해 주세요.';$('f-o').focus();return}
-    if(m&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){err.textContent='이메일 형식을 확인해 주세요. 예: you@example.com';$('f-mail').focus();return}
+    if(m&&!MAIL_RE.test(m)){mark($('f-mail'),true);err.textContent='이메일 형식을 확인해 주세요. 예: you@example.com';$('f-mail').focus();return}
     if(!$('f-ok').checked){err.textContent='개인정보 수집·이용에 동의해야 신청할 수 있어요.';$('f-ok').focus();return}
     err.textContent='';
     if(!SIGNUP_ENDPOINT){d.hidden=false;d.classList.add('fail');d.textContent='지금은 온라인 접수를 준비하고 있어요. 잠시 뒤 다시 시도해 주세요.';return}
