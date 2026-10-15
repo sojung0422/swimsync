@@ -356,6 +356,9 @@ form{background:var(--paper);color:var(--ink);border-radius:22px;padding:24px;di
 form label{display:grid;gap:6px;font-size:13.5px;font-weight:600}
 form input,form select{font:inherit;font-size:15px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--alt);color:var(--ink);width:100%}
 form input:focus,form select:focus{outline:none;border-color:var(--brand);background:var(--paper)}
+.hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+form label em{font-style:normal;color:var(--bad)}
+.done.fail{background:var(--bad-bg);color:var(--bad)}
 .calc-sum{font-size:13.5px;background:var(--tint);color:var(--brand);border-radius:12px;padding:10px 14px}
 form .agree{display:flex;flex-direction:row;align-items:center;gap:10px;font-weight:500;font-size:14px;cursor:pointer}
 form .agree input{width:18px;height:18px;padding:0;accent-color:var(--brand);flex:none}
@@ -787,23 +790,29 @@ footer a:hover{color:var(--brand)}
         <ul><li>강습생 수 제한 없이 모든 기능</li><li>초기 세팅·명단 이전 무료</li><li>체험 중 언제든 중단, 자동 결제 없음</li></ul>
       </div>
       <form id="form" novalidate>
+        <div class="hp" aria-hidden="true"><label for="f-web">웹사이트<input id="f-web" name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
         <div class="two">
-          <label for="f-n">성함<input id="f-n" type="text" autocomplete="name" placeholder="홍길동"></label>
-          <label for="f-p">연락처<input id="f-p" type="tel" autocomplete="tel" placeholder="010-0000-0000"></label>
+          <label for="f-n">성함 <em>*</em><input id="f-n" type="text" autocomplete="name" placeholder="홍길동"></label>
+          <label for="f-p">연락처 <em>*</em><input id="f-p" type="tel" autocomplete="tel" placeholder="010-0000-0000"></label>
         </div>
         <div class="two">
-          <label for="f-o">수영장 이름<input id="f-o" type="text" placeholder="예: 한강 어린이 수영장"></label>
-          <label for="f-k">신청 내용<select id="f-k"><option>30일 무료 체험</option><option>도입 상담만</option></select></label>
+          <label for="f-o">수영장 이름 <em>*</em><input id="f-o" type="text" placeholder="예: 한강 어린이 수영장"></label>
+          <label for="f-reg">지역<input id="f-reg" type="text" placeholder="예: 서울 송파구"></label>
         </div>
+        <label for="f-mail">이메일 (선택 · 체험 안내를 받을 주소)<input id="f-mail" type="email" autocomplete="email" placeholder="you@example.com"></label>
         <div class="two">
           <label for="f-r">역할<select id="f-r"><option>원장·운영자</option><option>데스크·관리자</option><option>수영 강사</option></select></label>
+          <label for="f-size">재원생 수<select id="f-size"><option>100명 미만</option><option selected>100~300명</option><option>300~700명</option><option>700명 이상</option></select></label>
+        </div>
+        <div class="two">
+          <label for="f-k">신청 내용<select id="f-k"><option>30일 무료 체험</option><option>도입 상담만</option></select></label>
           <label for="f-plan">관심 요금제<select id="f-plan"><option>아직 모르겠어요</option><option>Starter</option><option>Growth</option><option>Pro</option><option>Enterprise</option></select></label>
         </div>
         <p class="calc-sum" id="f-calc" hidden></p>
         <label class="agree" for="f-ok"><input id="f-ok" type="checkbox"><span>개인정보 수집·이용에 동의합니다 (필수)</span></label>
-        <details class="agree-d"><summary>수집 내용 보기</summary><p>수집 항목: 성함, 연락처, 수영장 이름, 신청 내용, 역할, 관심 요금제 · 목적: 무료 체험·도입 상담 연락 · 보유 기간: 상담 종료 후 1년 또는 삭제 요청 시까지. 동의하지 않으면 상담 신청을 할 수 없어요.</p></details>
+        <details class="agree-d"><summary>수집 내용 보기</summary><p>수집 항목: 성함, 연락처, 이메일(선택), 수영장 이름, 지역, 역할, 재원생 수, 신청 내용, 관심 요금제 · 목적: 무료 체험·도입 상담 연락 · 보유 기간: 상담 종료 후 1년 또는 삭제 요청 시까지. 동의하지 않으면 상담 신청을 할 수 없어요.</p></details>
         <p class="msg-e" id="f-e" role="alert"></p>
-        <button class="btn btn-p" type="submit">무료 체험 신청</button>
+        <button class="btn btn-p" type="submit" id="f-btn">무료 체험 신청</button>
         <p class="done" id="f-done" hidden></p>
       </form>
     </div>
@@ -905,16 +914,28 @@ footer a:hover{color:var(--brand)}
     a.addEventListener('click',function(){$('f-plan').value=a.dataset.plan});
   });
 
-  // form (preview only — not connected to a server)
+  // 신청 접수: 구글 시트(Apps Script 웹 앱)로 보내요. 주소가 비어 있으면 접수하지 않아요.
+  var SIGNUP_ENDPOINT='';
   $('form').addEventListener('submit',function(e){
     e.preventDefault();
-    var n=$('f-n').value.trim(),p=$('f-p').value.trim(),err=$('f-e');
-    if(!n||!p){err.textContent='성함과 연락처를 입력해 주세요.';(n?$('f-p'):$('f-n')).focus();return}
+    var n=$('f-n').value.trim(),p=$('f-p').value.trim(),o=$('f-o').value.trim(),m=$('f-mail').value.trim(),err=$('f-e'),d=$('f-done'),btn=$('f-btn');
+    d.hidden=true;d.classList.remove('fail');
+    if(!n){err.textContent='성함을 입력해 주세요.';$('f-n').focus();return}
+    if(!p){err.textContent='연락처를 입력해 주세요. 체험 안내를 전화로 드려요.';$('f-p').focus();return}
     if(!/^[0-9\-\s]{9,14}$/.test(p)){err.textContent='연락처는 숫자와 - 로 입력해 주세요. 예: 010-1234-5678';$('f-p').focus();return}
-    if(!$('f-ok').checked){err.textContent='개인정보 수집·이용에 동의해야 상담을 신청할 수 있어요.';$('f-ok').focus();return}
+    if(!o){err.textContent='수영장 이름을 입력해 주세요.';$('f-o').focus();return}
+    if(m&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){err.textContent='이메일 형식을 확인해 주세요. 예: you@example.com';$('f-mail').focus();return}
+    if(!$('f-ok').checked){err.textContent='개인정보 수집·이용에 동의해야 신청할 수 있어요.';$('f-ok').focus();return}
     err.textContent='';
-    var d=$('f-done');d.hidden=false;
-    d.textContent=n+'님, '+$('f-k').value+' 신청('+$('f-plan').value+') 내용을 확인했어요. (미리보기 페이지라 실제 접수는 아직 연결되지 않았어요)';
+    if(!SIGNUP_ENDPOINT){d.hidden=false;d.classList.add('fail');d.textContent='지금은 온라인 접수를 준비하고 있어요. 잠시 뒤 다시 시도해 주세요.';return}
+    var body=new URLSearchParams({kind:$('f-k').value,name:n,phone:p,email:m,org:o,region:$('f-reg').value.trim(),role:$('f-r').value,size:$('f-size').value,plan:$('f-plan').value,calc:$('f-calc').hidden?'':$('f-calc').textContent,agree:'yes',website:$('f-web').value});
+    btn.disabled=true;btn.textContent='보내는 중…';
+    fetch(SIGNUP_ENDPOINT,{method:'POST',mode:'no-cors',body:body}).then(function(){
+      d.hidden=false;d.textContent=n+'님, '+$('f-k').value+' 신청이 접수됐어요. 확인 후 '+p+'(으)로 연락드릴게요.';
+      $('form').querySelectorAll('input[type=text],input[type=tel],input[type=email]').forEach(function(x){x.value=''});$('f-ok').checked=false;
+    }).catch(function(){
+      d.hidden=false;d.classList.add('fail');d.textContent='신청을 보내지 못했어요. 인터넷 연결을 확인하고 다시 눌러 주세요.';
+    }).then(function(){btn.disabled=false;btn.textContent='무료 체험 신청'});
   });
 })();
 </script>
