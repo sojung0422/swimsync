@@ -1,0 +1,76 @@
+# SwimSync
+
+> SwimSync는 수영장·수영 학원(어린이 수영장, 공공·민간 수영장 강습) 전용 운영 관리 프로그램이다. 관리자 웹(원장·데스크)과 학부모 앱, 강사 앱, 통학 차량 기사 앱으로 구성되며, 보강·결석·출석·통학 차량 명단·월 원비·강사 급여를 자동으로 연결해 처리한다. 수영 강사·운영자 30명 설문(2026)에서 나온 불편을 바탕으로 만들었다.
+
+## 이런 사람에게 맞다
+- 결석 보강을 강사·데스크가 빈자리를 찾아 일일이 잡고 있는 수영장
+- 학부모 연락을 강사 개인 휴대폰으로 받고 있는 강사
+- 출석부와 통학 차량 명단을 따로 관리해서 누락이 생기는 곳
+- 회원마다 다른 월 원비(일할, 휴관일, 형제 할인, 이월)와 강사 급여(정규·프리랜서 단가)를 손으로 계산하는 원장
+- 5주차(요일이 다섯 번 도는 달) 대체보강을 운영하는 수영장
+
+## 핵심 기능
+- 보강 셀프 신청: 학부모가 앱에서 같은 구분(유치부·정규반·성인반)의 빈자리만 보고 보강을 신청. 정원과 강사별 '보강 전용 추가 자리'를 넘으면 신청 단계에서 차단. 보강 잔여 횟수 자동 차감. 진단서 사진으로 보강 또는 다음 달 이월.
+- 결석·차량 자동 공유: 결석 한 번 입력으로 강사 수업 명단과 기사 앱 탑승 명단에 동시 반영. 보강 수업은 차량 미운행을 학부모에게 안내.
+- 학부모 연락: 강사 개인 번호 없이 앱 메시지로 대화. 오후 9시~오전 9시 메시지는 오전 9시에 전달. 결석·보강 확정·취소 자동 알림.
+- 월 원비 자동 계산: 요금제·주 횟수·시간대 할증, 중간 등록 일할 청구, 휴관일 제외, 형제·이벤트 할인, 보강 이월 차감, 미납 자동 안내.
+- 일정 변경 자동 반영: 반·요일 변경 승인 시 적용일부터 스케줄표·강사 명단·차량 명단·다음 달 원비에 반영.
+- 강사 급여·실적: 정규직 월급·인센티브·추가근무, 프리랜서 요일·시간대 단가 × 실제 수업, 수당, 명세서 발행. 강사별 재등록률·퇴원률·반이동률·매출을 평균과 비교.
+- 그 밖에: 5주차 대체보강일 연간 자동 제안, 연차·반차 신청과 승인, 강사 '보강 안 받는 시간'(휴식 시간) 설정, 레벨 테스트·승급 기록, 엑셀 회원명부 일괄 이전, 공지 발송, 자유수영 예약, 셀프 가입신청서.
+
+## 요금 (월, 재원생 수 기준)
+- Starter 29,000원부터 · Growth 50,000원부터 · Pro 89,000원부터 · Enterprise 230,000원부터
+- 연 결제 시 15% 할인, 초기 세팅·명단 이전 무료, 문자 발송 비용 별도
+- 자세한 조건: https://sojung0422.github.io/swimsync/intro/#pricing
+
+## 링크
+- 서비스 소개: https://sojung0422.github.io/swimsync/intro/
+- 자주 묻는 질문: https://sojung0422.github.io/swimsync/intro/#faq
+- 도입 신청: https://sojung0422.github.io/swimsync/intro/#start
+
+## 이용 가이드
+### 시작하기
+- [SwimSync를 소개해요](https://sojung0422.github.io/swimsync/intro/guide/intro/): 수영장 운영에 필요한 일을 웹과 앱 하나로 묶었어요.
+- [가입하고 학원 만들기](https://sojung0422.github.io/swimsync/intro/guide/signup/): 원장 계정을 만들고 우리 학원을 등록해요.
+- [학원 기본 설정](https://sojung0422.github.io/swimsync/intro/guide/settings/): 학원 정보, 강습 시간대, 운영 방침을 정해요.
+- [강사·직원 등록](https://sojung0422.github.io/swimsync/intro/guide/staff-add/): 강사 정보를 넣고 앱 초대코드를 보내요.
+- [강습반·요금제 만들기](https://sojung0422.github.io/swimsync/intro/guide/class-plan/): 반과 정원, 원비표를 등록해요.
+- [강습생 등록](https://sojung0422.github.io/swimsync/intro/guide/student-add/): 한 명씩 등록하거나 엑셀로 한 번에 옮겨요.
+- [앱 초대하기](https://sojung0422.github.io/swimsync/intro/guide/invite/): 학부모·강사·기사가 앱에 가입하도록 코드를 보내요.
+
+### 관리자 웹
+- [스케줄 관리](https://sojung0422.github.io/swimsync/intro/guide/schedule/): 전체 수업과 학생 명단을 한 화면에서 봐요.
+- [강습생 정보](https://sojung0422.github.io/swimsync/intro/guide/students/): 학생 목록, 상세 정보, 상태 변경을 다뤄요.
+- [보강 요청 관리](https://sojung0422.github.io/swimsync/intro/guide/makeup-admin/): 서류가 필요한 보강·이월 요청을 검토해요.
+- [일정 변경 요청](https://sojung0422.github.io/swimsync/intro/guide/changes/): 학부모가 신청한 요일·시간 변경을 승인해요.
+- [회원 상담·데스크 상담일지](https://sojung0422.github.io/swimsync/intro/guide/counsel/): 재원생 정기 상담과 등록 전 문의를 기록해요.
+- [결제 관리](https://sojung0422.github.io/swimsync/intro/guide/billing/): 원비 청구, 수납, 할인, 보강 정책을 관리해요.
+- [자유수영 관리](https://sojung0422.github.io/swimsync/intro/guide/freeswim/): 성인 자유수영 시간대와 예약을 관리해요.
+- [공지 발송](https://sojung0422.github.io/swimsync/intro/guide/notice/): 학부모와 직원에게 공지를 보내요.
+- [차량 관리](https://sojung0422.github.io/swimsync/intro/guide/vehicle/): 기사, 차량 노선, 탑승 학생, 정류장을 관리해요.
+- [연차·급여](https://sojung0422.github.io/swimsync/intro/guide/leave-pay/): 연차를 승인하고 급여 명세서를 발행해요.
+- [운영·통계](https://sojung0422.github.io/swimsync/intro/guide/ops/): 업무 안내, 케어팀, 거래처, 의견함, 통계 화면이에요.
+- [5주차 대체보강](https://sojung0422.github.io/swimsync/intro/guide/fifth/): 요일이 다섯 번 도는 달의 수업을 대체보강일로 써요.
+
+### 학부모 앱
+- [가입과 홈 화면](https://sojung0422.github.io/swimsync/intro/guide/p-start/): 앱에 가입하고 홈에서 아이 정보를 봐요.
+- [결석 신청](https://sojung0422.github.io/swimsync/intro/guide/p-absent/): 수업에 못 가는 날을 미리 알려요.
+- [보강 신청](https://sojung0422.github.io/swimsync/intro/guide/p-makeup/): 결석한 수업을 다른 날로 보강해요.
+- [반 변경·승하차 변경](https://sojung0422.github.io/swimsync/intro/guide/p-change/): 요일·시간이나 차량 승차 정보를 바꿔요.
+- [결제와 자유수영](https://sojung0422.github.io/swimsync/intro/guide/p-pay/): 이번 달 청구를 확인하고 자유수영을 예약해요.
+- [메시지·공지·기타 신청](https://sojung0422.github.io/swimsync/intro/guide/p-etc/): 코치와 대화하고, 퇴원·복귀를 신청해요.
+
+### 강사 앱
+- [오늘 수업과 출석](https://sojung0422.github.io/swimsync/intro/guide/t-schedule/): 오늘 맡은 수업 명단을 보고 출석을 정리해요.
+- [진도·상담 기록](https://sojung0422.github.io/swimsync/intro/guide/t-progress/): 수업 진도와 학생 상담 내용을 남겨요.
+- [보강·연차·휴식 시간](https://sojung0422.github.io/swimsync/intro/guide/t-leave/): 보강 현황을 보고 연차와 쉬는 시간을 정해요.
+- [메시지와 연락망](https://sojung0422.github.io/swimsync/intro/guide/t-msg/): 학부모와 대화하고 학원 정보를 확인해요.
+
+### 기사 앱
+- [오늘 노선과 운행](https://sojung0422.github.io/swimsync/intro/guide/d-route/): 탑승 명단을 확인하고 운행을 기록해요.
+- [명단 외 아이·고장 신고](https://sojung0422.github.io/swimsync/intro/guide/d-issue/): 예외 상황을 학원에 바로 알려요.
+
+### 도움말
+- [권한별 기능](https://sojung0422.github.io/swimsync/intro/guide/roles/): 역할마다 볼 수 있는 화면이 달라요.
+- [자주 묻는 질문](https://sojung0422.github.io/swimsync/intro/guide/faq/): 도입하고 쓰면서 많이 묻는 질문이에요.
+- [문의하기](https://sojung0422.github.io/swimsync/intro/guide/contact/): 가이드로 해결되지 않으면 연락 주세요.
