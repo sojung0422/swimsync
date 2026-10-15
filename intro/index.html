@@ -915,7 +915,7 @@ footer a:hover{color:var(--brand)}
   });
 
   // 신청 접수: 구글 시트(Apps Script 웹 앱)로 보내요. 주소가 비어 있으면 접수하지 않아요.
-  var SIGNUP_ENDPOINT='';
+  var SIGNUP_ENDPOINT='https://script.google.com/macros/s/AKfycbwNB7963kyOKLUSf8yxo2evXSjQ89kLgtRBodi-xcHTUN1QZtF69WnYUyulwZghqi2M6w/exec';
   $('form').addEventListener('submit',function(e){
     e.preventDefault();
     var n=$('f-n').value.trim(),p=$('f-p').value.trim(),o=$('f-o').value.trim(),m=$('f-mail').value.trim(),err=$('f-e'),d=$('f-done'),btn=$('f-btn');
