@@ -101,7 +101,6 @@ section{padding-block:clamp(72px,10vw,120px)}
 .nav .btn{height:42px;padding:0 18px;font-size:15px;white-space:nowrap}
 .nav .ss-lang{margin-left:4px}
 @media (max-width:760px){.nav .ss-lang{margin-left:auto}.nav .ss-lang+.btn{margin-left:8px}}
-@media (max-width:760px){.links{display:none}}
 
 /* hero */
 .hero{padding-block:56px 40px;overflow:hidden}
@@ -358,8 +357,6 @@ form input,form select{font:inherit;font-size:15px;padding:12px 14px;border-radi
 form input:focus,form select:focus{outline:none;border-color:var(--brand);background:var(--paper)}
 .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
 form label em{font-style:normal;color:var(--bad)}
-form input.bad,form input.bad:focus{border-color:var(--bad)}
-form .f-hint{font-size:12.5px;font-weight:500;color:var(--bad)}
 .done.fail{background:var(--bad-bg);color:var(--bad)}
 .calc-sum{font-size:13.5px;background:var(--tint);color:var(--brand);border-radius:12px;padding:10px 14px}
 form .agree{display:flex;flex-direction:row;align-items:center;gap:10px;font-weight:500;font-size:14px;cursor:pointer}
@@ -378,6 +375,49 @@ footer a:hover{color:var(--brand)}
 .dock{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--paper);border-top:1px solid var(--line)}
 .dock .btn{flex:1;height:48px}
 @media (max-width:760px){.dock{display:flex}}
+
+/* 휴대폰 메뉴 */
+.menu-btn{display:none;width:42px;height:42px;flex:none;border-radius:12px;border:1px solid var(--line);background:var(--paper);color:var(--ink);align-items:center;justify-content:center;cursor:pointer;padding:0}
+.menu-btn svg{width:22px;height:22px}
+.menu-btn .x{display:none}.menu-btn[aria-expanded="true"] .x{display:block}.menu-btn[aria-expanded="true"] .bars{display:none}
+.mnav{position:fixed;left:0;right:0;top:calc(68px + env(safe-area-inset-top,0px));z-index:49;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 24px 40px -24px rgba(15,18,34,.35);padding:6px 20px 22px;display:grid;opacity:0;visibility:hidden;transform:translateY(-8px);transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s;max-height:calc(100dvh - 68px);overflow:auto}
+.mnav.open{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease,transform .18s ease}
+.mnav .item{display:flex;justify-content:space-between;align-items:center;padding:16px 4px;font-size:17px;font-weight:600;color:var(--ink);border-bottom:1px solid var(--line)}
+.mnav .item span{color:var(--mute);font-size:20px;line-height:1}
+.mnav .row{display:flex;gap:10px;align-items:center;margin-top:18px}
+.mnav .row .btn{flex:1;height:48px}
+.scrim{position:fixed;inset:0;z-index:48;background:rgba(10,12,24,.4);opacity:0;visibility:hidden;transition:opacity .18s ease,visibility 0s linear .18s}
+.scrim.open{opacity:1;visibility:visible;transition:opacity .18s ease}
+@media (max-width:760px){
+  .links{display:none}
+  .menu-btn{display:inline-flex}
+  .nav .wrap{gap:10px}
+  .nav .wrap>.ss-lang,.nav .wrap>[data-lang-picker]{display:none}
+  .nav .wrap>.btn{margin-left:auto;height:40px;padding:0 14px;font-size:14px}
+  .logo img{height:26px}
+}
+@media (min-width:761px){.mnav,.scrim{display:none}}
+@media (prefers-reduced-motion:reduce){.mnav,.scrim{transition:none}}
+html,body{overflow-x:clip}
+
+/* 휴대폰 화면 다듬기 */
+@media (max-width:560px){
+  .hero{padding-block:28px 32px}
+  .hero h1{font-size:36px;margin-block:16px 14px}
+  .hero .cta{display:grid;grid-template-columns:1fr 1fr}
+  .hero .cta .btn{padding:0 12px;font-size:15px}
+  .proof{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:28px;padding-top:20px}
+  .proof b{font-size:22px}
+  .proof span{font-size:12px;line-height:1.4}
+  .pill{font-size:12.5px}
+  section{padding-block:64px}
+  .head{margin-bottom:28px}
+  .vis{min-height:0;padding:20px}
+  .final{padding:22px 18px;border-radius:24px}
+  form.card,form{padding:18px}
+  .calc .in,.calc .out{padding:22px 18px}
+}
+form label>span{display:block}
 </style>
 </head>
 <body style="margin:0">
@@ -394,8 +434,11 @@ footer a:hover{color:var(--brand)}
     </nav>
     <span data-lang-picker></span>
     <a class="btn btn-p" href="#start">무료 체험</a>
+    <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="mnav" aria-label="메뉴 열기"><svg class="bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg><svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
 </header>
+<div class="scrim" id="scrim"></div>
+<nav class="mnav" id="mnav" aria-label="모바일 메뉴"><a class="item" href="features/">주요 기능<span aria-hidden="true">›</span></a><a class="item" href="#effect">도입 효과<span aria-hidden="true">›</span></a><a class="item" href="#pricing">이용 요금<span aria-hidden="true">›</span></a><a class="item" href="#faq">자주 묻는 질문<span aria-hidden="true">›</span></a><a class="item" href="guide/intro/">이용 가이드<span aria-hidden="true">›</span></a><div class="row"><span data-lang-picker></span><a class="btn btn-p" href="#start">30일 무료 체험 신청</a></div></nav>
 
 <main id="top">
 <!-- 1. HERO -->
@@ -794,14 +837,14 @@ footer a:hover{color:var(--brand)}
       <form id="form" novalidate>
         <div class="hp" aria-hidden="true"><label for="f-web">웹사이트<input id="f-web" name="website" type="text" tabindex="-1" autocomplete="off"></label></div>
         <div class="two">
-          <label for="f-n">성함 <em>*</em><input id="f-n" type="text" autocomplete="name" placeholder="홍길동"></label>
-          <label for="f-p">연락처 <em>*</em><input id="f-p" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="010-0000-0000" aria-describedby="f-p-h"><span class="f-hint" id="f-p-h" hidden>연락처는 010-0000-0000 형식으로 입력해 주세요.</span></label>
+          <label for="f-n"><span>성함 <em>*</em></span><input id="f-n" type="text" autocomplete="name" placeholder="홍길동"></label>
+          <label for="f-p"><span>연락처 <em>*</em></span><input id="f-p" type="tel" autocomplete="tel" placeholder="010-0000-0000"></label>
         </div>
         <div class="two">
-          <label for="f-o">수영장 이름 <em>*</em><input id="f-o" type="text" placeholder="예: 한강 어린이 수영장"></label>
+          <label for="f-o"><span>수영장 이름 <em>*</em></span><input id="f-o" type="text" placeholder="예: 한강 어린이 수영장"></label>
           <label for="f-reg">지역<input id="f-reg" type="text" placeholder="예: 서울 송파구"></label>
         </div>
-        <label for="f-mail">이메일 (선택 · 체험 안내를 받을 주소)<input id="f-mail" type="email" autocomplete="email" placeholder="you@example.com" aria-describedby="f-mail-h"><span class="f-hint" id="f-mail-h" hidden>이메일 형식이 올바르지 않아요. 예: you@example.com</span></label>
+        <label for="f-mail">이메일 (선택 · 체험 안내를 받을 주소)<input id="f-mail" type="email" autocomplete="email" placeholder="you@example.com"></label>
         <div class="two">
           <label for="f-r">역할<select id="f-r"><option>원장·운영자</option><option>데스크·관리자</option><option>수영 강사</option></select></label>
           <label for="f-size">재원생 수<select id="f-size"><option>100명 미만</option><option selected>100~300명</option><option>300~700명</option><option>700명 이상</option></select></label>
@@ -917,19 +960,6 @@ footer a:hover{color:var(--brand)}
   });
 
   // 신청 접수: 구글 시트(Apps Script 웹 앱)로 보내요. 주소가 비어 있으면 접수하지 않아요.
-  // 연락처: 숫자만 받아 010-0000-0000 모양으로 자동 하이픈
-  var PHONE_RE=/^010-\d{4}-\d{4}$/,MAIL_RE=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  function mark(el,bad){el.classList.toggle('bad',bad);el.setAttribute('aria-invalid',bad?'true':'false');$(el.id+'-h').hidden=!bad}
-  $('f-p').addEventListener('input',function(){
-    var d=this.value.replace(/\D/g,'').slice(0,11);
-    this.value=d.length>7?d.slice(0,3)+'-'+d.slice(3,7)+'-'+d.slice(7):d.length>3?d.slice(0,3)+'-'+d.slice(3):d;
-    if(this.classList.contains('bad')&&PHONE_RE.test(this.value))mark(this,false);
-  });
-  $('f-p').addEventListener('blur',function(){if(this.value)mark(this,!PHONE_RE.test(this.value))});
-  // 이메일: 형식이 틀리면 칸 아래 경고 + 빨간 테두리
-  $('f-mail').addEventListener('blur',function(){var v=this.value.trim();mark(this,!!v&&!MAIL_RE.test(v))});
-  $('f-mail').addEventListener('input',function(){var v=this.value.trim();if(this.classList.contains('bad')&&(!v||MAIL_RE.test(v)))mark(this,false)});
-
   var SIGNUP_ENDPOINT='https://script.google.com/macros/s/AKfycbwNB7963kyOKLUSf8yxo2evXSjQ89kLgtRBodi-xcHTUN1QZtF69WnYUyulwZghqi2M6w/exec';
   $('form').addEventListener('submit',function(e){
     e.preventDefault();
@@ -937,9 +967,9 @@ footer a:hover{color:var(--brand)}
     d.hidden=true;d.classList.remove('fail');
     if(!n){err.textContent='성함을 입력해 주세요.';$('f-n').focus();return}
     if(!p){err.textContent='연락처를 입력해 주세요. 체험 안내를 전화로 드려요.';$('f-p').focus();return}
-    if(!PHONE_RE.test(p)){mark($('f-p'),true);err.textContent='연락처는 010-0000-0000 형식으로 입력해 주세요.';$('f-p').focus();return}
+    if(!/^[0-9\-\s]{9,14}$/.test(p)){err.textContent='연락처는 숫자와 - 로 입력해 주세요. 예: 010-1234-5678';$('f-p').focus();return}
     if(!o){err.textContent='수영장 이름을 입력해 주세요.';$('f-o').focus();return}
-    if(m&&!MAIL_RE.test(m)){mark($('f-mail'),true);err.textContent='이메일 형식을 확인해 주세요. 예: you@example.com';$('f-mail').focus();return}
+    if(m&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(m)){err.textContent='이메일 형식을 확인해 주세요. 예: you@example.com';$('f-mail').focus();return}
     if(!$('f-ok').checked){err.textContent='개인정보 수집·이용에 동의해야 신청할 수 있어요.';$('f-ok').focus();return}
     err.textContent='';
     if(!SIGNUP_ENDPOINT){d.hidden=false;d.classList.add('fail');d.textContent='지금은 온라인 접수를 준비하고 있어요. 잠시 뒤 다시 시도해 주세요.';return}
@@ -953,6 +983,14 @@ footer a:hover{color:var(--brand)}
     }).then(function(){btn.disabled=false;btn.textContent='무료 체험 신청'});
   });
 })();
+</script>
+<script>
+(function(){var b=document.getElementById('menu-btn'),m=document.getElementById('mnav'),s=document.getElementById('scrim');if(!b||!m)return;
+function set(o){m.classList.toggle('open',o);s.classList.toggle('open',o);b.setAttribute('aria-expanded',o?'true':'false');b.setAttribute('aria-label',o?'메뉴 닫기':'메뉴 열기');document.documentElement.style.overflow=o?'hidden':'';}
+b.addEventListener('click',function(){set(!m.classList.contains('open'))});s.addEventListener('click',function(){set(false)});
+m.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){set(false)})});
+addEventListener('keydown',function(e){if(e.key==='Escape'&&m.classList.contains('open')){set(false);b.focus()}});
+addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
 </script>
 </body>
 </html>
