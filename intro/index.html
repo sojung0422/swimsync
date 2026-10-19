@@ -419,49 +419,59 @@ html,body{overflow-x:clip}
 }
 form label>span{display:block}
 
-/* 핵심 기능·자동 계산: 정해진 틀 안에서 스크롤 */
+/* 핵심 기능·자동 계산: 페이지를 스크롤하면 화면에 고정된 채로 다음 내용이 나와요 */
 .stage{position:relative}
-.stage-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
-.stage-tabs button{font:inherit;font-size:15px;font-weight:600;height:40px;padding:0 16px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--soft);cursor:pointer;transition:background .15s,color .15s,border-color .15s}
+.stage-pin{position:sticky;top:var(--pin-top,68px);display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - var(--pin-top,68px) - var(--pin-bottom,0px));padding-block:12px}
+.stage-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.stage-tabs button{font:inherit;font-size:15px;font-weight:600;height:40px;padding:0 16px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--soft);cursor:pointer;transition:background .2s,color .2s,border-color .2s}
 .stage-tabs button:hover{border-color:var(--brand);color:var(--ink)}
 .stage-tabs button[aria-selected="true"]{background:var(--brand);border-color:var(--brand);color:var(--on-brand)}
-.stage-view{height:clamp(500px,calc(100vh - 300px),580px);overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;border:1px solid var(--line);border-radius:28px;background:var(--paper);scrollbar-width:thin;scrollbar-color:var(--tint-2) transparent}
-.stage-view::-webkit-scrollbar{width:8px}.stage-view::-webkit-scrollbar-thumb{background:var(--tint-2);border-radius:8px}
-.stage-view>.feat.slide{height:100%;margin:0;padding:clamp(24px,3.4vw,44px);scroll-snap-align:start;scroll-snap-stop:always;gap:clamp(24px,4vw,56px)}
-.stage-view>.feat.slide+.feat.slide{margin-top:0;border-top:1px solid var(--line)}
+.stage-view{position:relative}
+.stage-view>.feat.slide{position:absolute;inset:0 0 auto 0;margin:0;opacity:0;visibility:hidden;transform:translateY(28px);transition:opacity .4s ease,transform .5s cubic-bezier(.2,.8,.2,1),visibility 0s linear .5s}
+.stage-view>.feat.slide.on{opacity:1;visibility:visible;transform:none;transition:opacity .4s ease .05s,transform .5s cubic-bezier(.2,.8,.2,1) .05s}
+.stage-view>.feat.slide.up{transform:translateY(-28px)}
 .stage .txt{gap:12px}
-.stage .txt h3{font-size:clamp(24px,2.6vw,30px)}
+.stage .txt h3{font-size:clamp(24px,2.6vw,32px)}
 .stage .ticks{gap:8px;margin-top:4px}
-.stage .ticks li{font-size:15px}
+.stage .ticks li{font-size:15.5px}
 .stage .from{padding-top:10px;font-size:13px}
-.stage .vis{min-height:0;height:100%;padding:clamp(18px,3vw,32px)}
-.alt .stage-view{background:var(--paper)}
-.stage-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:12px;font-size:13.5px;color:var(--mute)}
+.stage .vis{min-height:340px}
+.stage-foot{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;font-size:13.5px;color:var(--mute)}
 .stage-hint{display:inline-flex;align-items:center;gap:8px}
 .stage-hint em{font-style:normal}.stage-hint .m{display:none}
 .stage-hint i{width:16px;height:24px;border:2px solid var(--mute);border-radius:9px;position:relative;flex:none}
 .stage-hint i::after{content:"";position:absolute;left:50%;top:4px;width:2px;height:5px;margin-left:-1px;border-radius:2px;background:var(--mute);animation:wheel 1.6s ease-in-out infinite}
 @keyframes wheel{0%{opacity:0;transform:translateY(0)}30%{opacity:1}100%{opacity:0;transform:translateY(8px)}}
-.stage-dots{display:flex;gap:6px}
-.stage-dots b{width:8px;height:8px;border-radius:99px;background:var(--line);transition:width .2s,background .2s}
-.stage-dots b.on{width:22px;background:var(--brand)}
+.stage-bar{flex:0 1 220px;height:4px;border-radius:4px;background:var(--line);overflow:hidden}
+.stage-bar i{display:block;height:100%;width:0;background:var(--brand);border-radius:4px}
 .soon{display:inline-block;margin-left:6px;font-size:12px;font-weight:600;color:var(--brand);background:var(--tint);border-radius:99px;padding:1px 8px;vertical-align:1px}
 .mock-cap{text-align:center;font-size:12px;color:var(--mute);margin-top:4px}
-.stage+.subhead{margin-top:clamp(56px,7vw,88px)}
+.stage+.subhead{margin-top:clamp(40px,5vw,64px)}
+/* 화면이 낮아 한 화면에 안 들어가면: 고정 없이 차례로 보여 줘요 */
+.stage.flow .stage-pin{position:static;min-height:0;padding:0}
+.stage.flow .stage-tabs,.stage.flow .stage-foot{display:none}
+.stage.flow .stage-view{height:auto!important}
+.stage.flow .stage-view>.feat.slide{position:static;opacity:1;visibility:visible;transform:none}
+.stage.flow .stage-view>.feat.slide+.feat.slide{margin-top:clamp(56px,8vw,96px)}
 @media (max-width:860px){
-  .stage-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-20px;padding-inline:20px}
+  .stage-tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -20px 12px;padding-inline:20px}
   .stage-tabs::-webkit-scrollbar{display:none}
-  .stage-tabs button{flex:none;height:38px;font-size:14px;padding:0 14px}
-  .stage-view{height:auto;display:flex;align-items:stretch;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x mandatory;overscroll-behavior-x:contain;border-radius:22px;scrollbar-width:none}
-  .stage-view::-webkit-scrollbar{display:none}
-  .stage-view>.feat.slide{flex:0 0 100%;height:auto;padding:22px 18px;align-content:start;gap:20px}
-  .stage-view>.feat.slide+.feat.slide{border-top:0;border-left:1px solid var(--line)}
-  .stage .vis{height:auto;padding:18px}
+  .stage-tabs button{flex:none;height:36px;font-size:14px;padding:0 14px}
+  .stage-view>.feat.slide{gap:14px}
+  .stage .txt{gap:8px}
+  .stage .txt h3{font-size:22px}
+  .stage .ticks{gap:4px}
+  .stage .ticks li{font-size:14px;line-height:1.5}
+  .stage .ticks li::before{width:18px;height:18px;margin-top:1px;background-size:13px}
+  .stage .from{display:none}
+  .stage .more-link{font-size:14.5px}
+  .stage .vis{min-height:0;padding:14px;border-radius:20px}
+  .stage .vis .push{padding:8px 10px;font-size:12.5px;grid-template-columns:28px 1fr;gap:10px}
+  .stage .vis .push i{width:28px;height:28px}
+  .stage-foot{margin-top:10px}
   .stage-hint .d{display:none}.stage-hint .m{display:inline}
-  .stage-hint i{width:24px;height:16px}
-  .stage-hint i::after{top:50%;left:4px;width:5px;height:2px;margin:-1px 0 0;animation-name:swipe}
+  .stage-bar{flex-basis:120px}
 }
-@keyframes swipe{0%{opacity:0;transform:translateX(0)}30%{opacity:1}100%{opacity:0;transform:translateX(8px)}}
 
 /* 출시 안내 팝업 */
 .launch{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:20px}
@@ -613,9 +623,9 @@ form label>span{display:block}
       <h2 class="h2" id="f-h">가장 손이 많이 가는 일부터<br>먼저 없앴어요</h2>
     </div>
 
-    <div class="stage" data-stage>
+    <div class="stage" data-stage><div class="stage-pin">
       <div class="stage-tabs" role="tablist" aria-label="핵심 기능"><button type="button" role="tab" id="core-t0" aria-controls="core-s0" aria-selected="true">보강</button><button type="button" role="tab" id="core-t1" aria-controls="core-s1" aria-selected="false" tabindex="-1">학부모 연락</button><button type="button" role="tab" id="core-t2" aria-controls="core-s2" aria-selected="false" tabindex="-1">결석·차량 공유</button><button type="button" role="tab" id="core-t3" aria-controls="core-s3" aria-selected="false" tabindex="-1">탑승 알림</button></div>
-      <div class="stage-view" tabindex="0" aria-label="핵심 기능 — 안에서 스크롤하면 다음 내용이 나와요">
+      <div class="stage-view">
     <div class="feat slide" role="tabpanel" id="core-s0" aria-labelledby="core-t0">
       <div class="txt">
         <p class="label">보강</p>
@@ -704,8 +714,8 @@ form label>span{display:block}
       </div>
     </div>
       </div>
-      <div class="stage-foot"><span class="stage-hint"><i aria-hidden="true"></i><em class="d">이 안에서 스크롤하면 다음 내용이 나와요</em><em class="m">옆으로 넘기면 다음 내용이 나와요</em></span><span class="stage-dots" aria-hidden="true"><b></b><b></b><b></b><b></b></span></div>
-    </div>
+      <div class="stage-foot"><span class="stage-hint"><i aria-hidden="true"></i><em class="d">스크롤하면 다음 기능이 이어서 나와요</em><em class="m">스크롤하면 다음 기능이 나와요</em></span><span class="stage-bar" aria-hidden="true"><i></i></span></div>
+    </div></div>
 
     <div class="subhead">
       <p class="label">자동 계산</p>
@@ -713,9 +723,9 @@ form label>span{display:block}
       <p class="sub">원비, 일정 변경, 급여처럼 실수하면 바로 민원이 되는 일부터 자동으로 바꿨어요.</p>
     </div>
 
-    <div class="stage" data-stage>
+    <div class="stage" data-stage><div class="stage-pin">
       <div class="stage-tabs" role="tablist" aria-label="자동 계산"><button type="button" role="tab" id="auto-t0" aria-controls="auto-s0" aria-selected="true">월 원비 계산</button><button type="button" role="tab" id="auto-t1" aria-controls="auto-s1" aria-selected="false" tabindex="-1">일정 변경 반영</button><button type="button" role="tab" id="auto-t2" aria-controls="auto-s2" aria-selected="false" tabindex="-1">급여·실적 정산</button></div>
-      <div class="stage-view" tabindex="0" aria-label="자동 계산 — 안에서 스크롤하면 다음 내용이 나와요">
+      <div class="stage-view">
     <div class="feat slide" role="tabpanel" id="auto-s0" aria-labelledby="auto-t0">
       <div class="txt">
         <p class="label">월 원비 자동 계산</p>
@@ -801,8 +811,8 @@ form label>span{display:block}
     </div>
 
       </div>
-      <div class="stage-foot"><span class="stage-hint"><i aria-hidden="true"></i><em class="d">이 안에서 스크롤하면 다음 내용이 나와요</em><em class="m">옆으로 넘기면 다음 내용이 나와요</em></span><span class="stage-dots" aria-hidden="true"><b></b><b></b><b></b></span></div>
-    </div>
+      <div class="stage-foot"><span class="stage-hint"><i aria-hidden="true"></i><em class="d">스크롤하면 다음 기능이 이어서 나와요</em><em class="m">스크롤하면 다음 기능이 나와요</em></span><span class="stage-bar" aria-hidden="true"><i></i></span></div>
+    </div></div>
 
     <div class="more">
       <div><h3>휴식 시간 지키기</h3><p>'보강 안 받는 시간'을 막아 두면 그 시간엔 보강이 안 열려요.</p></div>
@@ -1131,17 +1141,63 @@ addEventListener('keydown',function(e){if(e.key==='Escape'&&m.classList.contains
 addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
 </script>
 <script>
-(function(){document.querySelectorAll('[data-stage]').forEach(function(st){
-  var v=st.querySelector('.stage-view'),sl=[].slice.call(v.children),tb=[].slice.call(st.querySelectorAll('[role=tab]')),dt=[].slice.call(st.querySelectorAll('.stage-dots b')),cur=-1;
-  function horiz(){return getComputedStyle(v).scrollSnapType.indexOf('x')===0}
-  function mark(i){if(i===cur)return;cur=i;tb.forEach(function(b,k){b.setAttribute('aria-selected',k===i?'true':'false');b.tabIndex=k===i?0:-1});dt.forEach(function(d,k){d.classList.toggle('on',k===i)});
-    var b=tb[i];if(b&&b.parentNode.scrollWidth>b.parentNode.clientWidth){b.parentNode.scrollTo({left:b.offsetLeft-20,behavior:'smooth'})}}
-  function now(){var h=horiz();var p=h?v.scrollLeft/v.clientWidth:v.scrollTop/v.clientHeight;return Math.max(0,Math.min(sl.length-1,Math.round(p)))}
-  function go(i){var h=horiz();v.scrollTo(h?{left:i*v.clientWidth,behavior:'smooth'}:{top:i*v.clientHeight,behavior:'smooth'});mark(i)}
-  v.addEventListener('scroll',function(){mark(now())},{passive:true});
-  tb.forEach(function(b,i){b.addEventListener('click',function(){go(i)});b.addEventListener('keydown',function(e){var k=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(k){e.preventDefault();var j=(i+k+tb.length)%tb.length;tb[j].focus();go(j)}})});
-  mark(0);
-})})();
+(function(){
+  var nav=document.querySelector('.nav'),dock=document.querySelector('.dock'),reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var stages=[].slice.call(document.querySelectorAll('[data-stage]')).map(function(st){
+    var o={st:st,pin:st.querySelector('.stage-pin'),v:st.querySelector('.stage-view'),bar:st.querySelector('.stage-bar i'),cur:-1,step:0,flow:false};
+    o.sl=[].slice.call(o.v.children);o.tb=[].slice.call(st.querySelectorAll('[role=tab]'));o.n=o.sl.length;
+    o.tb.forEach(function(b,i){
+      b.addEventListener('click',function(){go(o,i)});
+      b.addEventListener('keydown',function(e){var k=e.key==='ArrowRight'?1:e.key==='ArrowLeft'?-1:0;if(k){e.preventDefault();var j=(i+k+o.n)%o.n;o.tb[j].focus();go(o,j)}});
+    });
+    return o;
+  });
+  function bars(){var top=nav?nav.offsetHeight:68,bot=dock&&getComputedStyle(dock).display!=='none'?dock.offsetHeight:0;return{top:top,bot:bot}}
+  function show(o,i){
+    if(i===o.cur)return;var prev=o.cur;o.cur=i;
+    o.sl.forEach(function(s,k){s.classList.toggle('on',k===i);s.classList.toggle('up',k<i);s.setAttribute('aria-hidden',k===i?'false':'true')});
+    o.tb.forEach(function(b,k){b.setAttribute('aria-selected',k===i?'true':'false');b.tabIndex=k===i?0:-1});
+    var b=o.tb[i],row=b&&b.parentNode;if(row&&row.scrollWidth>row.clientWidth)row.scrollTo({left:b.offsetLeft-20,behavior:'smooth'});
+  }
+  function layout(){
+    var m=bars();
+    stages.forEach(function(o){
+      o.st.style.setProperty('--pin-top',m.top+'px');o.st.style.setProperty('--pin-bottom',m.bot+'px');
+      o.st.classList.remove('flow');o.st.style.height='';o.v.style.height='';
+      o.sl.forEach(function(s){var x=s.querySelector('.vis');if(x){x.style.zoom='';x.style.display=''}});
+      var h=0;o.sl.forEach(function(s){h=Math.max(h,s.offsetHeight)});o.v.style.height=h+'px';
+      var avail=innerHeight-m.top-m.bot;
+      // 한 화면을 넘으면 그림을 화면에 맞게 줄이고, 너무 작아지면 그림을 빼고 글만 보여 줘요
+      var room=avail-(o.pin.offsetHeight-h)-4;
+      if(h>room){h=0;o.sl.forEach(function(s){var x=s.querySelector('.vis');if(x&&s.offsetHeight>room){var vh=x.offsetHeight,z=(room-(s.offsetHeight-vh))/vh;if(z>=.6)x.style.zoom=z.toFixed(3);else x.style.display='none'}h=Math.max(h,s.offsetHeight)});o.v.style.height=h+'px'}
+      o.flow=o.pin.offsetHeight>avail+2;
+      if(o.flow){o.st.classList.add('flow');o.v.style.height='';o.sl.forEach(function(s){var x=s.querySelector('.vis');if(x){x.style.zoom='';x.style.display=''}});o.sl.forEach(function(s){s.removeAttribute('aria-hidden')});return}
+      o.step=Math.max(280,Math.round(innerHeight*.45));
+      o.st.style.height=(o.pin.offsetHeight+o.n*o.step-Math.round(o.step*.35))+'px';
+      o.cur=-1;
+    });
+    tick();
+  }
+  function tick(){
+    var m=bars();
+    stages.forEach(function(o){
+      if(o.flow)return;
+      var y=m.top-o.st.getBoundingClientRect().top;
+      var i=Math.max(0,Math.min(o.n-1,Math.floor(y/o.step)));
+      show(o,i);
+      if(o.bar){var p=Math.max(0,Math.min(1,y/(o.st.offsetHeight-o.pin.offsetHeight)));o.bar.style.width=(p*100)+'%'}
+    });
+  }
+  function go(o,i){
+    if(o.flow){o.sl[i].scrollIntoView({behavior:reduce?'auto':'smooth'});return}
+    var m=bars(),top=o.st.getBoundingClientRect().top+scrollY-m.top;
+    scrollTo({top:top+i*o.step+Math.round(o.step*.15),behavior:reduce?'auto':'smooth'});
+  }
+  var raf=0;addEventListener('scroll',function(){if(!raf)raf=requestAnimationFrame(function(){raf=0;tick()})},{passive:true});
+  addEventListener('resize',layout);
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(layout);
+  addEventListener('load',layout);layout();
+})();
 </script>
 <script>
 (function(){var p=document.getElementById('launch');if(!p)return;var K='ss-launch-hide',last=null;
