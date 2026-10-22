@@ -529,6 +529,13 @@ table.vs td.me b{color:var(--ink)}
 .desk-col li:last-child{border-bottom:0;padding-bottom:0}
 .desk-col li b{font-size:15.5px;color:var(--ink)}
 .desk-col li span{font-size:14px;color:var(--soft);line-height:1.55}
+.hero h1 .l1{font-style:normal}
+@media (min-width:901px){
+  .hero .wrap{grid-template-columns:1.25fr .75fr;gap:32px}
+  .hero h1{font-size:clamp(40px,4.3vw,54px)}
+  .hero h1 .l1{white-space:nowrap}
+  .hero .devices{transform:scale(.88);transform-origin:center}
+}
 .hero .proof{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;column-gap:36px}
 .hero .proof b{white-space:nowrap}
 .dk-note{font-size:14px;color:var(--soft);background:var(--alt);border-radius:14px;padding:12px 14px}
@@ -639,7 +646,7 @@ table.vs td.me b{color:var(--ink)}
   <div class="wrap">
     <div>
       <span class="pill"><b>24시간</b>결석·보강·차량 연락을 앱이 받아요</span>
-      <h1>퇴근 없는 데스크 직원,<br><span>월 5만 원.</span></h1>
+      <h1><em class="l1">퇴근 없는 데스크 직원,</em><br><span>월 5만 원.</span></h1>
       <p class="sub">밤 10시 결석 연락도, 일요일 보강 신청도 앱이 받아요. 강사 명단·차량 명단·원비까지 알아서 맞추고, 데스크는 아침에 <b>승인 버튼만</b> 누르면 돼요.</p>
       <div class="cta">
         <a class="btn btn-p" href="#start">무료 체험 사전 예약</a>
