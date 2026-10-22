@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SwimSync | 수영장 관리 프로그램 · 데스크 반복 업무 자동화</title>
-<meta name="description" content="수영장·수영 학원 관리 프로그램 SwimSync. 결석 전화, 보강 자리 찾기, 강사·차량 명단, 원비 계산까지 데스크가 하던 반복 업무를 앱이 맡아요. 300명 수영장 기준 월 35시간 절약(예상). 30일 무료 체험.">
+<title>SwimSync | 수영장 관리 프로그램 · 퇴근 없는 데스크</title>
+<meta name="description" content="퇴근 없는 데스크 직원, 월 5만 원. 수영장 관리 프로그램 SwimSync는 밤·주말 결석 연락과 보강 신청을 앱이 24시간 받고, 강사·차량 명단과 원비까지 자동으로 맞춰요. 300명 수영장 기준 월 35시간 절약(예상). 30일 무료 체험.">
 <meta name="keywords" content="수영장 관리 프로그램, 수영 학원 관리 프로그램, 수영장 회원관리, 보강 관리, 출석 관리 앱, 학원 차량 관리, 통학 차량 명단, 강사 급여 계산, 원비 자동 계산, 학부모 앱, 어린이 수영장">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="https://sojung0422.github.io/swimsync/intro/">
@@ -492,6 +492,25 @@ form label>span{display:block}
 
 
 
+
+/* 한 달 처리량 · 직원 비교 */
+.bignums{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:10px}
+@media (max-width:760px){.bignums{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.bignums div{background:var(--tint);border-radius:20px;padding:18px 18px 16px;display:grid;gap:4px}
+.bignums b{font-family:"IBM Plex Mono",monospace;font-size:clamp(34px,4.6vw,52px);line-height:1;color:var(--brand);letter-spacing:-.02em}
+.bignums b small{font-family:"IBM Plex Sans KR",sans-serif;font-size:.4em;margin-left:4px;font-weight:700}
+.bignums span{font-size:14.5px;color:var(--ink);font-weight:600}
+.bn-note{text-align:center;font-size:13px;color:var(--mute);margin:6px 0 28px}
+.vs-wrap{overflow-x:auto;border-radius:24px;border:1px solid var(--line);background:var(--paper)}
+table.vs{width:100%;border-collapse:collapse;min-width:620px;font-size:15px}
+table.vs th,table.vs td{padding:16px 20px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+table.vs tr:last-child th,table.vs tr:last-child td{border-bottom:0}
+table.vs thead th{font-size:15px;color:var(--soft);background:var(--alt)}
+table.vs tbody th{font-size:14px;color:var(--mute);font-weight:600;white-space:nowrap;width:150px}
+table.vs td{color:var(--soft)}
+table.vs .me{background:var(--tint);color:var(--ink)}
+table.vs thead .me{background:var(--brand);color:#fff;font-weight:700}
+table.vs td.me b{color:var(--ink)}
 /* 데스크 업무 체크리스트 */
 .desk-grid{display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:16px;align-items:start}
 @media (max-width:900px){.desk-grid{grid-template-columns:1fr}}
@@ -619,18 +638,18 @@ form label>span{display:block}
 <section class="hero">
   <div class="wrap">
     <div>
-      <span class="pill"><b>수영장 전용</b>현장 강사·원장 30명의 불편에서 시작했어요</span>
-      <h1>반복 업무는 앱이,<br><span>데스크는 확인만.</span></h1>
-      <p class="sub">데스크가 하루 종일 하던 결석 전화, 보강 자리 찾기, 강사·차량 명단 고치기, 원비 계산. 이제 학부모·강사·기사가 각자 앱에서 처리하고, 데스크는 <b>승인 버튼만</b> 누르면 돼요.</p>
+      <span class="pill"><b>24시간</b>결석·보강·차량 연락을 앱이 받아요</span>
+      <h1>퇴근 없는 데스크 직원,<br><span>월 5만 원.</span></h1>
+      <p class="sub">밤 10시 결석 연락도, 일요일 보강 신청도 앱이 받아요. 강사 명단·차량 명단·원비까지 알아서 맞추고, 데스크는 아침에 <b>승인 버튼만</b> 누르면 돼요.</p>
       <div class="cta">
         <a class="btn btn-p" href="#start">무료 체험 사전 예약</a>
         <a class="btn btn-g" href="#pricing">요금 보기</a>
       </div>
-      <p class="demo-note">강습생 수 제한 없이 모든 기능을 30일 동안 무료로 써 보세요. <a href="guide/intro/">이용 가이드 보기 →</a></p>
+      <p class="demo-note">300명 수영장 기준 예상치 · 월급은 2026년 최저임금 주 40시간 기준 · 요금은 Growth 기준. 1월부터 30일 무료로 써 보세요. <a href="guide/intro/">이용 가이드 보기 →</a></p>
       <div class="proof">
-        <div><b>월 35시간</b><span>데스크 업무 절약 (300명 기준 예상)</span></div>
-        <div><b>5곳 → 1번</b><span>결석 하나에 고치던 출석부·보강표·강사·차량·원비</span></div>
-        <div><b>30일</b><span>무료 체험 · 인원 제한 없음</span></div>
+        <div><b>하루 8통</b><span>결석·보강 전화를 앱이 대신 받아요</span></div>
+        <div><b>월 4일치</b><span>데스크 근무 시간이 돌아와요 (월 35시간)</span></div>
+        <div><b>월급의 2%</b><span>데스크 직원 월 216만 원 vs 월 5만 원</span></div>
       </div>
     </div>
     <div class="devices notranslate" translate="no" aria-label="학부모 앱 보강 신청 화면 예시">
@@ -681,9 +700,16 @@ form label>span{display:block}
   <div class="wrap">
     <div class="head center">
       <p class="label">데스크 업무 체크리스트</p>
-      <h2 class="h2" id="d-h">데스크 하루 일, 이만큼 앱으로 넘어가요</h2>
-      <p class="sub">수영장 데스크가 매일 하는 일을 하나씩 나눠 봤어요. 앱이 알아서 하는 일, 데스크는 확인만 하는 일, 곧 자동으로 바뀌는 일이에요.</p>
+      <h2 class="h2" id="d-h">300명 수영장이면, 매달 이만큼<br>앱이 대신 처리해요</h2>
+      <p class="sub">데스크 직원이 전화 받고, 자리 찾고, 명단 고치던 일을 숫자로 세어 봤어요.</p>
     </div>
+    <div class="bignums">
+      <div><b>180<small>통</small></b><span>결석·보강 문의 전화</span></div>
+      <div><b>36<small>건</small></b><span>보강 자리 찾기·배정</span></div>
+      <div><b>22<small>일치</small></b><span>출석부·차량 명단 수정</span></div>
+      <div><b>300<small>명</small></b><span>원비 계산·청구 안내</span></div>
+    </div>
+    <p class="bn-note">재원생 300명·강사 8명 기준, 현장 설문으로 잡은 예상치예요. 아래 「도입 효과」에서 우리 수영장 숫자로 계산해 보세요.</p>
     <div class="desk-grid">
       <div class="desk-col dk-auto"><h3><span class="dk-badge a">앱이 알아서</span><em>8가지</em></h3><ul>
         <li><b>결석 접수</b><span>학부모가 앱에서 누르면 강사 명단·차량 명단에서 바로 빠져요</span></li>
@@ -706,6 +732,28 @@ form label>span{display:block}
         <li><b>급여 공제·계약서</b><span>3.3%·4대보험 공제, 전자 계약</span></li></ul>
         <p class="dk-note">데스크에 남는 일은 <b>신규 상담과 학부모 응대</b>예요. 매출을 만드는 일에 시간을 쓰세요.</p></div>
     </div>
+  </div>
+</section>
+
+<!-- 2-2. STAFF VS SWIMSYNC -->
+<section class="alt" id="vs" aria-labelledby="vs-h">
+  <div class="wrap">
+    <div class="head center">
+      <p class="label">비교해 보세요</p>
+      <h2 class="h2" id="vs-h">데스크 직원 한 명 더 뽑기 전에</h2>
+    </div>
+    <div class="vs-wrap"><table class="vs">
+      <thead><tr><th></th><th>데스크 직원 1명 추가</th><th class="me">SwimSync</th></tr></thead>
+      <tbody>
+        <tr><th>한 달 비용</th><td>약 216만 원 + 4대보험·퇴직금</td><td class="me"><b>5만 원</b> (Growth)</td></tr>
+        <tr><th>연락 받는 시간</th><td>근무 시간 하루 8시간</td><td class="me"><b>24시간 · 주말·공휴일 포함</b></td></tr>
+        <tr><th>결석 연락 1건</th><td>전화 받고 출석부·보강표·강사·차량·원비 5곳 수정</td><td class="me"><b>학부모가 한 번 누르면 5곳 자동 반영</b></td></tr>
+        <tr><th>보강 자리 찾기</th><td>시간표 보고 빈자리 찾아 다시 전화</td><td class="me"><b>학부모가 남은 자리에서 직접 선택</b></td></tr>
+        <tr><th>정원 초과 실수</th><td>바쁠 때 생길 수 있음</td><td class="me"><b>신청 단계에서 자동 차단</b></td></tr>
+        <tr><th>월 원비 계산</th><td>할인·일할·이월을 엑셀로 계산</td><td class="me"><b>규칙대로 자동 계산</b></td></tr>
+        <tr><th>퇴사·휴가</th><td>인수인계, 새로 뽑고 가르치기</td><td class="me"><b>기록이 그대로 남아 인수인계 없음</b></td></tr>
+      </tbody></table></div>
+    <p class="bn-note">직원 월급은 2026년 최저임금(시급 10,320원) 주 40시간 기준이에요. 신규 상담·현장 응대처럼 사람이 해야 하는 일은 데스크에 남아요.</p>
   </div>
 </section>
 
@@ -1121,7 +1169,7 @@ form label>span{display:block}
     <div class="final">
       <div>
         <span class="launch-note"><i aria-hidden="true"></i>무료 체험 1월 초 시작 · 지금 사전 예약</span>
-        <h2 class="h2" id="c-h">1월, 데스크 업무부터<br>덜어 드릴게요</h2>
+        <h2 class="h2" id="c-h">직원 한 명 더 뽑기 전에,<br>먼저 써 보세요</h2>
         <p class="sub">지금은 개발 마무리 중이라 무료 체험은 2027년 1월 초부터 시작해요. 원장님이 사전 예약을 걸어 두시면 예약 순서대로 연락드리고 우리 수영장에 맞게 설치해 드려요.</p>
         <ul><li>강습생 수 제한 없이 모든 기능</li><li>초기 세팅·명단 이전 무료</li><li>체험 중 언제든 중단, 자동 결제 없음</li></ul>
       </div>
