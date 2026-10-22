@@ -1,0 +1,23 @@
+{
+  "name": "ClickTycoonSimulator",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Config": {
+        "$path": "src/shared/Config.lua"
+      }
+    },
+    "ServerScriptService": {
+      "GameServer": {
+        "$path": "src/server/GameServer.server.lua"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "ClientUI": {
+          "$path": "src/client/ClientUI.client.lua"
+        }
+      }
+    }
+  }
+}
