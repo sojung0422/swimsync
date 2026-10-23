@@ -557,6 +557,68 @@ table.vs td.me b{color:var(--ink)}
 .st-plan b{font-size:15px}
 .st-plan span{font-size:14px;color:var(--soft);line-height:1.55}
 .st-note{font-size:13px;color:var(--mute)}
+
+/* 기능 현황 카드 */
+.fs-bar{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+.fs-chips,.fs-seg{display:flex;gap:8px;flex-wrap:wrap}
+.fs-chips button,.fs-seg button{font:inherit;font-size:14.5px;font-weight:600;height:40px;padding:0 16px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--soft);cursor:pointer;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.fs-chips button:hover,.fs-seg button:hover{border-color:var(--brand);color:var(--ink)}
+.fs-chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.fs-seg button[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
+.fs-chips button:focus-visible,.fs-seg button:focus-visible{outline:3px solid var(--brand);outline-offset:2px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.r{background:var(--good)}.dot.p{background:var(--brand)}
+.fs-seg button[aria-pressed="true"] .dot{background:#fff}
+.fs-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+@media (max-width:1060px){.fs-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:680px){.fs-grid{grid-template-columns:1fr}
+  .fs-bar{flex-direction:column;align-items:stretch}
+  .fs-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin-inline:-16px;padding-inline:16px}
+  .fs-chips::-webkit-scrollbar{display:none}
+  .fs-chips button{flex:none;height:38px;font-size:14px}
+  .fs-seg{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));min-width:0;width:100%}
+  .fs-chips{min-width:0}
+  .fs-seg button{min-width:0}
+  .fs-seg button{justify-content:center;padding:0 6px;font-size:13px;gap:5px}}
+.fs-card{background:var(--paper);border:1px solid var(--line);border-radius:22px;padding:20px;display:grid;gap:12px}
+.fs-card header{display:grid;gap:2px}
+.fs-card h3{margin:0;font-size:18px}
+.fs-count{font-size:12.5px;color:var(--mute)}
+.fs-count b{color:var(--ink)}
+.fs-card ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.fs-ready li{position:relative;padding-left:24px;font-size:14.5px;color:var(--soft);line-height:1.55}
+.fs-ready li::before{content:"";position:absolute;left:0;top:3px;width:16px;height:16px;border-radius:50%;background:var(--good-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.3l3 2.8 6-6.2' fill='none' stroke='%230E7A44' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat}
+.fs-plan{border-top:1px dashed var(--line);padding-top:12px}
+.fs-plan li{display:grid;gap:2px;padding:10px 12px;border-radius:14px;background:var(--tint)}
+.fs-plan li b{font-size:14.5px;display:flex;align-items:center;gap:6px}
+.fs-plan li b::before{content:"개발 예정";font-size:11px;font-weight:700;color:var(--brand);background:var(--paper);border-radius:99px;padding:1px 8px}
+.fs-plan li span{font-size:13.5px;color:var(--soft);line-height:1.5}
+.fs-grid[data-st="ready"] .fs-plan{display:none}
+.fs-grid[data-st="plan"] .fs-ready{display:none}
+.fs-grid[data-st="plan"] .fs-plan{border-top:0;padding-top:0}
+.fs-card[hidden]{display:none}
+.fs-note{margin-top:14px;text-align:center;font-size:13px;color:var(--mute)}
+
+/* 실제 앱 화면 · 글라스 카드 */
+.phone.real{padding:0;overflow:hidden;width:280px;border:10px solid #0F1222;border-radius:46px;background:#0F1222;box-shadow:0 40px 80px -30px rgba(10,20,60,.45)}
+.phone.real img{display:block;width:100%;height:auto;border-radius:36px}
+.card-f.glass{background:color-mix(in oklab,var(--paper) 58%,transparent);-webkit-backdrop-filter:blur(16px) saturate(1.5);backdrop-filter:blur(16px) saturate(1.5);border:1px solid color-mix(in oklab,#fff 70%,transparent);box-shadow:0 24px 48px -20px rgba(10,20,60,.35),inset 0 1px 0 color-mix(in oklab,#fff 80%,transparent);z-index:2}
+:root[data-theme="dark"] .card-f.glass{border-color:rgba(255,255,255,.14)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .card-f.glass{border-color:rgba(255,255,255,.14)}}
+.scr-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(16px,3vw,40px);justify-items:center}
+.scr{margin:0;display:grid;gap:14px;justify-items:center;text-align:center}
+.scr-phone{width:min(260px,100%);border:9px solid #0F1222;border-radius:42px;background:#0F1222;overflow:hidden;box-shadow:0 30px 60px -30px rgba(10,20,60,.4)}
+.scr-phone img{display:block;width:100%;height:auto;border-radius:33px}
+.scr figcaption{display:grid;gap:2px}
+.scr figcaption b{font-size:17px}
+.scr figcaption span{font-size:14px;color:var(--soft)}
+.scr-note{text-align:center;font-size:13px;color:var(--mute);margin-top:18px}
+@media (max-width:760px){
+  .scr-row{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;margin-inline:-16px;padding:4px 16px 10px;scrollbar-width:none;justify-items:initial}
+  .scr-row::-webkit-scrollbar{display:none}
+  .scr{flex:0 0 72%;scroll-snap-align:center}
+  .phone.real{width:250px}
+}
 /* 출시 안내 팝업 */
 .launch{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:20px}
 .launch[hidden]{display:none}
@@ -657,26 +719,17 @@ table.vs td.me b{color:var(--ink)}
       </div>
       <p class="proof-note">* 재원생 300명 기준 예상 · 최저임금 주 40시간 · Growth 요금 기준</p>
     </div>
-    <div class="devices notranslate" translate="no" aria-label="학부모 앱 보강 신청 화면 예시">
+    <div class="devices notranslate" translate="no">
       <div class="glow" aria-hidden="true"></div>
-      <div class="phone">
-        <div class="notch"></div>
-        <p class="app-t">보강 신청</p>
-        <p class="app-s">같은 유치부 반의 빈자리만 보여요 · 잔여 2회</p>
-        <div class="abs"><span>결석한 수업</span><span class="num">9/24(수) 16:00</span></div>
-        <div class="slots" id="slots">
-          <button type="button" class="slot" data-t="9/27(토) 10:00 이수진 코치"><span class="d">9/27<em>토</em></span><span><b class="num">10:00</b> 유치부 초급<small>이수진 코치</small></span><span class="seat">2자리</span></button>
-          <button type="button" class="slot full" disabled><span class="d">9/29<em>월</em></span><span><b class="num">16:00</b> 유치부 초급<small>박민호 코치</small></span><span class="seat">마감</span></button>
-          <button type="button" class="slot" data-t="10/1(수) 16:50 김하늘 코치"><span class="d">10/1<em>수</em></span><span><b class="num">16:50</b> 유치부 초급<small>김하늘 코치</small></span><span class="seat">1자리</span></button>
-        </div>
-        <div class="ok" id="ok" aria-live="polite">자리를 눌러 보세요.<br>보강이 바로 잡혀요.</div>
+      <div class="phone real">
+        <img src="img/app-parent.webp" width="600" height="1452" alt="SwimSync 학부모 앱 홈 화면 — 다음 강습 일정과 결석·보강 신청 버튼, 이번 달 출석 현황" fetchpriority="high">
       </div>
-      <div class="card-f a" aria-hidden="true">
+      <div class="card-f glass a" aria-hidden="true">
         <div class="t"><span>강사 앱</span><span>16:00</span></div>
         <div class="r"><span>유치부 초급</span><span>8/8</span></div>
         <div class="r"><span>보강 입실</span><span style="color:var(--brand)">+1</span></div>
       </div>
-      <div class="card-f" aria-hidden="true">
+      <div class="card-f glass" aria-hidden="true">
         <div class="t"><span>기사 앱 · 2호차</span><span>15:20</span></div>
         <div class="r"><span>탑승 예정</span><span>11명</span></div>
         <div class="r"><span>결석 자동 제외</span><span style="color:var(--bad)">1명</span></div>
@@ -737,6 +790,26 @@ table.vs td.me b{color:var(--ink)}
         <li><b>급여 공제·계약서</b><span>3.3%·4대보험 공제, 전자 계약</span></li></ul>
         <p class="dk-note">데스크에 남는 일은 <b>신규 상담과 학부모 응대</b>예요. 매출을 만드는 일에 시간을 쓰세요.</p></div>
     </div>
+  </div>
+</section>
+
+<!-- 2-3. REAL APP SCREENS -->
+<section id="screens" aria-labelledby="sc-h">
+  <div class="wrap">
+    <div class="head center">
+      <p class="label">실제 앱 화면</p>
+      <h2 class="h2" id="sc-h">학부모·강사·기사가<br>각자 앱에서 처리해요</h2>
+      <p class="sub">데스크에 전화하던 일을 각자 손에 든 앱으로 옮겼어요.</p>
+    </div>
+    <div class="scr-row">
+      <figure class="scr"><div class="scr-phone"><img src="img/app-parent.webp" width="600" height="1452" loading="lazy" alt="학부모 앱 홈 — 다음 강습 일정, 결석·보강 신청, 출석 현황"></div>
+        <figcaption><b>학부모 앱</b><span>결석·보강 신청을 버튼 하나로</span></figcaption></figure>
+      <figure class="scr"><div class="scr-phone"><img src="img/app-instructor.webp" width="600" height="1452" loading="lazy" alt="강사 앱 — 오늘 수업 명단과 반 변경 알림, 진도 기록"></div>
+        <figcaption><b>강사 앱</b><span>오늘 수업 명단·변경 알림·진도 기록</span></figcaption></figure>
+      <figure class="scr"><div class="scr-phone"><img src="img/app-driver.webp" width="600" height="1452" loading="lazy" alt="기사 앱 — 오늘 노선과 탑승 명단, 운행 시작"></div>
+        <figcaption><b>기사 앱</b><span>오늘 노선과 탑승 명단, 결석 자동 제외</span></figcaption></figure>
+    </div>
+    <p class="scr-note">개발 중인 화면이라 출시 때 일부 모양이 달라질 수 있어요.</p>
   </div>
 </section>
 
@@ -977,47 +1050,18 @@ table.vs td.me b{color:var(--ink)}
     <div class="head center">
       <p class="label">기능 현황</p>
       <h2 class="h2" id="st-h">지금 쓸 수 있는 기능과<br>개발 중인 기능</h2>
-      <p class="sub">체험하실 때 헷갈리지 않게 나눠 두었어요. 개발 예정 기능은 정식 출시 뒤 순서대로 추가돼요.</p>
+      <p class="sub">분야를 누르면 그 분야만 보여요. 개발 예정 기능은 정식 출시 뒤 순서대로 추가돼요.</p>
     </div>
-    <div class="st-grid">
-      <div class="st-col ready">
-        <h3><span class="st-badge ok">지금 사용 가능</span></h3>
-        <div class="st-group"><h4>보강·결석</h4><ul>
-          <li>학부모 앱 보강 신청 — 같은 구분의 빈자리만, 정원 초과는 자동 차단</li>
-          <li>결석하면 강사 수업 명단·기사 탑승 명단에 바로 반영</li>
-          <li>결석 직후 보강 날짜까지 이어서 잡기</li>
-          <li>진단서 사진으로 보강·이월, 5주차 대체보강일 제안</li></ul></div>
-        <div class="st-group"><h4>학부모·강사 앱</h4><ul>
-          <li>개인 번호 없는 앱 메시지 — 밤 9시~오전 9시는 다음 날 전달</li>
-          <li>반·요일 변경 신청 → 승인하면 스케줄·명단·차량에 자동 반영</li>
-          <li>휴원·퇴원·복귀 신청, 학원 공지와 알림</li></ul></div>
-        <div class="st-group"><h4>통학 차량</h4><ul>
-          <li>기사 앱 운행 명단, 카카오내비 연결</li>
-          <li>차 안 QR로 탑승 기록, 「이 날은 차 안 타요」</li>
-          <li>전날 탑승 안내, 출발·미탑승·결행·정류장 변경 알림</li></ul></div>
-        <div class="st-group"><h4>원비</h4><ul>
-          <li>요금제·주 횟수·시간대 할증으로 월 원비 자동 계산</li>
-          <li>중간 등록 일할, 형제·이벤트 할인, 미납 안내</li>
-          <li>카카오페이 송금·계좌이체 안내 후 「보냈어요」로 학원 확인</li></ul></div>
-        <div class="st-group"><h4>강사·운영</h4><ul>
-          <li>강사 급여 자동 계산 — 정규·프리랜서, 수당, 중도 입·퇴사 일할</li>
-          <li>급여명세서 발행·인쇄, 강사 실적(재등록률·퇴원률·매출)</li>
-          <li>연차 신청·승인, 레벨 테스트, 엑셀 명단 그대로 이전</li></ul></div>
-      </div>
-      <div class="st-col next">
-        <h3><span class="st-badge plan">개발 예정</span></h3>
-        <ul class="st-plan">
-          <li><b>앱 카드 결제·매달 자동 결제</b><span>처음 가입할 때 재등록 기간 안에서 결제일을 정하면 그날 자동으로 결제돼요.</span></li>
-          <li><b>재등록 결제 안내 대시보드</b><span>미결제면 앱 맨 위에 금액·마감일이 크게 뜨고, 앱을 열 때 팝업으로도 알려요.</span></li>
-          <li><b>탑승·하차 즉시 알림</b><span>아이가 차에 타고 내리는 순간 보호자 앱으로 알려요.</span></li>
-          <li><b>당일 「수업 나와요」 처리</b><span>결석했다가 나오기로 하면 앱에서 알리고, 강사·데스크가 한 번에 출석으로 되돌려요.</span></li>
-          <li><b>급여 공제·실지급액</b><span>프리랜서 3.3%, 4대보험·소득세를 빼고 실제 지급액까지 계산해요.</span></li>
-          <li><b>강사 계약서 전자 서명</b><span>정규·프리랜서 계약서를 웹에서 만들고 강사 앱에서 서명·보관해요.</span></li>
-          <li><b>급여명세서 앱 전송</b><span>발행한 명세서를 PDF로 강사 앱에 보내고 확인 여부를 봐요.</span></li>
-        </ul>
-        <p class="st-note">개발 순서와 시기는 바뀔 수 있어요. 필요한 기능이 있으면 사전 예약 때 남겨 주세요.</p>
+    <div class="fs-bar">
+      <div class="fs-chips" role="group" aria-label="분야"><button type="button" data-cat="all" aria-pressed="true">전체</button><button type="button" data-cat="mk" aria-pressed="false">보강·결석</button><button type="button" data-cat="app" aria-pressed="false">학부모·강사 앱</button><button type="button" data-cat="car" aria-pressed="false">통학 차량</button><button type="button" data-cat="pay" aria-pressed="false">원비·결제</button><button type="button" data-cat="ops" aria-pressed="false">강사·운영</button></div>
+      <div class="fs-seg" role="group" aria-label="상태">
+        <button type="button" data-st="all" aria-pressed="true">전체</button>
+        <button type="button" data-st="ready" aria-pressed="false"><i class="dot r"></i>사용 가능 16</button>
+        <button type="button" data-st="plan" aria-pressed="false"><i class="dot p"></i>개발 예정 8</button>
       </div>
     </div>
+    <div class="fs-grid" id="fs-grid"><article class="fs-card" data-cat="mk"><header><h3>보강·결석</h3><span class="fs-count"><b>4</b> 사용 가능 · <b>1</b> 개발 예정</span></header><ul class="fs-ready"><li>학부모 앱 보강 신청 — 같은 구분 빈자리만, 정원 초과는 자동 차단</li><li>결석하면 강사 수업 명단·기사 탑승 명단에 바로 반영</li><li>결석 직후 보강 날짜까지 이어서 잡기</li><li>진단서 사진으로 보강·이월, 5주차 대체보강일 제안</li></ul><ul class="fs-plan"><li><b>당일 「수업 나와요」 처리</b><span>결석했다가 나오면 앱에서 알리고, 강사·데스크가 한 번에 출석으로 되돌려요</span></li></ul></article><article class="fs-card" data-cat="app"><header><h3>학부모·강사 앱</h3><span class="fs-count"><b>3</b> 사용 가능 · <b>1</b> 개발 예정</span></header><ul class="fs-ready"><li>개인 번호 없는 앱 메시지 — 밤 9시~오전 9시는 다음 날 전달</li><li>반·요일 변경 신청 → 승인하면 스케줄·명단·차량에 자동 반영</li><li>휴원·퇴원·복귀 신청, 학원 공지와 알림</li></ul><ul class="fs-plan"><li><b>문자·알림톡 자동 발송</b><span>앱을 안 쓰는 보호자에게도 같은 안내가 문자로 가요</span></li></ul></article><article class="fs-card" data-cat="car"><header><h3>통학 차량</h3><span class="fs-count"><b>3</b> 사용 가능 · <b>1</b> 개발 예정</span></header><ul class="fs-ready"><li>기사 앱 운행 명단, 카카오내비 연결</li><li>차 안 QR로 탑승 기록, 「이 날은 차 안 타요」</li><li>전날 탑승 안내, 출발·미탑승·결행·정류장 변경 알림</li></ul><ul class="fs-plan"><li><b>탑승·하차 즉시 알림</b><span>아이가 차에 타고 내리는 순간 보호자 앱으로 알려요</span></li></ul></article><article class="fs-card" data-cat="pay"><header><h3>원비·결제</h3><span class="fs-count"><b>3</b> 사용 가능 · <b>2</b> 개발 예정</span></header><ul class="fs-ready"><li>요금제·주 횟수·시간대 할증으로 월 원비 자동 계산</li><li>중간 등록 일할, 형제·이벤트 할인, 미납 안내</li><li>카카오페이 송금·계좌이체 안내 후 「보냈어요」로 학원 확인</li></ul><ul class="fs-plan"><li><b>앱 카드 결제·매달 자동 결제</b><span>처음 가입할 때 재등록 기간 안에서 결제일을 정하면 그날 자동으로 결제돼요</span></li><li><b>재등록 결제 안내 대시보드</b><span>미결제면 앱 맨 위에 금액·마감일이 크게 뜨고, 앱을 열 때 팝업으로도 알려요</span></li></ul></article><article class="fs-card" data-cat="ops"><header><h3>강사·운영</h3><span class="fs-count"><b>3</b> 사용 가능 · <b>3</b> 개발 예정</span></header><ul class="fs-ready"><li>강사 급여 자동 계산 — 정규·프리랜서, 수당, 중도 입·퇴사 일할</li><li>급여명세서 발행·인쇄, 강사 실적(재등록률·퇴원률·매출)</li><li>연차 신청·승인, 레벨 테스트, 엑셀 명단 그대로 이전</li></ul><ul class="fs-plan"><li><b>급여 공제·실지급액</b><span>프리랜서 3.3%, 4대보험·소득세를 빼고 실제 지급액까지 계산해요</span></li><li><b>강사 계약서 전자 서명</b><span>정규·프리랜서 계약서를 웹에서 만들고 강사 앱에서 서명·보관해요</span></li><li><b>급여명세서 앱 전송</b><span>발행한 명세서를 PDF로 강사 앱에 보내고 확인 여부를 봐요</span></li></ul></article></div>
+    <p class="fs-note">개발 순서와 시기는 바뀔 수 있어요. 필요한 기능이 있으면 사전 예약 때 남겨 주세요.</p>
   </div>
 </section>
 
@@ -1425,6 +1469,15 @@ addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
   function close(){p.classList.remove('show');document.documentElement.style.overflow='';removeEventListener('keydown',keys);setTimeout(function(){p.hidden=true},230);if(last&&last.focus)last.focus({preventScroll:true})}
   p.querySelectorAll('[data-close]').forEach(function(b){b.addEventListener('click',function(){if(b.hasAttribute('data-today')){try{localStorage.setItem(K,today())}catch(e){}}close()})});
   setTimeout(open,700);
+})();
+</script>
+<script>
+(function(){var g=document.getElementById('fs-grid');if(!g)return;var sec=document.getElementById('status');
+  var cat='all',st='all';
+  function apply(){g.setAttribute('data-st',st);g.querySelectorAll('.fs-card').forEach(function(c){c.hidden=!(cat==='all'||c.getAttribute('data-cat')===cat)})}
+  sec.querySelectorAll('[data-cat]').forEach(function(b){if(b.tagName!=='BUTTON')return;b.addEventListener('click',function(){cat=b.getAttribute('data-cat');sec.querySelectorAll('button[data-cat]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});apply()})});
+  sec.querySelectorAll('[data-st]').forEach(function(b){b.addEventListener('click',function(){st=b.getAttribute('data-st');sec.querySelectorAll('[data-st]').forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false')});apply()})});
+  apply();
 })();
 </script>
 </body>
