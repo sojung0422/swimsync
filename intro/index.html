@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SwimSync | 수영장 관리 프로그램 · 퇴근 없는 데스크</title>
-<meta name="description" content="퇴근 없는 데스크 직원, 월 5만 원. 수영장 관리 프로그램 SwimSync는 밤·주말 결석 연락과 보강 신청을 앱이 24시간 받고, 강사·차량 명단과 원비까지 자동으로 맞춰요. 300명 수영장 기준 월 35시간 절약(예상). 30일 무료 체험.">
+<title>SwimSync | 수영장 관리 프로그램 · 퇴근 없는 데스크 보조</title>
+<meta name="description" content="퇴근 없는 데스크 보조, 월 5만 원. SwimSync는 기존 프로그램을 써도 손으로 하던 결석 정리, 보강 자리 찾기, 강사·차량 명단, 원비 계산을 그때그때 자동으로 처리하는 수영장 관리 프로그램이에요. 30일 무료 체험.">
 <meta name="keywords" content="수영장 관리 프로그램, 수영 학원 관리 프로그램, 수영장 회원관리, 보강 관리, 출석 관리 앱, 학원 차량 관리, 통학 차량 명단, 강사 급여 계산, 원비 자동 계산, 학부모 앱, 어린이 수영장">
 <meta name="robots" content="index,follow">
 <link rel="canonical" href="https://sojung0422.github.io/swimsync/intro/">
@@ -694,6 +694,27 @@ table.vs td.me b{color:var(--ink)}
   .ss-3d{--rx:4deg;--ry:-10deg}
 }
 @media (prefers-reduced-motion:reduce){.ss-img{transition:none}.ss-3d{transition:none}}
+
+/* 현장 이야기 4칸 · 사이드 제목 */
+.side-title{font-size:clamp(17px,1.8vw,20px);font-weight:700;color:var(--brand);letter-spacing:-.01em;margin-top:2px}
+.voices.v4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:1000px){.voices.v4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.voices.v4{grid-template-columns:1fr}}
+.voices.v4 .voice span{display:inline-block;justify-self:start;background:var(--tint);color:var(--brand);font-weight:600;font-size:12.5px;border-radius:99px;padding:3px 10px}
+
+@media (max-width:560px){.hero .sub br{display:none}}
+/* 갤럭시 3D */
+.galaxy{position:absolute;inset:0;z-index:1;pointer-events:none}
+.galaxy canvas{display:block;width:100%;height:100%}
+.stage3d.g-on{transform:none!important;min-height:600px}
+.stage3d.g-on .phone3d{display:none}
+.stage3d.g-on .card-f{z-index:3}
+.ss-stage.g-on{height:min(720px,calc(100vh - 110px))}
+.ss-stage.g-on .ss-3d{display:none}
+@media (max-width:900px){
+  .stage3d.g-on{min-height:500px;padding:0}
+  .ss-stage.g-on{height:calc(100vh - 68px - var(--dock-h,0px) - 150px);width:100%}
+}
 /* 출시 안내 팝업 */
 .launch{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:20px}
 .launch[hidden]{display:none}
@@ -780,8 +801,8 @@ table.vs td.me b{color:var(--ink)}
   <div class="wrap">
     <div>
       <span class="pill"><b>24시간</b>결석·보강·차량 연락을 앱이 받아요</span>
-      <h1><em class="l1">퇴근 없는 데스크 직원,</em><br><span>월 5만 원.</span></h1>
-      <p class="sub">밤 10시 결석도, 일요일 보강 신청도 앱이 받아요.<br>명단·차량·원비는 자동, 데스크는 <b>승인만</b>.</p>
+      <h1><em class="l1">퇴근 없는 데스크 보조,</em><br><span>월 5만 원.</span></h1>
+      <p class="sub">기존 프로그램으로도 손이 가던 결석·보강·명단·원비 정리,<br>이제 SwimSync가 <b>그때그때 바로</b> 처리해요.</p>
       <div class="cta">
         <a class="btn btn-p" href="#start">무료 체험 사전 예약</a>
         <a class="btn btn-g" href="#pricing">요금 보기</a>
@@ -790,14 +811,14 @@ table.vs td.me b{color:var(--ink)}
       <div class="proof">
         <div><b>하루 8통</b><span>결석 전화, 앱이 받아요</span></div>
         <div><b>월 4일치</b><span>데스크 근무 시간 절약</span></div>
-        <div><b>월급의 2%</b><span>직원 월급 216만 원 대비</span></div>
+        <div><b>5곳 → 1번</b><span>결석 하나에 고치던 곳</span></div>
       </div>
-      <p class="proof-note">* 재원생 300명 기준 예상 · 최저임금 주 40시간 · Growth 요금 기준</p>
+      <p class="proof-note">* 재원생 300명 기준 예상 · 요금은 Growth 기준</p>
     </div>
     <div class="devices notranslate" translate="no">
       <div class="glow" aria-hidden="true"></div>
       <div class="floor" aria-hidden="true"></div>
-      <div class="stage3d" id="stage3d">
+      <div class="stage3d" id="stage3d" data-g-host><div class="galaxy" id="g-hero" aria-hidden="true" data-apps='[{"content": "img/app-parent.webp", "nav": "img/app-parent.webp"}]'></div>
       <div class="phone3d"><i class="slab" style="--z:1"></i><i class="slab" style="--z:2"></i><i class="slab" style="--z:3"></i><i class="slab" style="--z:4"></i><i class="slab" style="--z:5"></i><i class="slab" style="--z:6"></i><i class="slab" style="--z:7"></i><i class="slab" style="--z:8"></i><i class="slab" style="--z:9"></i><i class="slab" style="--z:10"></i><i class="slab" style="--z:11"></i><i class="slab" style="--z:12"></i>
       <div class="phone real">
         <img src="img/app-parent.webp" width="600" height="1452" alt="SwimSync 학부모 앱 홈 화면 — 다음 강습 일정과 결석·보강 신청 버튼, 이번 달 출석 현황" fetchpriority="high">
@@ -823,12 +844,14 @@ table.vs td.me b{color:var(--ink)}
   <div class="wrap">
     <div class="head center">
       <p class="label">현장에서 들은 이야기</p>
-      <h2 class="h2" id="v-h">원장님 수영장 데스크,<br>오늘도 이러지 않았나요?</h2>
+      <h2 class="h2" id="v-h">원장님, 오늘도<br>이런 일이 있었나요?</h2>
+      <p class="side-title">관리는 쉽게, 품질은 높게</p>
     </div>
-    <div class="voices">
-      <div class="voice"><p>결석보강을 각 담당쌤이 빈 시간을 찾아 스케줄 잡아야 해요.</p><span>수영 강사 · 청주</span></div>
-      <div class="voice"><p>개인 번호가 노출돼서 수시로 학부모 연락을 받아야 해요.</p><span>수영 강사 · 충북 제천</span></div>
-      <div class="voice"><p>출석부 따로, 차량 따로 관리하다 보니 하나가 틀어지면 일이 커져요.</p><span>수영 강사 · 서울 중랑구</span></div>
+    <div class="voices v4">
+      <div class="voice"><p>회원 및 직원 급여 계산이 귀찮아요.</p><span>원비·급여 정산</span></div>
+      <div class="voice"><p>민원 접수 시 어려움을 겪고 있어요.</p><span>학부모 응대</span></div>
+      <div class="voice"><p>보강 및 자유수영, 상담 등 잡무가 많아 힘들어요.</p><span>데스크 잡무</span></div>
+      <div class="voice"><p>강사별 역량 평가 기준이 모호해요.</p><span>강사 관리</span></div>
     </div>
   </div>
 </section>
@@ -839,7 +862,7 @@ table.vs td.me b{color:var(--ink)}
     <div class="head center">
       <p class="label">데스크 업무 체크리스트</p>
       <h2 class="h2" id="d-h">300명 수영장이면, 매달 이만큼<br>앱이 대신 처리해요</h2>
-      <p class="sub">데스크 직원이 전화 받고, 자리 찾고, 명단 고치던 일을 숫자로 세어 봤어요.</p>
+      <p class="sub">데스크가 기존 프로그램을 쓰면서도 손으로 하던 일을 숫자로 세어 봤어요.</p>
     </div>
     <div class="bignums">
       <div><b>180<small>통</small></b><span>결석·보강 문의 전화</span></div>
@@ -885,7 +908,7 @@ table.vs td.me b{color:var(--ink)}
           <ol class="ss-steps"><li class="ss-step on" data-i="0"><span class="ss-n">1</span><div><b>학부모 앱</b><em>결석·보강·결제를 버튼 하나로</em><ul><li>다음 수업에서 바로 [결석]·[보강 신청]</li><li>이번 달 출석·변경 잔여 횟수</li><li>결제 현황과 이벤트 할인 인증</li></ul><i class="ss-bar"><i></i></i></div></li><li class="ss-step" data-i="1"><span class="ss-n">2</span><div><b>강사 앱</b><em>오늘 수업 명단이 첫 화면</em><ul><li>결석·보강·반 변경이 명단에 바로 반영</li><li>반 변경 예정 학생 알림</li><li>수업마다 진도·특이사항 기록</li></ul><i class="ss-bar"><i></i></i></div></li><li class="ss-step" data-i="2"><span class="ss-n">3</span><div><b>기사 앱</b><em>오늘 노선과 탑승 명단</em><ul><li>결석한 아이는 탑승 명단에서 자동 제외</li><li>정류장 순서대로 탑승 명단</li><li>[운행 시작]으로 출발 알림</li></ul><i class="ss-bar"><i></i></i></div></li></ol>
           <p class="ss-hint">스크롤하면 다음 앱 화면이 이어서 나와요 · 개발 중인 화면이라 출시 때 일부 달라질 수 있어요</p>
         </div>
-        <div class="ss-stage" aria-hidden="true">
+        <div class="ss-stage" aria-hidden="true" data-g-host><div class="galaxy" id="g-story" data-apps='[{"content": "img/app-parent-long.webp", "nav": "img/app-parent.webp", "bottom": 2368}, {"content": "img/app-instructor-long.webp", "nav": "img/app-instructor.webp", "bottom": "end"}, {"content": "img/app-driver.webp", "nav": "img/app-driver.webp"}]'></div>
           <div class="ss-floor"></div>
           <div class="ss-3d" id="ss3d">
             <div class="phone3d ss-phone"><i class="slab" style="--z:1"></i><i class="slab" style="--z:2"></i><i class="slab" style="--z:3"></i><i class="slab" style="--z:4"></i><i class="slab" style="--z:5"></i><i class="slab" style="--z:6"></i><i class="slab" style="--z:7"></i><i class="slab" style="--z:8"></i><i class="slab" style="--z:9"></i><i class="slab" style="--z:10"></i><i class="slab" style="--z:11"></i><i class="slab" style="--z:12"></i>
@@ -903,20 +926,20 @@ table.vs td.me b{color:var(--ink)}
   <div class="wrap">
     <div class="head center">
       <p class="label">비교해 보세요</p>
-      <h2 class="h2" id="vs-h">데스크 직원 한 명 더 뽑기 전에</h2>
+      <h2 class="h2" id="vs-h">같은 일, 손으로 할 때와<br>SwimSync로 할 때</h2>
     </div>
     <div class="vs-wrap"><table class="vs">
-      <thead><tr><th></th><th>데스크 직원 1명 추가</th><th class="me">SwimSync</th></tr></thead>
+      <thead><tr><th></th><th>지금처럼 손으로 (엑셀·기존 프로그램)</th><th class="me">SwimSync</th></tr></thead>
       <tbody>
-        <tr><th>한 달 비용</th><td>약 216만 원 + 4대보험·퇴직금</td><td class="me"><b>5만 원</b> (Growth)</td></tr>
-        <tr><th>연락 받는 시간</th><td>근무 시간 하루 8시간</td><td class="me"><b>24시간 · 주말·공휴일 포함</b></td></tr>
+                <tr><th>처리 시간</th><td>데스크 근무 시간에만, 쌓였다가 한꺼번에</td><td class="me"><b>24시간 · 들어오는 즉시 자동 처리</b></td></tr>
         <tr><th>결석 연락 1건</th><td>전화 받고 출석부·보강표·강사·차량·원비 5곳 수정</td><td class="me"><b>학부모가 한 번 누르면 5곳 자동 반영</b></td></tr>
         <tr><th>보강 자리 찾기</th><td>시간표 보고 빈자리 찾아 다시 전화</td><td class="me"><b>학부모가 남은 자리에서 직접 선택</b></td></tr>
         <tr><th>정원 초과 실수</th><td>바쁠 때 생길 수 있음</td><td class="me"><b>신청 단계에서 자동 차단</b></td></tr>
         <tr><th>월 원비 계산</th><td>할인·일할·이월을 엑셀로 계산</td><td class="me"><b>규칙대로 자동 계산</b></td></tr>
-        <tr><th>퇴사·휴가</th><td>인수인계, 새로 뽑고 가르치기</td><td class="me"><b>기록이 그대로 남아 인수인계 없음</b></td></tr>
+        <tr><th>강사 평가</th><td>감으로, 사람마다 다른 기준</td><td class="me"><b>재등록률·퇴원률·매출을 같은 기준으로</b></td></tr>
+        <tr><th>데스크 교대·인수인계</th><td>메모·구두로 전달하다 빠짐</td><td class="me"><b>처리 기록이 그대로 남아요</b></td></tr>
       </tbody></table></div>
-    <p class="bn-note">직원 월급은 2026년 최저임금(시급 10,320원) 주 40시간 기준이에요. 신규 상담·현장 응대처럼 사람이 해야 하는 일은 데스크에 남아요.</p>
+    <p class="bn-note">SwimSync는 데스크를 대신하지 않아요. 데스크가 손으로 하던 반복 처리를 자동으로 맡고, 상담·응대처럼 사람이 할 일에 집중하게 도와요.</p>
   </div>
 </section>
 
@@ -1303,7 +1326,7 @@ table.vs td.me b{color:var(--ink)}
     <div class="final">
       <div>
         <span class="launch-note"><i aria-hidden="true"></i>무료 체험 1월 초 시작 · 지금 사전 예약</span>
-        <h2 class="h2" id="c-h">직원 한 명 더 뽑기 전에,<br>먼저 써 보세요</h2>
+        <h2 class="h2" id="c-h">손으로 하던 정리,<br>1월부터 자동으로</h2>
         <p class="sub">지금은 개발 마무리 중이라 무료 체험은 2027년 1월 초부터 시작해요. 원장님이 사전 예약을 걸어 두시면 예약 순서대로 연락드리고 우리 수영장에 맞게 설치해 드려요.</p>
         <ul><li>강습생 수 제한 없이 모든 기능</li><li>초기 세팅·명단 이전 무료</li><li>체험 중 언제든 중단, 자동 결제 없음</li></ul>
       </div>
@@ -1589,6 +1612,7 @@ addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
     var img=imgs[i],sh=screen.clientHeight,ih=img.getBoundingClientRect().height||img.offsetHeight,max=Math.max(0,ih-sh);
     var e=local<.5?2*local*local:1-Math.pow(-2*local+2,2)/2;
     img.style.transform='translateY('+(-max*e).toFixed(1)+'px)';
+    if(window.__gStory)window.__gStory.show(i,e,p/n);
     var bar=steps[i].querySelector('.ss-bar i');if(bar)bar.style.width=(local*100).toFixed(0)+'%';
     if(d3)d3.style.setProperty('--ry',(-16+ (p/n)*22).toFixed(2)+'deg');
   }
@@ -1596,8 +1620,9 @@ addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
   chips.forEach(function(c,k){c.addEventListener('click',function(){go(k)})});
   steps.forEach(function(s,k){s.addEventListener('click',function(){go(k)});s.style.cursor='pointer'});
   addEventListener('scroll',function(){if(!raf)raf=requestAnimationFrame(tick)},{passive:true});
-  addEventListener('resize',tick);addEventListener('load',tick);tick();
+  window.__ssTick=tick;addEventListener('resize',tick);addEventListener('load',tick);tick();
 })();
 </script>
+<script src="galaxy3d.js" defer></script>
 </body>
 </html>
