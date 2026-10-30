@@ -40,10 +40,10 @@
     x.strokeStyle = '#111827'; x.lineWidth = 2.5; x.strokeRect(520, 22, 44, 20); x.fillRect(523.5, 25.5, 34, 13); x.fillRect(566, 28, 4, 8);
   }
   function compose(x, app, frac) {
-    var vh = CH - STATUS - NAV, ch = app.cBot - app.cTop, h = Math.min(vh, ch), off = Math.max(0, ch - vh) * frac;
+    var nh = app.navH, vh = CH - STATUS - nh, ch = app.cBot - app.cTop, h = Math.min(vh, ch), off = Math.max(0, ch - vh) * frac;
     x.fillStyle = app.bg || '#f8fafc'; x.fillRect(0, STATUS, CW, vh);
     x.drawImage(app.content, 0, app.cTop + off, CW, h, 0, STATUS, CW, h);
-    x.drawImage(app.nav, 0, SRC_NAV_Y, CW, NAV, 0, CH - NAV, CW, NAV);
+    x.drawImage(app.nav, 0, app.navY, CW, nh, 0, CH - nh, CW, nh);
     statusBar(x);
   }
 
@@ -158,7 +158,8 @@
     var cfg = JSON.parse(el.getAttribute('data-apps'));
     return Promise.all(cfg.map(function (a) {
       return Promise.all([img(a.content), img(a.nav)]).then(function (im) {
-        return { content: im[0], nav: im[1], cTop: SRC_TOP, cBot: a.bottom === 'end' ? im[0].naturalHeight : (a.bottom || SRC_NAV_Y), bg: a.bg };
+        var navY = a.navY != null ? a.navY : SRC_NAV_Y;   // 앱마다 탭 바 위치·높이가 다를 수 있다
+        return { content: im[0], nav: im[1], cTop: a.top != null ? a.top : SRC_TOP, cBot: a.bottom === 'end' ? im[0].naturalHeight : (a.bottom || navY), navY: navY, navH: a.navH || NAV, bg: a.bg };
       });
     }));
   }
