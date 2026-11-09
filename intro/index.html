@@ -818,57 +818,98 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
 .pa-list span{font-size:13.5px;color:var(--soft)}
 .pa-note{font-size:13px;color:var(--mute)}
 
-/* 결석 1건 흐름 */
-.flow{background:var(--deep);color:var(--deep-ink);padding:0;--p:0}
+/* 시간표 연결 그림 */
+.hub{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2.3fr) minmax(0,1fr);grid-template-areas:"tl core tr" "bl core br";gap:28px clamp(36px,6vw,84px);align-items:center;max-width:1180px;margin:0 auto}
+.hub-lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible;pointer-events:none;z-index:0}
+.hub-lines .b{fill:none;stroke:var(--tint-2);stroke-width:2.5}
+.hub-lines .f{fill:none;stroke:var(--brand);stroke-width:2.5;stroke-linecap:round;stroke-dasharray:var(--len);stroke-dashoffset:var(--len);transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1)}
+.hub.in .hub-lines .f{stroke-dashoffset:0}
+.hub-lines circle{fill:var(--brand);opacity:0}
+.hub.in .hub-lines circle{opacity:1;transition:opacity .3s 1.2s}
+.hub-core{grid-area:core;position:relative;z-index:1;margin:0;border-radius:18px;overflow:hidden;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow)}
+.hub-core img{display:block;width:100%;height:auto}
+.hub-core .hub-tag{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);white-space:nowrap;background:var(--ink);color:var(--bg);font-weight:700;font-size:14.5px;padding:9px 16px;border-radius:99px;box-shadow:0 12px 30px -12px rgba(0,0,0,.5)}
+.hub-sat{position:relative;z-index:1;margin:0;display:grid;justify-items:center;gap:10px;text-align:center}
+.hub-sat[data-p="tl"]{grid-area:tl}.hub-sat[data-p="tr"]{grid-area:tr}.hub-sat[data-p="bl"]{grid-area:bl}.hub-sat[data-p="br"]{grid-area:br}
+.hub-dev{position:relative;width:132px;height:196px;border-radius:22px;overflow:hidden;background:var(--paper);border:5px solid var(--ink);box-shadow:var(--shadow)}
+.hub-dev.web{width:180px;height:118px;border-radius:12px;border-width:1px;border-color:var(--line)}
+.hub-dev img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.hub-dev::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none}
+.hub.in .hub-dev::after{animation:hub-ping 2.4s ease-out infinite;animation-delay:var(--d)}
+@keyframes hub-ping{0%,40%{box-shadow:inset 0 0 0 0 rgba(0,99,236,0)}55%{box-shadow:inset 0 0 0 4px rgba(0,99,236,.9)}100%{box-shadow:inset 0 0 0 0 rgba(0,99,236,0)}}
+.hub-sat b{display:block;font-size:16px}
+.hub-sat span{font-size:13.5px;color:var(--soft)}
+.hub-foot{text-align:center;margin:30px auto 0;font-size:15px;color:var(--soft)}
+.hub-foot b{color:var(--ink)}
+@media (max-width:860px){
+  .hub{grid-template-columns:repeat(2,minmax(0,1fr));grid-template-areas:"tl tr" "core core" "bl br";gap:40px 16px}
+  .hub-core .hub-tag{font-size:13px;padding:7px 12px;bottom:10px}
+  .hub-dev{width:112px;height:164px;border-radius:19px;border-width:4px}
+  .hub-dev.web{width:150px;height:98px}
+  .hub-sat b{font-size:15px}.hub-sat span{font-size:12.5px}
+}
+@media (prefers-reduced-motion:reduce){.hub-lines .f{transition:none;stroke-dashoffset:0}.hub-lines circle{display:none}.hub.in .hub-dev::after{animation:none}}
+
+/* 결석 1건 흐름 — 단계마다 실제 화면 */
+.flow{background:var(--deep);color:var(--deep-ink);padding:0}
 .flow .label{color:var(--deep-hi)}
 .flow .h2{color:#fff}
-.fl-pin{min-height:100vh;display:flex;align-items:center;padding-block:clamp(56px,8vw,96px)}
-.fl-wrap{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(28px,5vw,72px);align-items:center;width:100%}
-.fl-head .h2{margin:10px 0 28px}
-.fl-stats{display:flex;gap:14px}
-.fl-stats div{background:var(--deep-soft);border-radius:18px;padding:16px 20px;display:grid;gap:2px;min-width:132px}
-.fl-stats b{font-family:"IBM Plex Mono",monospace;font-size:clamp(34px,4.4vw,48px);line-height:1;color:#fff}
-.fl-stats span{font-size:14px;color:var(--deep-mute)}
-.fl-stage{display:grid;gap:18px}
-.fl-ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none;background:var(--deep-soft);color:var(--deep-hi)}
-.fl-ic svg{width:22px;height:22px}
-.fl-src{display:flex;gap:14px;align-items:center;background:#fff;color:var(--ink);border-radius:20px;padding:16px 18px;box-shadow:0 20px 50px -24px rgba(0,0,0,.6)}
-.fl-src .fl-ic{background:var(--brand);color:#fff;animation:fl-tap 1.8s ease-in-out infinite}
-.fl-src b{display:block;font-size:17px}
-.fl-src span{font-size:14px;color:var(--soft)}
-@keyframes fl-tap{0%,100%{box-shadow:0 0 0 0 rgba(0,99,236,.5)}50%{box-shadow:0 0 0 10px rgba(0,99,236,0)}}
-.fl-nodes{list-style:none;margin:0;padding:0 0 0 34px;display:grid;gap:10px;position:relative}
-.fl-trunk{position:absolute;left:12px;top:-18px;bottom:28px;width:3px;border-radius:3px;background:rgba(255,255,255,.12)}
-.fl-trunk i{position:absolute;inset:0 0 auto;height:calc(var(--p) * 100%);background:var(--deep-hi);border-radius:3px;transition:height .25s linear}
-.fl-node{position:relative;display:flex;gap:14px;align-items:center;padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);opacity:.38;transform:translateX(10px);transition:opacity .45s ease,transform .45s cubic-bezier(.2,.8,.2,1),background .45s,border-color .45s}
-.fl-node::before{content:"";position:absolute;left:-22px;top:50%;width:22px;height:3px;background:rgba(255,255,255,.12)}
-.fl-node b{display:block;font-size:16px;color:#fff}
-.fl-node span{font-size:13.5px;color:var(--deep-mute)}
-.fl-ok{margin-left:auto;font-style:normal;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;background:var(--good);color:#fff;transform:scale(0);transition:transform .4s cubic-bezier(.3,1.6,.5,1)}
-.fl-node.on{opacity:1;transform:none;background:rgba(142,194,255,.10);border-color:rgba(142,194,255,.35)}
-.fl-node.on::before{background:var(--deep-hi)}
-.fl-node.on .fl-ok{transform:scale(1)}
-.flow.pinned{height:240vh}
-.flow.pinned .fl-pin{position:sticky;top:68px;min-height:0;height:calc(100vh - 68px);padding-block:0}
+.fl-pin{padding-block:clamp(56px,8vw,96px)}
+.fl-wrap{display:grid;grid-template-columns:minmax(0,.75fr) minmax(0,1.25fr);gap:clamp(28px,5vw,64px);align-items:center;width:100%}
+.fl-side .h2{margin:10px 0 26px}
+.fl-steps{list-style:none;margin:0;padding:0;display:grid;gap:8px;counter-reset:s}
+.fl-st{display:flex;gap:14px;align-items:center;padding:10px 16px;border-radius:16px;border:1px solid transparent;cursor:pointer;opacity:.45;transition:opacity .35s,background .35s,border-color .35s}
+.fl-st:hover{opacity:.75}
+.fl-k{flex:none;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;background:rgba(255,255,255,.1);color:#fff;transition:background .35s}
+.fl-st b{display:block;font-size:16.5px;color:#fff}
+.fl-st span{font-size:14px;color:var(--deep-mute)}
+.fl-st.past{opacity:.7}
+.fl-st.past .fl-k{background:var(--good);font-size:0}
+.fl-st.past .fl-k::before{content:"✓";font-size:14px}
+.fl-st.on{opacity:1;background:rgba(142,194,255,.1);border-color:rgba(142,194,255,.35)}
+.fl-st.on .fl-k{background:var(--brand)}
+.fl-view{position:relative;display:grid;place-items:center;min-height:min(74vh,700px)}
+.fl-scr{grid-area:1/1;margin:0;position:relative;opacity:0;visibility:hidden;transform:translateY(24px) scale(.97);transition:opacity .45s ease,transform .55s cubic-bezier(.2,.8,.2,1),visibility 0s .45s}
+.fl-scr.on{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease,transform .55s cubic-bezier(.2,.8,.2,1),visibility 0s}
+.fl-dev{position:relative;background:#fff;overflow:hidden;box-shadow:0 40px 80px -30px rgba(0,0,0,.7)}
+.fl-scr.ph .fl-dev{height:min(70vh,660px);aspect-ratio:600/1332;border-radius:34px;border:8px solid #0B0F1C}
+.fl-scr.web .fl-dev{width:min(100%,720px);border-radius:16px}
+.fl-bar{display:flex;align-items:center;gap:6px;padding:9px 14px;background:#EEF1F7;border-bottom:1px solid #E1E5EE}
+.fl-bar i{width:10px;height:10px;border-radius:50%;background:#D5DAE5}
+.fl-bar span{margin-left:8px;font-size:12px;color:#7A8094}
+.fl-img{position:relative}
+.fl-img img,.fl-scr.ph .fl-dev>img{display:block;width:100%;height:auto}
+.fl-scr.ph .fl-dev>img{height:100%;object-fit:cover;object-position:top}
+.fl-hl{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:var(--h);border-radius:12px;border:3px solid #FF6B3D;box-shadow:0 0 0 999px rgba(6,24,58,.28);opacity:0;transform:scale(1.08);transition:opacity .4s .35s,transform .5s .35s cubic-bezier(.3,1.4,.5,1)}
+.fl-scr.on .fl-hl{opacity:1;transform:none;animation:fl-glow 1.8s ease-in-out .9s infinite}
+@keyframes fl-glow{0%,100%{border-color:#FF6B3D}50%{border-color:#FFB199}}
+.fl-cap{position:absolute;z-index:2;left:var(--cx,50%);top:var(--cy,auto);bottom:var(--cb,auto);transform:translateX(-50%);max-width:92%;width:max-content;background:#FF6B3D;color:#fff;font-weight:700;font-size:14.5px;line-height:1.35;padding:9px 14px;border-radius:12px;box-shadow:0 14px 30px -12px rgba(0,0,0,.6);opacity:0;transition:opacity .35s .6s}
+.fl-scr.on .fl-cap{opacity:1}
+.fl-dots{display:none}
+.flow.pinned{height:calc(100vh + 6 * 62vh)}
+.flow.pinned .fl-pin{position:sticky;top:68px;height:calc(100vh - 68px);display:flex;align-items:center;padding-block:0}
 @media (max-width:900px){
-  .fl-wrap{grid-template-columns:1fr;gap:18px}
-  .fl-head{text-align:center}
-  .fl-head .h2{margin:6px 0 14px}
-  .fl-stats{display:none}
-  .flow.pinned{height:220vh}
-  .flow.pinned .fl-pin{height:calc(100vh - 68px - var(--dock-h,0px));align-items:flex-start;padding-top:18px}
-  .fl-src{padding:11px 14px}
-  .fl-src span{font-size:13px}
-  .fl-stage{gap:12px}
-  .fl-nodes{gap:8px}
-  .fl-trunk{top:-12px}
-  .fl-node{padding:9px 12px}
-  .fl-node span{font-size:12.5px}
-  .fl-ic{width:36px;height:36px;border-radius:11px}
-  .fl-ic svg{width:19px;height:19px}
+  .fl-wrap{grid-template-columns:1fr;gap:12px;align-content:start}
+  .fl-side{text-align:center;order:2}
+  .fl-side .label,.fl-side .h2{display:none}
+  .fl-head-m{display:block!important;text-align:center}
+  .fl-head-m .h2{font-size:21px;margin-top:4px}
+  .fl-steps{display:block}
+  .fl-st{display:none;justify-content:center;text-align:left;padding:10px 14px;opacity:1;cursor:default}
+  .fl-st.on{display:flex}
+  .fl-st b{font-size:15.5px}.fl-st span{font-size:13px}
+  .fl-dots{display:flex;justify-content:center;gap:6px;margin-top:8px}
+  .fl-dots i{width:7px;height:7px;border-radius:9px;background:rgba(255,255,255,.22);transition:width .3s,background .3s}
+  .fl-dots i.on{width:20px;background:var(--deep-hi)}
+  .fl-view{order:1;min-height:0;height:var(--vh-view,52vh)}
+  .fl-scr.ph .fl-dev{height:var(--vh-view,52vh);border-width:6px;border-radius:26px}
+  .fl-scr.web .fl-dev{width:min(92vw,560px)}
+  .fl-cap{font-size:13px;padding:7px 11px}
+  .flow.pinned{height:calc(100vh + 6 * 70vh)}
+  .flow.pinned .fl-pin{height:calc(100vh - 68px - var(--dock-h,0px));align-items:flex-start;padding-top:14px}
 }
-
-@media (prefers-reduced-motion:reduce){.fl-node,.fl-ok,.fl-trunk i{transition:none}.fl-src .fl-ic{animation:none}}
+.fl-head-m{display:none}
+@media (prefers-reduced-motion:reduce){.fl-scr,.fl-hl,.fl-cap,.fl-st{transition:none}.fl-scr.on .fl-hl{animation:none}}
 
 /* 원장님 화면 */
 .ow-shot{margin:0 auto;padding:0;max-width:1080px;border-radius:18px;overflow:hidden;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow)}
@@ -1060,21 +1101,32 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
 
 <!-- 2-1. DESK CHECKLIST -->
 <!-- 결석 1건이 처리되는 과정 (스크롤 고정) -->
+<section id="hub" aria-labelledby="hub-h">
+  <div class="wrap">
+    <div class="head center">
+      <p class="label">하나로 연결돼요</p>
+      <h2 class="h2" id="hub-h">시간표 하나만 고치면<br>모든 앱이 같이 바뀌어요</h2>
+    </div>
+    <div class="hub" id="hub-map">
+      <svg class="hub-lines" aria-hidden="true"></svg>
+      <figure class="hub-core"><div class="ow-bar" aria-hidden="true"><i></i><i></i><i></i><span>SwimSync 관리자 · 스케줄 관리</span></div><img src="img/hub-sched.webp" width="1390" height="1060" loading="lazy" alt="관리자 웹 시간표 — 강사별·시간별로 반과 아이가 배치돼 있고 결석한 아이는 빨간 점으로 표시돼요"><span class="hub-tag">시간표 · 반·강사·아이·차량</span></figure>
+      <figure class="hub-sat" data-p="tl" style="--d:1.2s"><div class="hub-dev"><img src="img/app-parent.webp" loading="lazy" alt="학부모 앱 첫 화면"></div><figcaption><b>학부모 앱</b><span>수업 일정·결석·보강·원비</span></figcaption></figure><figure class="hub-sat" data-p="tr" style="--d:1.8s"><div class="hub-dev"><img src="img/app-instructor.webp" loading="lazy" alt="강사 앱 첫 화면"></div><figcaption><b>강사 앱</b><span>수업 명단·출석·결석 알림</span></figcaption></figure><figure class="hub-sat" data-p="bl" style="--d:2.4s"><div class="hub-dev"><img src="img/app-driver.webp" loading="lazy" alt="기사 앱 첫 화면"></div><figcaption><b>기사 앱</b><span>탑승 명단·정류장 순서</span></figcaption></figure><figure class="hub-sat" data-p="br" style="--d:3.0s"><div class="hub-dev web"><img src="img/owner-today.webp" loading="lazy" alt="관리자 웹 오늘 처리할 일"></div><figcaption><b>원장님 화면</b><span>오늘 처리할 일·원비</span></figcaption></figure>
+    </div>
+    <p class="hub-foot">회원 프로그램 따로, 시간표 시트 따로 맞출 필요 없이 <b>한 곳만 고치면 끝</b></p>
+  </div>
+</section>
+
 <section id="flow" class="flow" aria-labelledby="fl-h">
   <div class="fl-pin">
     <div class="wrap fl-wrap">
-      <div class="fl-head">
+      <div class="fl-head-m" aria-hidden="true"><p class="label">결석 1건이 처리되는 과정</p><p class="h2">학부모가 한 번 누르면, 나머지는 앱이</p></div>
+      <div class="fl-side">
         <p class="label">결석 1건이 처리되는 과정</p>
         <h2 class="h2" id="fl-h">학부모가 한 번 누르면,<br>나머지는 앱이 해요</h2>
-        <div class="fl-stats">
-          <div><b class="fl-n">0</b><span>곳 자동 반영</span></div>
-          <div><b>0</b><span>통 데스크 전화</span></div>
-        </div>
+        <ol class="fl-steps"><li class="fl-st on" data-i="0"><span class="fl-k">1</span><div><b>학부모 앱</b><span>날짜 누르고 사유 한 줄</span></div></li><li class="fl-st" data-i="1"><span class="fl-k">2</span><div><b>관리자 웹 · 시간표</b><span>그 수업 칸에 결석 표시</span></div></li><li class="fl-st" data-i="2"><span class="fl-k">3</span><div><b>강사 앱</b><span>수업 명단에 결석·사유</span></div></li><li class="fl-st" data-i="3"><span class="fl-k">4</span><div><b>기사 앱</b><span>탑승 명단에서 줄 긋기</span></div></li><li class="fl-st" data-i="4"><span class="fl-k">5</span><div><b>보강</b><span>학부모가 빈자리를 직접 골라요</span></div></li><li class="fl-st" data-i="5"><span class="fl-k">6</span><div><b>원장님 화면</b><span>「오늘 결석」에서 확인만</span></div></li></ol>
+        <div class="fl-dots" aria-hidden="true"><i class=on></i><i></i><i></i><i></i><i></i><i></i></div>
       </div>
-      <div class="fl-stage">
-        <div class="fl-src"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5a2 2 0 0 1 4 0v5"/><path d="M13 9.5a2 2 0 0 1 4 0V11"/><path d="M17 10.5a2 2 0 0 1 4 0V15a7 7 0 0 1-7 7h-1.5a7 7 0 0 1-5.6-2.8L4 16.5a2 2 0 0 1 3-2.6L9 16"/></svg></i><div><b>학부모 앱에서 [결석]</b><span>“내일 감기로 쉴게요”</span></div></div>
-        <ol class="fl-nodes"><i class="fl-trunk" aria-hidden="true"><i></i></i><li class="fl-node" style="--i:0"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></i><div><b>강사 수업 명단</b><span>이름이 빠지고 강사님께 알림</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:1"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="14" rx="3"/><path d="M4 11h16M8 7h8"/><circle cx="8" cy="20" r="1.6"/><circle cx="16" cy="20" r="1.6"/></svg></i><div><b>기사 탑승 명단</b><span>그 정류장에서 자동 제외</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:2"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></i><div><b>출석부</b><span>결석으로 바로 기록</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:3"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg></i><div><b>보강</b><span>학부모가 빈자리를 직접 선택</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:4"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></i><div><b>원장님 화면</b><span>「오늘 처리할 일」에서 확인만</span></div><em class="fl-ok" aria-hidden="true">✓</em></li></ol>
-      </div>
+      <div class="fl-view"><figure class="fl-scr ph on" data-i="0"><div class="fl-dev"><img src="img/flow-parent.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 결석 신청 창 — 날짜를 고르고 사유를 적은 뒤 [결석 처리하기]를 눌러요"><i class="fl-hl" style="--x:3%;--y:82.5%;--w:94%;--h:17.5%"></i></div><figcaption class="fl-cap" style="--cx:50%;--cy:70%">“감기 기운이 있어서 쉴게요”</figcaption></figure><figure class="fl-scr web" data-i="1"><div class="fl-dev"><div class="fl-bar" aria-hidden="true"><i></i><i></i><i></i><span>관리자 웹 · 스케줄 관리</span></div><div class="fl-img"><img src="img/flow-sched.webp" width="1310" height="820" loading="lazy" alt="관리자 웹 시간표 — 그 수업 칸의 아이 이름 옆에 빨간 결석 표시가 붙어요"><i class="fl-hl" style="--x:15.5%;--y:54.5%;--w:29%;--h:9.5%"></i></div></div><figcaption class="fl-cap" style="--cx:50%;--cb:-18px">시간표에 바로 「결석」</figcaption></figure><figure class="fl-scr ph" data-i="2"><div class="fl-dev"><img src="img/flow-teacher.webp" width="600" height="1332" loading="lazy" alt="강사 앱 수업 명단 — 결석한 아이와 사유(감기)가 보여요"><i class="fl-hl" style="--x:8%;--y:42.5%;--w:84%;--h:8.5%"></i></div><figcaption class="fl-cap" style="--cx:50%;--cy:54%">강사님 명단에 「결석 · 감기」</figcaption></figure><figure class="fl-scr ph" data-i="3"><div class="fl-dev"><img src="img/flow-driver.webp" width="600" height="1332" loading="lazy" alt="기사 앱 탑승 명단 — 결석한 아이는 「결석」 표시가 붙고 줄이 그어져요"><i class="fl-hl" style="--x:8%;--y:78.5%;--w:60%;--h:6.5%"></i></div><figcaption class="fl-cap" style="--cx:50%;--cy:66%">기사님 명단에서 자동 제외</figcaption></figure><figure class="fl-scr ph" data-i="4"><div class="fl-dev"><img src="img/flow-makeup.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 보강 신청 창 — 이번 달 남은 보강 횟수와 고를 수 있는 날짜가 보여요"><i class="fl-hl" style="--x:5%;--y:21.5%;--w:90%;--h:20%"></i></div><figcaption class="fl-cap" style="--cx:50%;--cy:44%">결석 1번 = 보강 1번, 학부모가 직접</figcaption></figure><figure class="fl-scr web" data-i="5"><div class="fl-dev"><div class="fl-bar" aria-hidden="true"><i></i><i></i><i></i><span>관리자 웹 · 오늘 처리할 일</span></div><div class="fl-img"><img src="img/flow-owner.webp" width="1820" height="640" loading="lazy" alt="관리자 웹 「오늘 처리할 일」 — 오늘 결석이 사유와 함께 올라와 있어요"><i class="fl-hl" style="--x:1.5%;--y:26%;--w:96.5%;--h:35.5%"></i></div></div><figcaption class="fl-cap" style="--cx:50%;--cb:-18px">원장님은 확인만 하면 끝</figcaption></figure></div>
     </div>
   </div>
 </section>
@@ -1792,21 +1844,56 @@ addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
     if(b.dataset.done)return;b.dataset.done=1;var txt=b.firstChild&&b.firstChild.nodeType===3?b.firstChild:null;if(!txt)return;var to=parseInt(txt.nodeValue.replace(/\D/g,''),10);if(!to||reduce)return;
     var t0=performance.now();(function step(n){var k=Math.min(1,(n-t0)/900),v=Math.round(to*(1-Math.pow(1-k,3)));txt.nodeValue=String(v);if(k<1)requestAnimationFrame(step)})(t0)})}
 
-  // 결석 1건 흐름 — 스크롤하면 한 곳씩 켜져요
+  // 시간표 연결 그림 — 시간표에서 각 앱으로 선을 그어요
+  (function(){
+    var hub=document.getElementById('hub-map');if(!hub)return;
+    var svg=hub.querySelector('.hub-lines'),core=hub.querySelector('.hub-core'),sats=[].slice.call(hub.querySelectorAll('.hub-sat')),NS='http://www.w3.org/2000/svg';
+    function draw(){
+      var H=hub.getBoundingClientRect(),c=core.getBoundingClientRect(),stack=c.width>H.width*.8,out='';
+      svg.setAttribute('viewBox','0 0 '+H.width+' '+H.height);
+      sats.forEach(function(s,i){
+        var d=s.querySelector('.hub-dev').getBoundingClientRect(),x1,y1,x2,y2,p;
+        if(stack){var up=d.bottom<c.top,sr=s.getBoundingClientRect();x2=d.left+d.width/2-H.left;x1=Math.max(c.left+24,Math.min(c.right-24,d.left+d.width/2))-H.left;
+          if(up){y1=c.top-H.top;y2=sr.bottom-H.top+6}else{y1=c.bottom-H.top;y2=d.top-H.top-6}
+          var my=(y1+y2)/2;p='M'+x1+' '+y1+' C'+x1+' '+my+' '+x2+' '+my+' '+x2+' '+y2}
+        else{var left=d.right<c.left;x1=(left?c.left:c.right)-H.left;y1=Math.max(c.top+30,Math.min(c.bottom-30,d.top+d.height/2))-H.top;x2=(left?d.right+8:d.left-8)-H.left;y2=d.top+d.height/2-H.top;
+          var mx=(x1+x2)/2;p='M'+x1+' '+y1+' C'+mx+' '+y1+' '+mx+' '+y2+' '+x2+' '+y2}
+        out+='<path class="b" d="'+p+'"/><path class="f" id="hub-p'+i+'" d="'+p+'"/>'+(reduce?'':'<circle r="5"><animateMotion dur="2.4s" begin="'+(1.2+i*.6).toFixed(1)+'s" repeatCount="indefinite" keyPoints="0;1;1" keyTimes="0;.55;1" calcMode="linear"><mpath href="#hub-p'+i+'"/></animateMotion></circle>');
+      });
+      svg.innerHTML=out;
+      [].forEach.call(svg.querySelectorAll('.f'),function(f){f.style.setProperty('--len',Math.ceil(f.getTotalLength()))});
+    }
+    draw();addEventListener('resize',draw);addEventListener('load',draw);
+    [].forEach.call(hub.querySelectorAll('img'),function(im){if(!im.complete)im.addEventListener('load',draw)});
+    if(reduce||!('IntersectionObserver' in window)){hub.classList.add('in');return}
+    var o=new IntersectionObserver(function(es){if(es[0].isIntersecting){hub.classList.add('in');o.disconnect()}},{threshold:.3});o.observe(hub);
+  })();
+  // 결석 1건 흐름 — 스크롤하면 단계마다 실제 화면이 바뀌어요
   (function(){
     var fl=document.getElementById('flow');if(!fl)return;
-    var nodes=[].slice.call(fl.querySelectorAll('.fl-node')),num=fl.querySelector('.fl-n'),dock=document.querySelector('.dock');
-    function all(){nodes.forEach(function(n){n.classList.add('on')});num.textContent=nodes.length;fl.style.setProperty('--p',1)}
-    if(reduce||!('IntersectionObserver' in window)){all();return}
-    fl.classList.add('pinned');
-    function tick(){
-      fl.style.setProperty('--dock-h',(dock&&getComputedStyle(dock).display!=='none'?dock.offsetHeight:0)+'px');
-      var r=fl.getBoundingClientRect(),span=fl.offsetHeight-innerHeight*.75,p=Math.max(0,Math.min(1,(-r.top+innerHeight*.15)/span));
-      var k=Math.min(nodes.length,Math.floor(p*(nodes.length+1)));
-      nodes.forEach(function(n,i){n.classList.toggle('on',i<k)});
-      num.textContent=k;fl.style.setProperty('--p',(k/nodes.length).toFixed(3));
+    var st=[].slice.call(fl.querySelectorAll('.fl-st')),sc=[].slice.call(fl.querySelectorAll('.fl-scr')),dots=[].slice.call(fl.querySelectorAll('.fl-dots i')),dock=document.querySelector('.dock'),cur=-1,n=st.length;
+    function show(k){if(k===cur)return;cur=k;
+      st.forEach(function(e,i){e.classList.toggle('on',i===k);e.classList.toggle('past',i<k)});
+      sc.forEach(function(e,i){e.classList.toggle('on',i===k)});
+      dots.forEach(function(e,i){e.classList.toggle('on',i===k)})}
+    var pinned=!reduce&&'IntersectionObserver' in window;
+    function size(){
+      var dh=dock&&getComputedStyle(dock).display!=='none'?dock.offsetHeight:0;fl.style.setProperty('--dock-h',dh+'px');
+      if(innerWidth<=900){var hm=fl.querySelector('.fl-head-m'),sd=fl.querySelector('.fl-steps');fl.style.setProperty('--vh-view',Math.max(260,innerHeight-68-dh-14-(hm?hm.offsetHeight:0)-124)+'px')}
+      else fl.style.removeProperty('--vh-view');
     }
-    addEventListener('scroll',tick,{passive:true});addEventListener('resize',tick);tick();
+    function tick(){
+      if(!pinned)return;
+      var r=fl.getBoundingClientRect(),span=fl.offsetHeight-innerHeight,p=Math.max(0,Math.min(.9999,-r.top/span));
+      show(Math.floor(p*n));
+    }
+    st.forEach(function(e,i){e.addEventListener('click',function(){
+      if(!pinned){show(i);return}
+      var top=fl.getBoundingClientRect().top+scrollY,span=fl.offsetHeight-innerHeight;
+      scrollTo({top:top+span*(i+.5)/n,behavior:reduce?'auto':'smooth'})})});
+    size();show(0);
+    if(pinned){fl.classList.add('pinned');addEventListener('scroll',tick,{passive:true})}
+    addEventListener('resize',function(){size();tick()});tick();
   })();
   // 원장님 화면 — 보이면 번호가 하나씩
   (function(){
