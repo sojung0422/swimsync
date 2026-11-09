@@ -817,6 +817,91 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
 .pa-list b{font-size:15.5px}
 .pa-list span{font-size:13.5px;color:var(--soft)}
 .pa-note{font-size:13px;color:var(--mute)}
+
+/* 결석 1건 흐름 */
+.flow{background:var(--deep);color:var(--deep-ink);padding:0;--p:0}
+.flow .label{color:var(--deep-hi)}
+.flow .h2{color:#fff}
+.fl-pin{min-height:100vh;display:flex;align-items:center;padding-block:clamp(56px,8vw,96px)}
+.fl-wrap{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:clamp(28px,5vw,72px);align-items:center;width:100%}
+.fl-head .h2{margin:10px 0 28px}
+.fl-stats{display:flex;gap:14px}
+.fl-stats div{background:var(--deep-soft);border-radius:18px;padding:16px 20px;display:grid;gap:2px;min-width:132px}
+.fl-stats b{font-family:"IBM Plex Mono",monospace;font-size:clamp(34px,4.4vw,48px);line-height:1;color:#fff}
+.fl-stats span{font-size:14px;color:var(--deep-mute)}
+.fl-stage{display:grid;gap:18px}
+.fl-ic{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;flex:none;background:var(--deep-soft);color:var(--deep-hi)}
+.fl-ic svg{width:22px;height:22px}
+.fl-src{display:flex;gap:14px;align-items:center;background:#fff;color:var(--ink);border-radius:20px;padding:16px 18px;box-shadow:0 20px 50px -24px rgba(0,0,0,.6)}
+.fl-src .fl-ic{background:var(--brand);color:#fff;animation:fl-tap 1.8s ease-in-out infinite}
+.fl-src b{display:block;font-size:17px}
+.fl-src span{font-size:14px;color:var(--soft)}
+@keyframes fl-tap{0%,100%{box-shadow:0 0 0 0 rgba(0,99,236,.5)}50%{box-shadow:0 0 0 10px rgba(0,99,236,0)}}
+.fl-nodes{list-style:none;margin:0;padding:0 0 0 34px;display:grid;gap:10px;position:relative}
+.fl-trunk{position:absolute;left:12px;top:-18px;bottom:28px;width:3px;border-radius:3px;background:rgba(255,255,255,.12)}
+.fl-trunk i{position:absolute;inset:0 0 auto;height:calc(var(--p) * 100%);background:var(--deep-hi);border-radius:3px;transition:height .25s linear}
+.fl-node{position:relative;display:flex;gap:14px;align-items:center;padding:12px 16px;border-radius:18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);opacity:.38;transform:translateX(10px);transition:opacity .45s ease,transform .45s cubic-bezier(.2,.8,.2,1),background .45s,border-color .45s}
+.fl-node::before{content:"";position:absolute;left:-22px;top:50%;width:22px;height:3px;background:rgba(255,255,255,.12)}
+.fl-node b{display:block;font-size:16px;color:#fff}
+.fl-node span{font-size:13.5px;color:var(--deep-mute)}
+.fl-ok{margin-left:auto;font-style:normal;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:800;background:var(--good);color:#fff;transform:scale(0);transition:transform .4s cubic-bezier(.3,1.6,.5,1)}
+.fl-node.on{opacity:1;transform:none;background:rgba(142,194,255,.10);border-color:rgba(142,194,255,.35)}
+.fl-node.on::before{background:var(--deep-hi)}
+.fl-node.on .fl-ok{transform:scale(1)}
+.flow.pinned{height:240vh}
+.flow.pinned .fl-pin{position:sticky;top:68px;min-height:0;height:calc(100vh - 68px);padding-block:0}
+@media (max-width:900px){
+  .fl-wrap{grid-template-columns:1fr;gap:18px}
+  .fl-head{text-align:center}
+  .fl-head .h2{margin:6px 0 14px}
+  .fl-stats{display:none}
+  .flow.pinned{height:220vh}
+  .flow.pinned .fl-pin{height:calc(100vh - 68px - var(--dock-h,0px));align-items:flex-start;padding-top:18px}
+  .fl-src{padding:11px 14px}
+  .fl-src span{font-size:13px}
+  .fl-stage{gap:12px}
+  .fl-nodes{gap:8px}
+  .fl-trunk{top:-12px}
+  .fl-node{padding:9px 12px}
+  .fl-node span{font-size:12.5px}
+  .fl-ic{width:36px;height:36px;border-radius:11px}
+  .fl-ic svg{width:19px;height:19px}
+}
+
+@media (prefers-reduced-motion:reduce){.fl-node,.fl-ok,.fl-trunk i{transition:none}.fl-src .fl-ic{animation:none}}
+
+/* 원장님 화면 */
+.ow-shot{margin:0 auto;padding:0;max-width:1080px;border-radius:18px;overflow:hidden;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow)}
+.ow-bar{display:flex;align-items:center;gap:7px;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--alt)}
+.ow-bar i{width:11px;height:11px;border-radius:50%;background:var(--line)}
+.ow-bar span{margin-left:10px;font-size:12.5px;color:var(--mute)}
+.ow-img{position:relative}
+.ow-img img{display:block;width:100%;height:auto}
+.ow-pin{position:absolute;left:var(--x);top:var(--y);width:34px;height:34px;margin:-17px 0 0 -17px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font-weight:800;font-size:15px;box-shadow:0 0 0 6px rgba(0,99,236,.18);transform:scale(0);transition:transform .5s cubic-bezier(.3,1.6,.5,1)}
+.ow-shot.in .ow-pin{transform:scale(1);animation:ow-ping 2.4s ease-out infinite}
+.ow-shot.in .ow-pin:nth-of-type(2){transition-delay:.25s;animation-delay:.4s}
+.ow-shot.in .ow-pin:nth-of-type(3){transition-delay:.5s;animation-delay:.8s}
+@keyframes ow-ping{0%{box-shadow:0 0 0 0 rgba(0,99,236,.45)}70%,100%{box-shadow:0 0 0 14px rgba(0,99,236,0)}}
+.ow-notes{list-style:none;margin:22px auto 0;padding:0;max-width:1080px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.ow-notes li{display:flex;gap:12px;align-items:flex-start;background:var(--paper);border:1px solid var(--line);border-radius:18px;padding:16px 18px}
+.ow-k{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--brand);color:#fff;font-weight:800;font-size:13.5px}
+.ow-notes b{font-size:16px}
+.ow-notes p{margin:2px 0 0;font-size:14px;color:var(--soft);line-height:1.5}
+@media (max-width:760px){.ow-notes{grid-template-columns:1fr}.ow-pin{width:24px;height:24px;margin:-12px 0 0 -12px;font-size:12px;box-shadow:0 0 0 4px rgba(0,99,236,.18)}.ow-bar span{font-size:11.5px}}
+@media (prefers-reduced-motion:reduce){.ow-pin{transform:scale(1);transition:none}.ow-shot.in .ow-pin{animation:none}}
+
+/* 긴 목록 접기 */
+.more-box{margin-top:18px}
+.more-box>summary{list-style:none;cursor:pointer;display:flex;justify-content:center;align-items:center;gap:8px;margin:0 auto;width:max-content;max-width:100%;padding:12px 20px;border-radius:99px;border:1px solid var(--line);background:var(--paper);font-weight:700;font-size:15px;color:var(--ink)}
+.more-box>summary::-webkit-details-marker{display:none}
+.more-box>summary::after{content:"";width:8px;height:8px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-2px) rotate(45deg);transition:transform .2s}
+.more-box[open]>summary::after{transform:translateY(2px) rotate(-135deg)}
+.more-box>summary:hover{border-color:var(--brand);color:var(--brand)}
+.more-box[open]>summary{margin-bottom:16px}
+
+/* 기능 설명은 두 줄만 */
+.feat .ticks li:nth-child(n+3){display:none}
+.feat .from{display:none}
 /* 갤럭시 3D */
 .galaxy{position:absolute;inset:0;z-index:1;pointer-events:none}
 .galaxy canvas{display:block;width:100%;height:100%}
@@ -974,12 +1059,31 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
 </section>
 
 <!-- 2-1. DESK CHECKLIST -->
+<!-- 결석 1건이 처리되는 과정 (스크롤 고정) -->
+<section id="flow" class="flow" aria-labelledby="fl-h">
+  <div class="fl-pin">
+    <div class="wrap fl-wrap">
+      <div class="fl-head">
+        <p class="label">결석 1건이 처리되는 과정</p>
+        <h2 class="h2" id="fl-h">학부모가 한 번 누르면,<br>나머지는 앱이 해요</h2>
+        <div class="fl-stats">
+          <div><b class="fl-n">0</b><span>곳 자동 반영</span></div>
+          <div><b>0</b><span>통 데스크 전화</span></div>
+        </div>
+      </div>
+      <div class="fl-stage">
+        <div class="fl-src"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 11V5a2 2 0 0 1 4 0v5"/><path d="M13 9.5a2 2 0 0 1 4 0V11"/><path d="M17 10.5a2 2 0 0 1 4 0V15a7 7 0 0 1-7 7h-1.5a7 7 0 0 1-5.6-2.8L4 16.5a2 2 0 0 1 3-2.6L9 16"/></svg></i><div><b>학부모 앱에서 [결석]</b><span>“내일 감기로 쉴게요”</span></div></div>
+        <ol class="fl-nodes"><i class="fl-trunk" aria-hidden="true"><i></i></i><li class="fl-node" style="--i:0"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></i><div><b>강사 수업 명단</b><span>이름이 빠지고 강사님께 알림</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:1"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="16" height="14" rx="3"/><path d="M4 11h16M8 7h8"/><circle cx="8" cy="20" r="1.6"/><circle cx="16" cy="20" r="1.6"/></svg></i><div><b>기사 탑승 명단</b><span>그 정류장에서 자동 제외</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:2"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg></i><div><b>출석부</b><span>결석으로 바로 기록</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:3"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M12 14v4M10 16h4"/></svg></i><div><b>보강</b><span>학부모가 빈자리를 직접 선택</span></div><em class="fl-ok" aria-hidden="true">✓</em></li><li class="fl-node" style="--i:4"><i class="fl-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg></i><div><b>원장님 화면</b><span>「오늘 처리할 일」에서 확인만</span></div><em class="fl-ok" aria-hidden="true">✓</em></li></ol>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section id="desk" aria-labelledby="d-h">
   <div class="wrap">
     <div class="head center">
       <p class="label">데스크 업무 체크리스트</p>
       <h2 class="h2" id="d-h">300명 수영장이면, 매달 이만큼<br>앱이 대신 처리해요</h2>
-      <p class="sub">데스크가 기존 프로그램을 쓰면서도 손으로 하던 일을 숫자로 세어 봤어요.</p>
     </div>
     <div class="bignums">
       <div><b>180<small>통</small></b><span>결석·보강 문의 전화</span></div>
@@ -987,17 +1091,41 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
       <div><b>22<small>일치</small></b><span>출석부·차량 명단 수정</span></div>
       <div><b>300<small>명</small></b><span>원비 계산·청구 안내</span></div>
     </div>
-    <p class="bn-note">재원생 300명·강사 8명 기준, 현장 설문으로 잡은 예상치예요. 아래 「도입 효과」에서 우리 수영장 숫자로 계산해 보세요.</p>
+    <p class="bn-note">재원생 300명 기준 예상치</p>
     <div class="dk-sum">
       <div class="dk-legend"><span class="lg-a"><i></i>앱이 알아서 <b>8</b></span><span class="lg-o"><i></i>데스크는 확인만 <b>4</b></span><span class="lg-s"><i></i>곧 자동으로 <b>4</b></span></div>
       <div class="dk-meter" aria-hidden="true"><i class="ma" style="flex:8"></i><i class="mo" style="flex:4"></i><i class="ms" style="flex:4"></i></div>
     </div>
-    <div class="dk-cards"><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>결석 접수</b><span class="dk-desc">학부모가 앱에서 누르면 강사·차량 명단에서 바로 빠져요</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>보강 빈자리 찾기</b><span class="dk-desc">같은 구분의 남은 자리만 보여 주고 정원 초과는 막아요</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>월 원비 계산</b><span class="dk-desc">요금제·할인·일할·이월까지 규칙대로</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>차량 탑승 명단</b><span class="dk-desc">결석·「차 안 타요」가 기사 앱에 바로</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>차량 안내</b><span class="dk-desc">전날 탑승 안내, 출발·미탑승 알림</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>재등록·미납 안내</b><span class="dk-desc">기간 안내와 미납 알림을 앱으로</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>출석 누락 정리</b><span class="dk-desc">체크 안 된 수업은 자동 결석으로 정리하고 알려요</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>강사 급여 계산</b><span class="dk-desc">수업 기록과 단가로 자동 계산</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>반·요일 변경</b><span class="dk-desc">승인 한 번이면 스케줄·강사·차량·원비가 함께</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>서류 보강·이월</b><span class="dk-desc">진단서 사진을 보고 승인만</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>휴원·퇴원·복귀</b><span class="dk-desc">앱으로 들어온 신청을 승인만</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>입금 확인</b><span class="dk-desc">학부모가 「보냈어요」를 누르면 확인만</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>카드 자동 결제</b><span class="dk-desc">정해진 날 결제되고 수납까지 자동</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>당일 「수업 나와요」</b><span class="dk-desc">결석했다가 나오면 앱에서 바로 되돌리기</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>문자·알림톡 발송</b><span class="dk-desc">앱을 안 쓰는 보호자에게도 자동 발송</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>급여 공제·계약서</b><span class="dk-desc">3.3%·4대보험 공제, 전자 계약</span></article></div>
+    <details class="more-box"><summary>업무 16개 하나씩 보기</summary><div class="dk-cards"><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>결석 접수</b><span class="dk-desc">학부모가 앱에서 누르면 강사·차량 명단에서 바로 빠져요</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>보강 빈자리 찾기</b><span class="dk-desc">같은 구분의 남은 자리만 보여 주고 정원 초과는 막아요</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>월 원비 계산</b><span class="dk-desc">요금제·할인·일할·이월까지 규칙대로</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>차량 탑승 명단</b><span class="dk-desc">결석·「차 안 타요」가 기사 앱에 바로</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>차량 안내</b><span class="dk-desc">전날 탑승 안내, 출발·미탑승 알림</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>재등록·미납 안내</b><span class="dk-desc">기간 안내와 미납 알림을 앱으로</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>출석 누락 정리</b><span class="dk-desc">체크 안 된 수업은 자동 결석으로 정리하고 알려요</span></article><article class="dk-card dk-a"><span class="dk-chip">앱이 알아서</span><b>강사 급여 계산</b><span class="dk-desc">수업 기록과 단가로 자동 계산</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>반·요일 변경</b><span class="dk-desc">승인 한 번이면 스케줄·강사·차량·원비가 함께</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>서류 보강·이월</b><span class="dk-desc">진단서 사진을 보고 승인만</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>휴원·퇴원·복귀</b><span class="dk-desc">앱으로 들어온 신청을 승인만</span></article><article class="dk-card dk-o"><span class="dk-chip">확인만</span><b>입금 확인</b><span class="dk-desc">학부모가 「보냈어요」를 누르면 확인만</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>카드 자동 결제</b><span class="dk-desc">정해진 날 결제되고 수납까지 자동</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>당일 「수업 나와요」</b><span class="dk-desc">결석했다가 나오면 앱에서 바로 되돌리기</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>문자·알림톡 발송</b><span class="dk-desc">앱을 안 쓰는 보호자에게도 자동 발송</span></article><article class="dk-card dk-s"><span class="dk-chip">곧 자동으로</span><b>급여 공제·계약서</b><span class="dk-desc">3.3%·4대보험 공제, 전자 계약</span></article></div></details>
     <p class="dk-foot">데스크에 남는 일은 <b>신규 상담과 학부모 응대</b>예요. 매출을 만드는 일에 시간을 쓰세요.</p>
   </div>
 </section>
 
 <!-- 2-3. REAL APP SCREENS -->
+<!-- 원장님 화면 -->
+<section class="alt" id="owner" aria-labelledby="ow-h">
+  <div class="wrap">
+    <div class="head center">
+      <p class="label">원장님 화면</p>
+      <h2 class="h2" id="ow-h">출근하면<br>이 화면 하나만 보세요</h2>
+    </div>
+    <figure class="ow-shot">
+      <div class="ow-bar" aria-hidden="true"><i></i><i></i><i></i><span>SwimSync 관리자 · 오늘 처리할 일</span></div>
+      <div class="ow-img">
+        <img src="img/owner-today.webp" width="2160" height="980" loading="lazy" alt="SwimSync 관리자 웹의 「오늘 처리할 일」 화면 — 오늘 결석, 반·일정 변경 요청, 자리가 난 대기자가 한곳에 모여 있어요">
+        <span class="ow-pin" style="--x:16.4%;--y:24%">1</span>
+        <span class="ow-pin" style="--x:16.4%;--y:49.3%">2</span>
+        <span class="ow-pin" style="--x:16.4%;--y:74.5%">3</span>
+      </div>
+    </figure>
+    <ol class="ow-notes">
+      <li><span class="ow-k">1</span><div><b>오늘 결석</b><p>강사님께는 이미 전달됐어요. 확인만 하면 끝.</p></div></li>
+      <li><span class="ow-k">2</span><div><b>반·일정 변경</b><p>빈자리 보고 승인 한 번이면 명단·차량까지 바뀌어요.</p></div></li>
+      <li><span class="ow-k">3</span><div><b>자리 난 대기자</b><p>빈자리가 생기면 대기자부터 알려 줘요.</p></div></li>
+    </ol>
+  </div>
+</section>
+
 <section id="screens" aria-labelledby="sc-h">
   <div class="ss" id="ss">
     <div class="ss-pin">
@@ -1019,18 +1147,6 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
         </div>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- 2-2. STAFF VS SWIMSYNC -->
-<section class="alt" id="vs" aria-labelledby="vs-h">
-  <div class="wrap">
-    <div class="head center">
-      <p class="label">비교해 보세요</p>
-      <h2 class="h2" id="vs-h">같은 일, 손으로 할 때와<br>SwimSync로 할 때</h2>
-    </div>
-    <div class="vs-wrap"><table class="vs vs2"><thead><tr><th></th><th>지금처럼 손으로<small>엑셀·기존 프로그램</small></th><th class="me">SwimSync</th></tr></thead><tbody><tr><th scope="row">처리 시간</th><td data-k="손으로">데스크 근무 시간에만, 쌓였다가 한꺼번에</td><td class="me" data-k="SwimSync">24시간, 들어오는 즉시 자동 처리</td></tr><tr><th scope="row">결석 연락 1건</th><td data-k="손으로">전화 받고 출석부·보강표·강사·차량·원비 5곳 수정</td><td class="me" data-k="SwimSync">학부모가 한 번 누르면 5곳 자동 반영</td></tr><tr><th scope="row">보강 자리 찾기</th><td data-k="손으로">시간표 보고 빈자리 찾아 다시 전화</td><td class="me" data-k="SwimSync">학부모가 남은 자리에서 직접 선택</td></tr><tr><th scope="row">정원 초과 실수</th><td data-k="손으로">바쁠 때 생길 수 있음</td><td class="me" data-k="SwimSync">신청 단계에서 자동 차단</td></tr><tr><th scope="row">월 원비 계산</th><td data-k="손으로">할인·일할·이월을 엑셀로 계산</td><td class="me" data-k="SwimSync">규칙대로 자동 계산</td></tr><tr><th scope="row">강사 평가</th><td data-k="손으로">감으로, 사람마다 다른 기준</td><td class="me" data-k="SwimSync">재등록률·퇴원률·매출을 같은 기준으로</td></tr><tr><th scope="row">교대·인수인계</th><td data-k="손으로">메모·구두로 전달하다 빠짐</td><td class="me" data-k="SwimSync">처리 기록이 그대로 남아요</td></tr></tbody></table></div>
-    <p class="bn-note">SwimSync는 데스크를 대신하지 않아요. 데스크가 손으로 하던 반복 처리를 자동으로 맡고, 상담·응대처럼 사람이 할 일에 집중하게 도와요.</p>
   </div>
 </section>
 
@@ -1249,17 +1365,16 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
     <div class="head center">
       <p class="label">기능 현황</p>
       <h2 class="h2" id="st-h">지금 쓸 수 있는 기능과<br>개발 중인 기능</h2>
-      <p class="sub">개발 예정 기능은 정식 출시 뒤 순서대로 추가돼요.</p>
     </div>
     <div class="fb-sum">
       <div class="fb-big"><b class="count" data-to="16">16</b><span>지금 바로 쓸 수 있는 기능</span></div>
       <div class="fb-track" aria-label="전체 24개 중 16개 사용 가능"><i style="--w:66.7%"></i></div>
       <div class="fb-big fb-pl"><b class="count" data-to="8">8</b><span>개발 중인 기능</span></div>
     </div>
-    <div class="fb-board">
+    <details class="more-box"><summary>분야별 기능 목록 보기</summary><div class="fb-board">
       <div class="fb-head"><span>분야</span><span><i class="dot r"></i>지금 사용 가능</span><span><i class="dot p"></i>개발 예정</span></div>
       <div class="fb-row"><div class="fb-cat"><b>보강·결석</b><span>4 사용 가능 · 1 예정</span></div><ul class="fb-ready"><li>학부모 앱 보강 신청 — 같은 구분 빈자리만, 정원 초과 자동 차단</li><li>결석하면 강사·기사 명단에 바로 반영</li><li>결석 직후 보강 날짜까지 이어서 잡기</li><li>진단서 사진으로 보강·이월, 5주차 대체보강일 제안</li></ul><ul class="fb-plan"><li><b>당일 「수업 나와요」 처리</b><span>결석했다가 나오면 강사·데스크가 한 번에 되돌려요</span></li></ul></div><div class="fb-row"><div class="fb-cat"><b>학부모·강사 앱</b><span>3 사용 가능 · 1 예정</span></div><ul class="fb-ready"><li>개인 번호 없는 앱 메시지 — 밤 9시~오전 9시는 다음 날 전달</li><li>반·요일 변경 승인 → 스케줄·명단·차량 자동 반영</li><li>휴원·퇴원·복귀 신청, 학원 공지와 알림</li></ul><ul class="fb-plan"><li><b>문자·알림톡 자동 발송</b><span>앱을 안 쓰는 보호자에게도 같은 안내를 문자로</span></li></ul></div><div class="fb-row"><div class="fb-cat"><b>통학 차량</b><span>3 사용 가능 · 1 예정</span></div><ul class="fb-ready"><li>기사 앱 운행 명단, 카카오내비 연결</li><li>차 안 QR로 탑승 기록, 「이 날은 차 안 타요」</li><li>전날 탑승 안내, 출발·미탑승·결행·정류장 변경 알림</li></ul><ul class="fb-plan"><li><b>탑승·하차 즉시 알림</b><span>아이가 타고 내리는 순간 보호자 앱으로</span></li></ul></div><div class="fb-row"><div class="fb-cat"><b>원비·결제</b><span>3 사용 가능 · 2 예정</span></div><ul class="fb-ready"><li>요금제·주 횟수·시간대 할증으로 월 원비 자동 계산</li><li>중간 등록 일할, 형제·이벤트 할인, 미납 안내</li><li>카카오페이 송금·계좌이체 안내 후 「보냈어요」로 확인</li></ul><ul class="fb-plan"><li><b>앱 카드 결제·매달 자동 결제</b><span>재등록 기간 안에서 정한 날 자동 결제</span></li><li><b>재등록 결제 안내 대시보드</b><span>미결제면 앱 맨 위에 금액·마감일과 팝업</span></li></ul></div><div class="fb-row"><div class="fb-cat"><b>강사·운영</b><span>3 사용 가능 · 3 예정</span></div><ul class="fb-ready"><li>강사 급여 자동 계산 — 정규·프리랜서, 수당, 중도 입·퇴사 일할</li><li>급여명세서 발행·인쇄, 강사 실적(재등록률·퇴원률·매출)</li><li>연차 신청·승인, 레벨 테스트, 엑셀 명단 그대로 이전</li></ul><ul class="fb-plan"><li><b>급여 공제·실지급액</b><span>3.3%·4대보험·소득세를 빼고 실지급액까지</span></li><li><b>강사 계약서 전자 서명</b><span>웹에서 만들고 강사 앱에서 서명·보관</span></li><li><b>급여명세서 앱 전송</b><span>명세서 PDF를 강사 앱으로, 확인 여부까지</span></li></ul></div>
-    </div>
+    </div></details>
     <p class="fs-note">개발 순서와 시기는 바뀔 수 있어요. 필요한 기능이 있으면 사전 예약 때 남겨 주세요.</p>
   </div>
 </section>
@@ -1664,7 +1779,7 @@ addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
   if(ty&&wrap)ty.addEventListener('change',function(){wrap.hidden=ty.value!=='기타';if(!wrap.hidden)document.getElementById('f-type-etc').focus()});
   // 스크롤에 맞춰 나타나기
   var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  var sel=['main section .head','.voices .voice','.bignums > div','.dk-sum','.dk-card','.vs-wrap','.fb-sum','.fb-row','.plan','.faq details','.final'];
+  var sel=['main section .head','.voices .voice','.ow-notes li','.bignums > div','.dk-sum','.dk-card','.vs-wrap','.fb-sum','.fb-row','.plan','.faq details','.final'];
   var els=[];sel.forEach(function(s){document.querySelectorAll(s).forEach(function(e){if(els.indexOf(e)<0)els.push(e)})});
   if(!reduce&&'IntersectionObserver' in window){
     document.documentElement.classList.add('rv-ready');
@@ -1676,6 +1791,29 @@ addEventListener('resize',function(){if(innerWidth>760)set(false)});})();
   function count(root){(root.matches&&root.matches('.count')?[root]:[].slice.call(root.querySelectorAll?root.querySelectorAll('.count,.bignums b'):[])).forEach(function(b){
     if(b.dataset.done)return;b.dataset.done=1;var txt=b.firstChild&&b.firstChild.nodeType===3?b.firstChild:null;if(!txt)return;var to=parseInt(txt.nodeValue.replace(/\D/g,''),10);if(!to||reduce)return;
     var t0=performance.now();(function step(n){var k=Math.min(1,(n-t0)/900),v=Math.round(to*(1-Math.pow(1-k,3)));txt.nodeValue=String(v);if(k<1)requestAnimationFrame(step)})(t0)})}
+
+  // 결석 1건 흐름 — 스크롤하면 한 곳씩 켜져요
+  (function(){
+    var fl=document.getElementById('flow');if(!fl)return;
+    var nodes=[].slice.call(fl.querySelectorAll('.fl-node')),num=fl.querySelector('.fl-n'),dock=document.querySelector('.dock');
+    function all(){nodes.forEach(function(n){n.classList.add('on')});num.textContent=nodes.length;fl.style.setProperty('--p',1)}
+    if(reduce||!('IntersectionObserver' in window)){all();return}
+    fl.classList.add('pinned');
+    function tick(){
+      fl.style.setProperty('--dock-h',(dock&&getComputedStyle(dock).display!=='none'?dock.offsetHeight:0)+'px');
+      var r=fl.getBoundingClientRect(),span=fl.offsetHeight-innerHeight*.75,p=Math.max(0,Math.min(1,(-r.top+innerHeight*.15)/span));
+      var k=Math.min(nodes.length,Math.floor(p*(nodes.length+1)));
+      nodes.forEach(function(n,i){n.classList.toggle('on',i<k)});
+      num.textContent=k;fl.style.setProperty('--p',(k/nodes.length).toFixed(3));
+    }
+    addEventListener('scroll',tick,{passive:true});addEventListener('resize',tick);tick();
+  })();
+  // 원장님 화면 — 보이면 번호가 하나씩
+  (function(){
+    var ow=document.querySelector('.ow-shot');if(!ow)return;
+    if(reduce||!('IntersectionObserver' in window)){ow.classList.add('in');return}
+    var o=new IntersectionObserver(function(es){if(es[0].isIntersecting){ow.classList.add('in');o.disconnect()}},{threshold:.35});o.observe(ow);
+  })();
   if(reduce||!('IntersectionObserver' in window))return;
 })();
 </script>
