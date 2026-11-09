@@ -703,8 +703,9 @@ table.vs td.me b{color:var(--ink)}
 
 /* 현장 이야기 4칸 · 사이드 제목 */
 .side-title{font-size:clamp(17px,1.8vw,20px);font-weight:700;color:var(--brand);letter-spacing:-.01em;margin-top:2px}
-.voices.v4{grid-template-columns:repeat(4,minmax(0,1fr))}
-@media (max-width:1000px){.voices.v4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.voices.v4{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}
+.voices.v4 .voice{padding:24px 22px}
+@media (max-width:1000px){.voices.v4{grid-template-columns:repeat(2,minmax(0,1fr))}.voices.v4 .voice:last-child{grid-column:1/-1}}
 @media (max-width:560px){.voices.v4{grid-template-columns:1fr}}
 .voices.v4 .voice span{display:inline-block;justify-self:start;background:var(--tint);color:var(--brand);font-weight:600;font-size:12.5px;border-radius:99px;padding:3px 10px}
 
@@ -967,6 +968,7 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
       <div class="voice"><p>민원 접수 시 어려움을 겪고 있어요.</p><span>학부모 응대</span></div>
       <div class="voice"><p>보강 및 자유수영, 상담 등 잡무가 많아 힘들어요.</p><span>데스크 잡무</span></div>
       <div class="voice"><p>강사별 역량 평가 기준이 모호해요.</p><span>강사 관리</span></div>
+      <div class="voice"><p>회원관리 프로그램이랑 시간표 시트를 따로 관리하고 있어요.</p><span>이중 관리</span></div>
     </div>
   </div>
 </section>
