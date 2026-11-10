@@ -911,6 +911,29 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
 .fl-head-m{display:none}
 @media (prefers-reduced-motion:reduce){.fl-scr,.fl-hl,.fl-cap,.fl-st{transition:none}.fl-scr.on .fl-hl{animation:none}}
 
+
+/* 핵심 기능 — 실제 화면 미니 흐름 */
+.mf{display:flex;align-items:center;justify-content:center;gap:clamp(6px,1.4vw,14px);width:100%}
+.mf-s{margin:0;flex:1 1 0;min-width:0;max-width:var(--mw,150px);display:grid;justify-items:center;gap:8px;text-align:center}
+.mf-ph{position:relative;width:100%;aspect-ratio:600/1332;border-radius:18px;border:4px solid #0B0F1C;overflow:hidden;background:#fff;box-shadow:0 22px 44px -22px rgba(15,18,34,.55);animation:mf-lift var(--T) infinite;animation-delay:var(--D)}
+.mf-ph img{display:block;width:100%;height:100%;object-fit:cover;object-position:top}
+.mf-hl{position:absolute;left:var(--x);top:var(--y);width:var(--w);height:var(--h);border-radius:8px;border:2.5px solid #FF6B3D;box-shadow:0 0 0 999px rgba(15,18,34,.22);opacity:0;animation:mf-hl var(--T) infinite;animation-delay:var(--D)}
+.mf-s figcaption{display:grid;gap:1px;line-height:1.3}
+.mf-s figcaption b{font-size:14px;color:var(--ink);white-space:nowrap}
+@media (min-width:861px){.feat:has(.mf){grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:clamp(28px,4vw,56px)}}
+.mf-s figcaption b em{font-style:normal;display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;background:var(--brand);color:#fff;font-size:11px;margin-right:5px;vertical-align:1px}
+.mf-s figcaption span{font-size:12.5px;color:var(--soft)}
+.mf-ar{flex:none;position:relative;width:clamp(18px,3vw,34px);height:2px;background:var(--tint-2);align-self:center;margin-bottom:46px}
+.mf-ar::after{content:"";position:absolute;right:-1px;top:-4px;border:5px solid transparent;border-left:7px solid var(--tint-2);border-right:0}
+.mf-ar i{position:absolute;top:-3px;left:0;width:8px;height:8px;border-radius:50%;background:var(--brand);opacity:0;animation:mf-go var(--T) infinite;animation-delay:var(--D)}
+.mf-note{margin:14px 0 0;text-align:center;font-size:12.5px;color:var(--mute)}
+.vis .mf-wrap{width:100%}
+@keyframes mf-hl{0%{opacity:0}6%,30%{opacity:1}38%,100%{opacity:0}}
+@keyframes mf-lift{0%,38%,100%{transform:none}6%,30%{transform:translateY(-6px)}}
+@keyframes mf-go{0%,26%{opacity:0;left:0}30%{opacity:1;left:0}40%{opacity:1;left:calc(100% - 8px)}44%,100%{opacity:0;left:calc(100% - 8px)}}
+@media (max-width:860px){.mf-ph{border-width:3px;border-radius:13px}.mf-s figcaption b{font-size:12.5px}.mf-s figcaption span{font-size:11.5px}.mf-ar{margin-bottom:40px}.mf-note{margin-top:8px;font-size:11.5px}}
+@media (prefers-reduced-motion:reduce){.mf-ph,.mf-ar i{animation:none}.mf-hl{animation:none;opacity:1}}
+
 /* 원장님 화면 */
 .ow-shot{margin:0 auto;padding:0;max-width:1080px;border-radius:18px;overflow:hidden;background:var(--paper);border:1px solid var(--line);box-shadow:var(--shadow)}
 .ow-bar{display:flex;align-items:center;gap:7px;padding:11px 16px;border-bottom:1px solid var(--line);background:var(--alt)}
@@ -1224,13 +1247,8 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
         <a class="more-link" href="features/makeup/">보강·결석 관리 자세히 보기 →</a>
         <p class="from">"보강 스케줄링 실수로 정원 초과 학생을 부른 적이 있어요" — 설문 응답</p>
       </div>
-      <div class="vis notranslate" translate="no">
-        <div class="mock">
-          <div class="push"><i aria-hidden="true"></i><span><b>보강이 확정됐어요</b>9/27(토) 10:00 · 유치부 초급 · 잔여 1회</span></div>
-          <div class="push"><i aria-hidden="true" style="background:var(--good)"></i><span><b>강사 앱 · 새 보강 학생</b>김서윤 · 9/27(토) 10:00 수업에 입실</span></div>
-          <div class="push"><i aria-hidden="true" style="background:var(--bad)"></i><span><b>정원 마감</b>9/29(월) 16:00 반은 보강을 받지 않아요</span></div>
-        </div>
-      </div>
+      <div class="vis notranslate" translate="no"><div class="mf-wrap"><div class="mf" style="--T:4.4s;--mw:205px"><figure class="mf-s" style="--D:0.0s"><div class="mf-ph"><img src="img/flow-makeup.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 보강 신청 창 — 이번 달 남은 보강 횟수와 고를 수 있는 날짜"><i class="mf-hl" style="--x:5%;--y:21.5%;--w:90%;--h:20%"></i></div><figcaption><b><em>1</em>학부모 앱</b><span>남은 보강·빈 날짜 보고 신청</span></figcaption></figure><i class="mf-ar" aria-hidden="true" style="--D:0.0s"><i></i></i><figure class="mf-s" style="--D:2.2s"><div class="mf-ph"><img src="img/feat-makeup-done.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 결석 목록 — 보강으로 다른 수업일에 배정됐다는 표시"><i class="mf-hl" style="--x:4%;--y:55.3%;--w:92%;--h:11%"></i></div><figcaption><b><em>2</em>학부모 앱</b><span>「보강 완료」 날짜까지 표시</span></figcaption></figure></div><p class="mf-note">실제 앱 화면 · 데스크가 빈자리를 찾아 전화할 일이 없어요</p></div></div>
+
     </div>
 
     <div class="feat slide" role="tabpanel" id="core-s1" aria-labelledby="core-t1">
@@ -1245,13 +1263,8 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
         <a class="more-link" href="features/apps/">학부모·강사 앱 자세히 보기 →</a>
         <p class="from">"보강과 출결의 전화 상담이 힘들어요" — 설문 응답</p>
       </div>
-      <div class="vis notranslate" translate="no">
-        <div class="mock">
-          <div class="msg in">코치님, 내일 서윤이 감기로 결석할게요<small>22:14</small></div>
-          <div class="sys">지금은 강사 응답 시간이 아니라 내일 오전 9시에 전달돼요</div>
-          <div class="msg out">네 어머님, 결석 처리했어요. 보강은 앱에서 편한 시간으로 잡아 주세요.<small>09:02</small></div>
-        </div>
-      </div>
+      <div class="vis notranslate" translate="no"><div class="mf-wrap"><div class="mf" style="--T:4.4s;--mw:205px"><figure class="mf-s" style="--D:0.0s"><div class="mf-ph"><img src="img/feat-teacher-msg.webp" width="600" height="1332" loading="lazy" alt="강사 앱 메시지 목록 — 담당 학생 보호자별 대화"><i class="mf-hl" style="--x:4%;--y:19%;--w:92%;--h:9.5%"></i></div><figcaption><b><em>1</em>강사 앱</b><span>학부모와 앱 메시지로 대화</span></figcaption></figure><i class="mf-ar" aria-hidden="true" style="--D:0.0s"><i></i></i><figure class="mf-s" style="--D:2.2s"><div class="mf-ph"><img src="img/feat-parent-msg.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 메시지 — 담당 강사님과의 대화와 「수업 중에는 답장이 늦을 수 있어요」 안내"><i class="mf-hl" style="--x:4%;--y:41.5%;--w:70%;--h:10.5%"></i></div><figcaption><b><em>2</em>학부모 앱</b><span>개인 번호 없이 답장 받기</span></figcaption></figure></div><p class="mf-note">실제 앱 화면 · 강사 개인 번호를 알려 줄 필요가 없어요</p></div></div>
+
     </div>
 
     <div class="feat slide" role="tabpanel" id="core-s2" aria-labelledby="core-t2">
@@ -1267,16 +1280,8 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
         <a class="more-link" href="features/vehicle/">통학 차량 관리 자세히 보기 →</a>
         <p class="from">"강습생을 검색하면 보호자 연락처, 탑승 차량을 바로 알 수 있으면" — 설문 응답</p>
       </div>
-      <div class="vis notranslate" translate="no">
-        <div class="flowv">
-          <div class="src"><span>김서윤 · 10/1(수) 결석 신청</span><span class="tag">학부모 앱</span></div>
-          <div class="arrow" aria-hidden="true"></div>
-          <div class="dst">
-            <div class="list"><h4>강사 명단 <span>16:00</span></h4><p>박지호</p><p class="x">김서윤 </p><p>이도윤</p></div>
-            <div class="list"><h4>2호차 <span>15:20</span></h4><p>정류장 1 · 2명</p><p class="x">김서윤 </p><p>정류장 3 · 1명</p></div>
-          </div>
-        </div>
-      </div>
+      <div class="vis notranslate" translate="no"><div class="mf-wrap"><div class="mf" style="--T:6.6s;--mw:168px"><figure class="mf-s" style="--D:0.0s"><div class="mf-ph"><img src="img/flow-parent.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 결석 신청 창"><i class="mf-hl" style="--x:3%;--y:82.5%;--w:94%;--h:17.5%"></i></div><figcaption><b><em>1</em>학부모 앱</b><span>[결석] 누르기</span></figcaption></figure><i class="mf-ar" aria-hidden="true" style="--D:0.0s"><i></i></i><figure class="mf-s" style="--D:2.2s"><div class="mf-ph"><img src="img/flow-teacher.webp" width="600" height="1332" loading="lazy" alt="강사 앱 수업 명단 — 결석과 사유 표시"><i class="mf-hl" style="--x:8%;--y:42.5%;--w:84%;--h:8.5%"></i></div><figcaption><b><em>2</em>강사 앱</b><span>명단에 결석·사유</span></figcaption></figure><i class="mf-ar" aria-hidden="true" style="--D:2.2s"><i></i></i><figure class="mf-s" style="--D:4.4s"><div class="mf-ph"><img src="img/flow-driver.webp" width="600" height="1332" loading="lazy" alt="기사 앱 탑승 명단 — 결석 표시"><i class="mf-hl" style="--x:8%;--y:78.5%;--w:60%;--h:6.5%"></i></div><figcaption><b><em>3</em>기사 앱</b><span>탑승 명단에서 제외</span></figcaption></figure></div><p class="mf-note">실제 앱 화면 · 결석 한 번에 세 곳이 같이 바뀌어요</p></div></div>
+
     </div>
     <div class="feat slide" role="tabpanel" id="core-s3" aria-labelledby="core-t3">
       <div class="txt">
@@ -1290,14 +1295,8 @@ table.vs2 td.me::before{content:"";position:absolute;left:22px;top:19px;width:20
         </ul>
         <a class="more-link" href="features/vehicle/">통학 차량 관리 자세히 보기 →</a>
       </div>
-      <div class="vis notranslate" translate="no">
-        <div class="mock">
-          <div class="push"><i aria-hidden="true"></i><span><b>내일 차량 탑승 안내</b>내일 15:20 · 한강아파트 정문 · 2호차</span></div>
-          <div class="push"><i aria-hidden="true" style="background:var(--good)"></i><span><b>등원 차량이 출발했어요</b>15:20 · 2호차</span></div>
-          <div class="push soon-push"><i aria-hidden="true" style="background:var(--good)"></i><span><b>서윤이가 2호차에 탑승했어요 <span class="soon">개발 예정</span></b>15:22 · 한강아파트 정문</span></div>
-          <p class="mock-cap">학부모 앱 알림 · 예시 화면 · 마지막 알림은 개발 예정</p>
-        </div>
-      </div>
+      <div class="vis notranslate" translate="no"><div class="mf-wrap"><div class="mf" style="--T:4.4s;--mw:205px"><figure class="mf-s" style="--D:0.0s"><div class="mf-ph"><img src="img/feat-parent-car.webp" width="600" height="1332" loading="lazy" alt="학부모 앱 차량 화면 — 오늘 차량 안내와 탑승 QR 찍기"><i class="mf-hl" style="--x:4%;--y:25.8%;--w:92%;--h:15.3%"></i></div><figcaption><b><em>1</em>학부모 앱</b><span>오늘 차량·QR 탑승</span></figcaption></figure><i class="mf-ar" aria-hidden="true" style="--D:0.0s"><i></i></i><figure class="mf-s" style="--D:2.2s"><div class="mf-ph"><img src="img/flow-driver.webp" width="600" height="1332" loading="lazy" alt="기사 앱 오늘 운행 — 정류장별 탑승 명단"><i class="mf-hl" style="--x:4%;--y:53%;--w:92%;--h:13%"></i></div><figcaption><b><em>2</em>기사 앱</b><span>정류장 순서대로 명단</span></figcaption></figure></div><p class="mf-note">실제 앱 화면 · 탑승·하차 즉시 알림은 개발 예정이에요</p></div></div>
+
     </div>
       </div>
       <div class="stage-foot"><span class="stage-hint"><i aria-hidden="true"></i><em class="d">스크롤하면 다음 기능이 이어서 나와요</em><em class="m">스크롤하면 다음 기능이 나와요</em></span><span class="stage-bar" aria-hidden="true"><i></i></span></div>
